@@ -26,8 +26,6 @@
 
 /* ------------------------------------------------------- tabla de gestión */
 
-.fila-clase { cursor: pointer; }
-.fila-clase:hover { background: var(--borde-sutil); }
 
 .pastilla-color {
   width: 12px;

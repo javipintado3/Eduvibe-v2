@@ -1,6 +1,6 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { NgFor, NgIf } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 
@@ -9,13 +9,12 @@ import { UsuariosService } from '../../../core/services/usuarios.service';
 import { EstadoCuenta, Invitacion, Pagina, ResultadoImportacion, Rol, Usuario } from '../../../core/models';
 import { AvatarComponent } from '../../../shared/avatar/avatar.component';
 import { AvisoComponent } from '../../../shared/aviso/aviso.component';
-import { CargandoComponent } from '../../../shared/cargando/cargando.component';
 import { DialogoComponent } from '../../../shared/dialogo/dialogo.component';
-import { EstadoVacioComponent } from '../../../shared/estado-vacio/estado-vacio.component';
-import { LimpiarFiltrosComponent } from '../../../shared/limpiar-filtros/limpiar-filtros.component';
 import { PastillaEstadoComponent } from '../../../shared/pastilla-estado/pastilla-estado.component';
 import { FechaPipe } from '../../../shared/pipes/fecha.pipe';
-import { PaginadorComponent } from '../../../shared/paginador/paginador.component';
+import { CeldaTablaDirective } from '../../../shared/tabla-datos/celda-tabla.directive';
+import { TablaDatosComponent } from '../../../shared/tabla-datos/tabla-datos.component';
+import { ColumnaTabla, FiltroTabla, OrdenTabla } from '../../../shared/tabla-datos/tabla-datos.tipos';
 
 /**
  * Panel de usuarios.
@@ -33,9 +32,9 @@ import { PaginadorComponent } from '../../../shared/paginador/paginador.componen
   selector: 'app-usuarios',
   standalone: true,
   imports: [
-    NgIf, NgFor, RouterLink, ReactiveFormsModule,
-    AvatarComponent, CargandoComponent, EstadoVacioComponent, PastillaEstadoComponent, LimpiarFiltrosComponent,
-    DialogoComponent, AvisoComponent, FechaPipe, PaginadorComponent,
+    NgIf, NgFor, ReactiveFormsModule,
+    AvatarComponent, PastillaEstadoComponent, DialogoComponent, AvisoComponent, FechaPipe,
+    TablaDatosComponent, CeldaTablaDirective,
   ],
   templateUrl: './usuarios.component.html',
   styleUrl: './usuarios.component.css',
@@ -45,69 +44,58 @@ export class UsuariosComponent implements OnInit {
   private readonly usuariosService = inject(UsuariosService);
   private readonly confirmacion = inject(ConfirmacionService);
   private readonly fb = inject(FormBuilder);
+  private readonly router = inject(Router);
 
   readonly pagina = signal<Pagina<Usuario> | null>(null);
   readonly cargando = signal(true);
   readonly error = signal<string | null>(null);
-  readonly trabajandoCon = signal<string | null>(null);
+  readonly exito = signal<string | null>(null);
 
-  // --- selección en lote ---
+  // --- acciones sobre la selección ---
+  // Como en Fortress, no hay botones por fila: se marcan filas y la barra de
+  // acciones ofrece solo lo que tiene sentido para lo marcado (activar si hay
+  // alguien desactivado, desactivar si hay alguien activo...).
+  // La selección se vacía al cambiar de página o de filtros, así que siempre
+  // son filas que se están viendo.
   readonly seleccionados = signal<Set<string>>(new Set());
   readonly aplicandoLote = signal(false);
 
-  estaSeleccionado(usuarioId: string): boolean {
-    return this.seleccionados().has(usuarioId);
-  }
+  private readonly usuariosSeleccionados = computed(() =>
+    (this.pagina()?.contenido ?? []).filter(usuario => this.seleccionados().has(usuario.id)));
 
-  alternarSeleccion(usuario: Usuario, marcado: boolean): void {
-    this.seleccionados.update(actuales => {
-      const nuevo = new Set(actuales);
-      marcado ? nuevo.add(usuario.id) : nuevo.delete(usuario.id);
-      return nuevo;
-    });
-  }
+  readonly activables = computed(() => this.usuariosSeleccionados().filter(u => u.status === 'disabled'));
+  readonly desactivables = computed(() => this.usuariosSeleccionados().filter(u => u.status === 'active'));
+  readonly pendientes = computed(() => this.usuariosSeleccionados().filter(u => u.status === 'pending'));
 
-  get todosSeleccionadosEnPagina(): boolean {
-    const contenido = this.pagina()?.contenido ?? [];
-    return contenido.length > 0 && contenido.every(u => this.estaSeleccionado(u.id));
-  }
-
-  alternarTodosEnPagina(marcado: boolean): void {
-    const contenido = this.pagina()?.contenido ?? [];
-    this.seleccionados.update(actuales => {
-      const nuevo = new Set(actuales);
-      for (const usuario of contenido) {
-        marcado ? nuevo.add(usuario.id) : nuevo.delete(usuario.id);
-      }
-      return nuevo;
-    });
+  /** La tabla propone el nuevo conjunto (marcar una fila, o todas las de la página); aquí solo se guarda. */
+  seleccionCambia(nuevos: Set<string>): void {
+    this.seleccionados.set(nuevos);
   }
 
   limpiarSeleccion(): void {
     this.seleccionados.set(new Set());
   }
 
-  /** Activa o desactiva todo lo seleccionado de golpe. Igual que activar una cuenta sola, pero repetido. */
-  async cambiarEstadoLote(status: 'active' | 'disabled'): Promise<void> {
-    const ids = Array.from(this.seleccionados());
-    if (!ids.length || this.aplicandoLote()) {
+  /** Activa o desactiva de golpe las cuentas indicadas. */
+  async cambiarEstadoLote(usuarios: Usuario[], status: 'active' | 'disabled'): Promise<void> {
+    if (!usuarios.length || this.aplicandoLote()) {
       return;
     }
 
     const confirmado = await this.confirmacion.preguntar(
-      `¿${status === 'active' ? 'Reactivar' : 'Desactivar'} ${ids.length} cuenta(s)?`,
-      { titulo: status === 'active' ? 'Reactivar en lote' : 'Desactivar en lote', peligro: status === 'disabled' });
+      `¿${status === 'active' ? 'Activar' : 'Desactivar'} ${usuarios.length} cuenta(s)?`,
+      { titulo: status === 'active' ? 'Activar cuentas' : 'Desactivar cuentas', peligro: status === 'disabled' });
     if (!confirmado) {
       return;
     }
 
     this.aplicandoLote.set(true);
     this.error.set(null);
+    this.exito.set(null);
 
-    forkJoin(ids.map(id => this.usuariosService.cambiarEstado(id, status))).subscribe({
+    forkJoin(usuarios.map(usuario => this.usuariosService.cambiarEstado(usuario.id, status))).subscribe({
       next: () => {
         this.aplicandoLote.set(false);
-        this.limpiarSeleccion();
         this.cargar(this.pagina()?.pagina ?? 0);
       },
       error: (err) => {
@@ -116,8 +104,38 @@ export class UsuariosComponent implements OnInit {
         // ejemplo, la propia cuenta de quien administra no se puede
         // desactivar); se recarga para reflejar lo que sí se aplicó.
         this.error.set(AvisoComponent.mensajeDe(err));
-        this.limpiarSeleccion();
         this.cargar(this.pagina()?.pagina ?? 0);
+      },
+    });
+  }
+
+  /**
+   * Reenvía la invitación a las cuentas pendientes. Con una sola se enseña el
+   * enlace en el diálogo (en una demo puede no haber correo); con varias solo
+   * se avisa de cuántas se han reenviado.
+   */
+  reenviarLote(usuarios: Usuario[]): void {
+    if (usuarios.length === 1) {
+      this.reenviarInvitacion(usuarios[0]);
+      return;
+    }
+    if (!usuarios.length || this.aplicandoLote()) {
+      return;
+    }
+
+    this.aplicandoLote.set(true);
+    this.error.set(null);
+    this.exito.set(null);
+
+    forkJoin(usuarios.map(usuario => this.usuariosService.reenviarInvitacion(usuario.id))).subscribe({
+      next: () => {
+        this.aplicandoLote.set(false);
+        this.exito.set(`Invitación reenviada a ${usuarios.length} cuentas`);
+        this.limpiarSeleccion();
+      },
+      error: (err) => {
+        this.aplicandoLote.set(false);
+        this.error.set(AvisoComponent.mensajeDe(err));
       },
     });
   }
@@ -138,9 +156,11 @@ export class UsuariosComponent implements OnInit {
     this.exportando.set(true);
     this.error.set(null);
 
-    const { q, role, status } = this.filtros.getRawValue();
-
-    this.usuariosService.exportarCsv({ q, role: role as Rol | '', status: status as EstadoCuenta | '' }).subscribe({
+    this.usuariosService.exportarCsv({
+      q: this.busqueda(),
+      role: this.rol() as Rol | '',
+      status: this.estado() as EstadoCuenta | '',
+    }).subscribe({
       next: (blob) => {
         this.exportando.set(false);
         this.descargar(blob, 'usuarios.csv');
@@ -233,16 +253,55 @@ export class UsuariosComponent implements OnInit {
     });
   }
 
-  readonly filtros = this.fb.nonNullable.group({
-    q: [''],
-    role: [''],
-    status: [''],
-  });
+  // --- tabla: columnas y filtros ---
+  // El estado de los filtros vive aquí, en señales; la tabla solo los pinta
+  // y avisa de los cambios (igual que los `useState` + `filters` de Fortress).
+  readonly busqueda = signal('');
+  readonly rol = signal('');
+  readonly estado = signal('');
+  readonly orden = signal<OrdenTabla | null>(null);
 
-  /** El botón de limpiar solo tiene sentido si hay algo que limpiar. */
-  get hayFiltrosActivos(): boolean {
-    const { q, role, status } = this.filtros.value;
-    return !!(q || role || status);
+  readonly columnas: ColumnaTabla[] = [
+    { campo: 'name', titulo: 'Persona', ordenable: true },
+    { campo: 'role', titulo: 'Rol', ordenable: true },
+    { campo: 'status', titulo: 'Estado', ordenable: true },
+    { campo: 'createdAt', titulo: 'Alta', ordenable: true },
+  ];
+
+  readonly filtros = computed<FiltroTabla[]>(() => [
+    {
+      clave: 'q', tipo: 'busqueda', valor: this.busqueda(),
+      placeholder: 'Buscar por nombre o email',
+      alCambiar: valor => { this.busqueda.set(valor); this.cargar(); },
+    },
+    {
+      clave: 'role', tipo: 'seleccion', valor: this.rol(), placeholder: 'Cualquier rol',
+      opciones: [
+        { valor: 'admin', etiqueta: 'Administración' },
+        { valor: 'teacher', etiqueta: 'Profesorado' },
+        { valor: 'student', etiqueta: 'Alumnado' },
+        { valor: 'guardian', etiqueta: 'Tutor legal' },
+      ],
+      alCambiar: valor => { this.rol.set(valor); this.cargar(); },
+    },
+    {
+      clave: 'status', tipo: 'seleccion', valor: this.estado(), placeholder: 'Cualquier estado',
+      opciones: [
+        { valor: 'pending', etiqueta: 'Pendiente' },
+        { valor: 'active', etiqueta: 'Activa' },
+        { valor: 'disabled', etiqueta: 'Desactivada' },
+      ],
+      alCambiar: valor => { this.estado.set(valor); this.cargar(); },
+    },
+  ]);
+
+  abrirUsuario(usuario: Usuario): void {
+    this.router.navigate(['/admin/usuarios', usuario.id]);
+  }
+
+  cambiarOrden(orden: OrdenTabla | null): void {
+    this.orden.set(orden);
+    this.cargar();
   }
 
   // --- alta ---
@@ -265,13 +324,15 @@ export class UsuariosComponent implements OnInit {
   cargar(pagina = 0): void {
     this.cargando.set(true);
     this.error.set(null);
+    this.limpiarSeleccion();
 
-    const { q, role, status } = this.filtros.getRawValue();
+    const orden = this.orden();
 
     this.usuariosService.listar({
-      q,
-      role: role as Rol | '',
-      status: status as EstadoCuenta | '',
+      q: this.busqueda(),
+      role: this.rol() as Rol | '',
+      status: this.estado() as EstadoCuenta | '',
+      sort: orden ? `${orden.campo},${orden.direccion}` : undefined,
       page: pagina,
     }).subscribe({
       next: (resultado) => {
@@ -286,7 +347,9 @@ export class UsuariosComponent implements OnInit {
   }
 
   limpiarFiltros(): void {
-    this.filtros.reset({ q: '', role: '', status: '' });
+    this.busqueda.set('');
+    this.rol.set('');
+    this.estado.set('');
     this.cargar();
   }
 
@@ -339,37 +402,22 @@ export class UsuariosComponent implements OnInit {
 
   // --------------------------------------------------------------- acciones
 
-  cambiarEstado(usuario: Usuario, status: 'active' | 'disabled'): void {
-    this.trabajandoCon.set(usuario.id);
+  private reenviarInvitacion(usuario: Usuario): void {
+    if (this.aplicandoLote()) {
+      return;
+    }
+    this.aplicandoLote.set(true);
     this.error.set(null);
-
-    this.usuariosService.cambiarEstado(usuario.id, status).subscribe({
-      next: (actualizado) => {
-        this.trabajandoCon.set(null);
-        this.pagina.update(p => p && ({
-          ...p,
-          contenido: p.contenido.map(u => u.id === actualizado.id ? actualizado : u),
-        }));
-      },
-      error: (err) => {
-        this.trabajandoCon.set(null);
-        this.error.set(AvisoComponent.mensajeDe(err));
-      },
-    });
-  }
-
-  reenviarInvitacion(usuario: Usuario): void {
-    this.trabajandoCon.set(usuario.id);
-    this.error.set(null);
+    this.exito.set(null);
 
     this.usuariosService.reenviarInvitacion(usuario.id).subscribe({
       next: (invitacion) => {
-        this.trabajandoCon.set(null);
+        this.aplicandoLote.set(false);
         this.invitacionEmitida.set({ nombre: usuario.name, invitacion });
         this.dialogoAbierto.set(true);
       },
       error: (err) => {
-        this.trabajandoCon.set(null);
+        this.aplicandoLote.set(false);
         this.error.set(AvisoComponent.mensajeDe(err));
       },
     });

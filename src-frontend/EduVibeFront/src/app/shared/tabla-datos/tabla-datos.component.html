@@ -1,0 +1,92 @@
+<!-- Una sola tarjeta: barra de filtros arriba, tabla en medio y pie de paginación abajo, como en Fortress -->
+<div [class.tarjeta]="!plana">
+
+  <!-- Barra superior: filtros, o las acciones en lote de la pantalla cuando hay selección -->
+  <div class="barra" *ngIf="mostrarAcciones || hayFiltros">
+    <ng-container *ngIf="!mostrarAcciones; else acciones">
+      <ng-container *ngFor="let filtro of filtros; trackBy: claveDe" [ngSwitch]="filtro.tipo">
+
+        <div *ngSwitchCase="'busqueda'" class="busqueda">
+          <svg class="busqueda-icono" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>
+          </svg>
+          <input class="entrada" type="search"
+                 [value]="filtro.valor" [placeholder]="filtro.placeholder ?? ''"
+                 (input)="alEscribir($any(filtro), $any($event.target).value)"
+                 (keydown.enter)="buscarYa($any(filtro), $any($event.target).value)">
+        </div>
+
+        <select *ngSwitchCase="'seleccion'" class="selector filtro-seleccion"
+                [value]="filtro.valor" (change)="$any(filtro).alCambiar($any($event.target).value)">
+          <option value="">{{ filtro.placeholder }}</option>
+          <option *ngFor="let opcion of $any(filtro).opciones" [value]="opcion.valor"
+                  [selected]="opcion.valor === filtro.valor">{{ opcion.etiqueta }}</option>
+        </select>
+
+      </ng-container>
+
+      <app-limpiar-filtros *ngIf="hayFiltrosActivos" (limpiar)="limpiarFiltros.emit()"></app-limpiar-filtros>
+    </ng-container>
+
+    <ng-template #acciones>
+      <ng-content select="[acciones]"></ng-content>
+    </ng-template>
+  </div>
+
+  <app-cargando *ngIf="cargando && !filas.length"></app-cargando>
+
+  <app-estado-vacio *ngIf="!cargando && !filas.length" [titulo]="tituloVacio" [descripcion]="descripcionVacia"></app-estado-vacio>
+
+  <div class="tabla-envoltorio" *ngIf="filas.length" [class.recargando]="cargando">
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th *ngIf="seleccionable" style="width:1px">
+            <input type="checkbox" aria-label="Seleccionar todas las filas de la página"
+                   [checked]="todasSeleccionadas" (change)="alternarTodas($any($event.target).checked)">
+          </th>
+          <th *ngFor="let columna of columnas" [style.width]="columna.ancho"
+              [style.text-align]="columna.alinear === 'derecha' ? 'right' : null"
+              [attr.aria-sort]="direccionDe(columna.campo) === 'asc' ? 'ascending'
+                              : direccionDe(columna.campo) === 'desc' ? 'descending' : null">
+            <button *ngIf="columna.ordenable; else sinOrden" type="button" class="orden"
+                    [class.orden-activo]="direccionDe(columna.campo)"
+                    (click)="alternarOrden(columna.campo)">
+              {{ columna.titulo }}
+              <span class="flecha" aria-hidden="true">{{
+                direccionDe(columna.campo) === 'asc' ? '↑' : direccionDe(columna.campo) === 'desc' ? '↓' : '↕' }}</span>
+            </button>
+            <ng-template #sinOrden>{{ columna.titulo }}</ng-template>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let fila of filas; trackBy: idDe" [class.fila-clicable]="filasClicables"
+            (click)="filasClicables && filaClic.emit(fila)">
+          <td *ngIf="seleccionable" (click)="$event.stopPropagation()">
+            <input type="checkbox" [checked]="estaSeleccionada(fila)"
+                   (change)="alternarFila(fila, $any($event.target).checked)">
+          </td>
+          <td *ngFor="let columna of columnas"
+              [style.text-align]="columna.alinear === 'derecha' ? 'right' : null"
+              (click)="columna.bloqueaClicFila && $event.stopPropagation()">
+            <ng-container *ngIf="plantillaDe(columna.campo) as plantilla; else valorPlano">
+              <ng-container *ngTemplateOutlet="plantilla; context: { $implicit: fila }"></ng-container>
+            </ng-container>
+            <ng-template #valorPlano>{{ valorDe(fila, columna.campo) }}</ng-template>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pie: siempre visible, "1–10 de 53" con flechas, como el de MUI DataGrid -->
+  <div class="pie" *ngIf="totalElementos !== null && totalElementos > 0">
+    <span class="pie-rango">{{ desde }}–{{ hasta }} de {{ totalElementos }}<ng-container *ngIf="etiqueta"> {{ etiqueta }}</ng-container></span>
+    <button type="button" class="pie-flecha" aria-label="Página anterior"
+            [disabled]="pagina <= 0" (click)="paginaCambia.emit(pagina - 1)">‹</button>
+    <button type="button" class="pie-flecha" aria-label="Página siguiente"
+            [disabled]="pagina >= totalPaginas - 1" (click)="paginaCambia.emit(pagina + 1)">›</button>
+  </div>
+</div>

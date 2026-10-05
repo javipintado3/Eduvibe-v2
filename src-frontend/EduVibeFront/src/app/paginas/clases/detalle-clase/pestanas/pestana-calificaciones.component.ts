@@ -7,10 +7,11 @@ import { Entrega } from '../../../../core/models';
 import { mediaPonderada } from '../../../../core/utils/media-ponderada';
 import { AvisoComponent } from '../../../../shared/aviso/aviso.component';
 import { CargandoComponent } from '../../../../shared/cargando/cargando.component';
-import { EstadoVacioComponent } from '../../../../shared/estado-vacio/estado-vacio.component';
 import { PastillaEstadoComponent } from '../../../../shared/pastilla-estado/pastilla-estado.component';
 import { FechaPipe } from '../../../../shared/pipes/fecha.pipe';
-import { PaginadorComponent } from '../../../../shared/paginador/paginador.component';
+import { CeldaTablaDirective } from '../../../../shared/tabla-datos/celda-tabla.directive';
+import { TablaDatosComponent } from '../../../../shared/tabla-datos/tabla-datos.component';
+import { ColumnaTabla } from '../../../../shared/tabla-datos/tabla-datos.tipos';
 import { paginacionLocal } from '../../../../core/utils/paginacion';
 
 /**
@@ -30,8 +31,8 @@ import { paginacionLocal } from '../../../../core/utils/paginacion';
   standalone: true,
   imports: [
     NgIf, NgFor, RouterLink,
-    CargandoComponent, EstadoVacioComponent, PastillaEstadoComponent, AvisoComponent, FechaPipe,
-    PaginadorComponent,
+    CargandoComponent, PastillaEstadoComponent, AvisoComponent, FechaPipe,
+    TablaDatosComponent, CeldaTablaDirective,
   ],
   templateUrl: './pestana-calificaciones.component.html',
   styleUrl: './pestana-calificaciones.component.css',
@@ -40,6 +41,13 @@ export class PestanaCalificacionesComponent implements OnInit {
 
   /** Diez por página; la media se calcula con todas las entregas, no solo con las de la página. */
   readonly paginacion = paginacionLocal(() => this.entregas());
+
+  readonly columnas: ColumnaTabla[] = [
+    { campo: 'assignmentTitle', titulo: 'Tarea' },
+    { campo: 'status', titulo: 'Estado' },
+    { campo: 'submittedAt', titulo: 'Entregada' },
+    { campo: 'grade', titulo: 'Nota', alinear: 'derecha' },
+  ];
 
   private readonly clasesService = inject(ClasesService);
 

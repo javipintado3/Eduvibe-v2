@@ -13,48 +13,36 @@
       {{ calificadas().length }} de {{ entregas().length }} entrega(s) calificada(s)
     </p>
   </div>
+  <app-tabla-datos
+    [columnas]="columnas"
+    [filas]="paginacion.visibles()"
+    [pagina]="paginacion.pagina()"
+    [totalPaginas]="paginacion.totalPaginas()"
+    [totalElementos]="paginacion.total()"
+    etiqueta="entrega(s)"
+    (paginaCambia)="paginacion.irA($event)"
+    tituloVacio="Todavía no has entregado nada"
+    descripcionVacia="Las tareas que entregues aparecerán aquí con su calificación.">
 
-  <div class="tarjeta" *ngIf="entregas().length; else sinEntregas">
-    <div class="tabla-envoltorio">
-      <table class="tabla">
-        <thead>
-          <tr>
-            <th>Tarea</th>
-            <th>Estado</th>
-            <th>Entregada</th>
-            <th style="text-align:right">Nota</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let entrega of paginacion.visibles()">
-            <td>
-              <a [routerLink]="['/tareas', entrega.assignmentId]" class="fuerte">{{ entrega.assignmentTitle }}</a>
-              <span class="pastilla pastilla-roja separado" *ngIf="entrega.entregadaTarde">Tarde</span>
-              <span class="pastilla pastilla-gris separado" *ngIf="entrega.weight !== 1">
-                Peso {{ entrega.weight }}
-              </span>
-            </td>
-            <td><app-pastilla-estado [valor]="entrega.status"></app-pastilla-estado></td>
-            <td class="pequeno apagado">{{ entrega.submittedAt | fecha }}</td>
-            <td style="text-align:right">
-              <span class="nota" *ngIf="entrega.grade">{{ entrega.grade.score }}</span>
-              <span class="apagado" *ngIf="!entrega.grade">—</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
+    <ng-template appCeldaTabla="assignmentTitle" let-entrega>
+      <a [routerLink]="['/tareas', entrega.assignmentId]" class="fuerte">{{ entrega.assignmentTitle }}</a>
+      <span class="pastilla pastilla-roja separado" *ngIf="entrega.entregadaTarde">Tarde</span>
+      <span class="pastilla pastilla-gris separado" *ngIf="entrega.weight !== 1">
+        Peso {{ entrega.weight }}
+      </span>
+    </ng-template>
 
-  <app-paginador [pagina]="paginacion.pagina()" [totalPaginas]="paginacion.totalPaginas()"
-    [totalElementos]="paginacion.total()" etiqueta="entrega(s)"
-    (cambio)="paginacion.irA($event)"></app-paginador>
+    <ng-template appCeldaTabla="status" let-entrega>
+      <app-pastilla-estado [valor]="entrega.status"></app-pastilla-estado>
+    </ng-template>
 
-  <ng-template #sinEntregas>
-    <div class="tarjeta">
-      <app-estado-vacio
-        titulo="Todavía no has entregado nada"
-        descripcion="Las tareas que entregues aparecerán aquí con su calificación."></app-estado-vacio>
-    </div>
-  </ng-template>
+    <ng-template appCeldaTabla="submittedAt" let-entrega>
+      <span class="pequeno apagado">{{ entrega.submittedAt | fecha }}</span>
+    </ng-template>
+
+    <ng-template appCeldaTabla="grade" let-entrega>
+      <span class="nota" *ngIf="entrega.grade">{{ entrega.grade.score }}</span>
+      <span class="apagado" *ngIf="!entrega.grade">—</span>
+    </ng-template>
+  </app-tabla-datos>
 </ng-container>

@@ -11,6 +11,9 @@ import { AvisoComponent } from '../../shared/aviso/aviso.component';
 import { CargandoComponent } from '../../shared/cargando/cargando.component';
 import { EstadoVacioComponent } from '../../shared/estado-vacio/estado-vacio.component';
 import { PaginadorComponent } from '../../shared/paginador/paginador.component';
+import { CeldaTablaDirective } from '../../shared/tabla-datos/celda-tabla.directive';
+import { TablaDatosComponent } from '../../shared/tabla-datos/tabla-datos.component';
+import { ColumnaTabla } from '../../shared/tabla-datos/tabla-datos.tipos';
 import { PastillaEstadoComponent } from '../../shared/pastilla-estado/pastilla-estado.component';
 
 /** Las notas de una clase, ya con su media, para pintar una tarjeta por materia. */
@@ -44,11 +47,18 @@ interface NotasDeClase {
   imports: [
     NgIf, NgFor, RouterLink,
     AvisoComponent, CargandoComponent, EstadoVacioComponent, PastillaEstadoComponent, PaginadorComponent,
+    TablaDatosComponent, CeldaTablaDirective,
   ],
   templateUrl: './notas.component.html',
   styleUrl: './notas.component.css',
 })
 export class NotasComponent implements OnInit {
+
+  readonly columnas: ColumnaTabla[] = [
+    { campo: 'assignmentTitle', titulo: 'Tarea' },
+    { campo: 'status', titulo: 'Estado' },
+    { campo: 'grade', titulo: 'Nota', alinear: 'derecha' },
+  ];
 
   private readonly clasesService = inject(ClasesService);
 

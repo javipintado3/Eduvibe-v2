@@ -28,73 +28,62 @@
     <!-- Administración: tabla de gestión -->
     <ng-container *ngIf="auth.esAdmin(); else vistaTarjetas">
       <ng-container *ngIf="clases().length || busqueda().trim(); else sinClases">
+        <app-tabla-datos
+          [columnas]="columnas"
+          [filas]="clases()"
+          [cargando]="cargando()"
+          [filtros]="filtros()"
+          (limpiarFiltros)="limpiarBusqueda()"
+          [seleccionable]="true"
+          [seleccionados]="seleccionados()"
+          (seleccionCambia)="seleccionCambia($event)"
+          [mostrarAcciones]="seleccionados().size > 0"
+          [filasClicables]="true"
+          (filaClic)="abrirClase($event)"
+          [pagina]="pagina()?.pagina ?? 0"
+          [totalPaginas]="pagina()?.totalPaginas ?? 1"
+          [totalElementos]="pagina()?.totalElementos ?? null"
+          etiqueta="clase(s)"
+          (paginaCambia)="cargar($event)"
+          tituloVacio="Ninguna clase coincide"
+          descripcionVacia="Prueba a buscar por otro nombre o asignatura.">
 
-        <!-- Búsqueda: se sustituye por la barra de lote en cuanto hay selección -->
-        <div class="fila espaciado-sm mb-2" *ngIf="!seleccionados().size">
-          <input class="entrada" style="max-width:320px" [value]="busqueda()"
-                 (input)="buscar($any($event.target).value)"
-                 placeholder="Buscar por nombre o asignatura">
-          <app-limpiar-filtros *ngIf="busqueda()" (limpiar)="limpiarBusqueda()"></app-limpiar-filtros>
-        </div>
-
-        <div class="tarjeta tarjeta-cuerpo fila-entre envolver mb-2 barra-lote" *ngIf="seleccionados().size">
-          <p class="fuerte mb-0">{{ seleccionados().size }} seleccionada(s)</p>
-          <div class="fila espaciado-sm">
-            <button type="button" class="boton boton-peligro boton-pequeno"
-                    [disabled]="aplicandoLote()" (click)="eliminarSeleccionadas()">
-              {{ aplicandoLote() ? 'Borrando…' : 'Eliminar' }}
-            </button>
-            <button type="button" class="boton boton-fantasma boton-pequeno" (click)="limpiarSeleccion()">Cancelar</button>
+          <!-- Acciones sobre lo seleccionado: sustituyen a la búsqueda -->
+          <div acciones class="fila-entre envolver" style="flex: 1">
+            <p class="fuerte mb-0">{{ seleccionados().size }} seleccionada(s)</p>
+            <div class="fila espaciado-sm">
+              <button type="button" class="boton boton-peligro boton-pequeno"
+                      [disabled]="aplicandoLote()" (click)="eliminarSeleccionadas()">
+                {{ aplicandoLote() ? 'Borrando…' : 'Eliminar' }}
+              </button>
+              <button type="button" class="boton boton-fantasma boton-pequeno" (click)="limpiarSeleccion()">Cancelar</button>
+            </div>
           </div>
-        </div>
 
-        <div class="tarjeta" *ngIf="clases().length; else sinResultados">
-          <div class="tabla-envoltorio">
-            <table class="tabla">
-              <thead>
-                <tr>
-                  <th style="width:1px">
-                    <input type="checkbox" [checked]="todosSeleccionados"
-                           (change)="alternarTodos($any($event.target).checked)">
-                  </th>
-                  <th>Clase</th>
-                  <th>Profesorado</th>
-                  <th>Alumnado</th>
-                  <th>Próxima entrega</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let clase of clases()"
-                    class="fila-clase" [routerLink]="['/clases', clase.id]">
-                  <td (click)="$event.stopPropagation()">
-                    <input type="checkbox" [checked]="estaSeleccionado(clase.id)"
-                           (change)="alternarSeleccion(clase, $any($event.target).checked)">
-                  </td>
-                  <td>
-                    <div class="fila espaciado-sm">
-                      <span class="pastilla-color" [style.background]="clase.color || 'var(--verde-600)'"></span>
-                      <div style="min-width:0">
-                        <p class="fuerte mb-0">{{ clase.name }}</p>
-                        <p class="pequeno apagado mb-0">{{ clase.subject || 'Sin asignatura' }}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="pequeno">{{ clase.profesores.length ? clase.profesores.join(', ') : 'Sin profesorado' }}</td>
-                  <td class="pequeno">{{ clase.alumnado }}</td>
-                  <td class="pequeno apagado">
-                    {{ clase.proximaEntrega ? (clase.proximaEntrega | plazo) : 'Sin tareas pendientes' }}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+          <ng-template appCeldaTabla="name" let-clase>
+            <div class="fila espaciado-sm">
+              <span class="pastilla-color" [style.background]="clase.color || 'var(--verde-600)'"></span>
+              <div style="min-width:0">
+                <p class="fuerte mb-0">{{ clase.name }}</p>
+                <p class="pequeno apagado mb-0">{{ clase.subject || 'Sin asignatura' }}</p>
+              </div>
+            </div>
+          </ng-template>
 
-        <ng-template #sinResultados>
-          <div class="tarjeta">
-            <app-estado-vacio titulo="Ninguna clase coincide" descripcion="Prueba a buscar por otro nombre o asignatura."></app-estado-vacio>
-          </div>
-        </ng-template>
+          <ng-template appCeldaTabla="profesores" let-clase>
+            <span class="pequeno">{{ clase.profesores.length ? clase.profesores.join(', ') : 'Sin profesorado' }}</span>
+          </ng-template>
+
+          <ng-template appCeldaTabla="alumnado" let-clase>
+            <span class="pequeno">{{ clase.alumnado }}</span>
+          </ng-template>
+
+          <ng-template appCeldaTabla="proximaEntrega" let-clase>
+            <span class="pequeno apagado">
+              {{ clase.proximaEntrega ? (clase.proximaEntrega | plazo) : 'Sin tareas pendientes' }}
+            </span>
+          </ng-template>
+        </app-tabla-datos>
       </ng-container>
     </ng-container>
 
@@ -105,11 +94,10 @@
           <app-tarjeta-clase *ngFor="let clase of clases()" [clase]="clase"></app-tarjeta-clase>
         </div>
       </ng-container>
+      <app-paginador *ngIf="pagina() as p"
+        [pagina]="p.pagina" [totalPaginas]="p.totalPaginas" [totalElementos]="p.totalElementos"
+        etiqueta="clase(s)" (cambio)="cargar($event)"></app-paginador>
     </ng-template>
-
-    <app-paginador *ngIf="pagina() as p"
-      [pagina]="p.pagina" [totalPaginas]="p.totalPaginas" [totalElementos]="p.totalElementos"
-      etiqueta="clase(s)" (cambio)="cargar($event)"></app-paginador>
 
     <ng-template #sinClases>
       <div class="tarjeta">

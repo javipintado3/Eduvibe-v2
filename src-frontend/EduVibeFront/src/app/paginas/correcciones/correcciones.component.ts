@@ -1,14 +1,14 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { NgFor, NgIf } from '@angular/common';
+import { NgIf } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
 import { TareasService } from '../../core/services/tareas.service';
 import { EntregaPorCorregir, Pagina } from '../../core/models';
 import { AvisoComponent } from '../../shared/aviso/aviso.component';
-import { CargandoComponent } from '../../shared/cargando/cargando.component';
-import { EstadoVacioComponent } from '../../shared/estado-vacio/estado-vacio.component';
 import { FechaPipe } from '../../shared/pipes/fecha.pipe';
-import { PaginadorComponent } from '../../shared/paginador/paginador.component';
+import { CeldaTablaDirective } from '../../shared/tabla-datos/celda-tabla.directive';
+import { TablaDatosComponent } from '../../shared/tabla-datos/tabla-datos.component';
+import { ColumnaTabla } from '../../shared/tabla-datos/tabla-datos.tipos';
 
 /**
  * "Calificar": la cola de corrección del profesorado, cruzando todas sus clases.
@@ -24,12 +24,21 @@ import { PaginadorComponent } from '../../shared/paginador/paginador.component';
 @Component({
   selector: 'app-correcciones',
   standalone: true,
-  imports: [NgIf, NgFor, RouterLink, AvisoComponent, CargandoComponent, EstadoVacioComponent, FechaPipe, PaginadorComponent],
+  imports: [NgIf, RouterLink, AvisoComponent, FechaPipe, TablaDatosComponent, CeldaTablaDirective],
   templateUrl: './correcciones.component.html',
 })
 export class CorreccionesComponent implements OnInit {
 
   private readonly tareasService = inject(TareasService);
+
+  readonly columnas: ColumnaTabla[] = [
+    { campo: 'assignmentTitle', titulo: 'Tarea' },
+    { campo: 'className', titulo: 'Clase' },
+    { campo: 'studentName', titulo: 'Alumno' },
+    { campo: 'submittedAt', titulo: 'Entregada' },
+  ];
+
+  readonly idEntrega = (entrega: EntregaPorCorregir) => entrega.submissionId;
 
   readonly pagina = signal<Pagina<EntregaPorCorregir> | null>(null);
   readonly entregas = computed(() => this.pagina()?.contenido ?? []);

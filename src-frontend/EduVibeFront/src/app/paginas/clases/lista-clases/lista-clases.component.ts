@@ -1,6 +1,6 @@
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { NgFor, NgIf } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 
@@ -12,11 +12,13 @@ import { AvisoComponent } from '../../../shared/aviso/aviso.component';
 import { CargandoComponent } from '../../../shared/cargando/cargando.component';
 import { DialogoComponent } from '../../../shared/dialogo/dialogo.component';
 import { EstadoVacioComponent } from '../../../shared/estado-vacio/estado-vacio.component';
-import { LimpiarFiltrosComponent } from '../../../shared/limpiar-filtros/limpiar-filtros.component';
 import { PaginadorComponent } from '../../../shared/paginador/paginador.component';
 import { PALETA_CLASE } from '../../../shared/paleta-clase';
 import { PlazoPipe } from '../../../shared/pipes/fecha.pipe';
 import { SubidaArchivoComponent } from '../../../shared/subida-archivo/subida-archivo.component';
+import { CeldaTablaDirective } from '../../../shared/tabla-datos/celda-tabla.directive';
+import { TablaDatosComponent } from '../../../shared/tabla-datos/tabla-datos.component';
+import { ColumnaTabla, FiltroTabla } from '../../../shared/tabla-datos/tabla-datos.tipos';
 import { TarjetaClaseComponent } from '../../../shared/tarjeta-clase/tarjeta-clase.component';
 
 /**
@@ -34,18 +36,19 @@ import { TarjetaClaseComponent } from '../../../shared/tarjeta-clase/tarjeta-cla
   selector: 'app-lista-clases',
   standalone: true,
   imports: [
-    NgIf, NgFor, RouterLink, ReactiveFormsModule,
-    TarjetaClaseComponent, EstadoVacioComponent, CargandoComponent, LimpiarFiltrosComponent,
+    NgIf, NgFor, ReactiveFormsModule,
+    TarjetaClaseComponent, EstadoVacioComponent, CargandoComponent, TablaDatosComponent, CeldaTablaDirective,
     DialogoComponent, AvisoComponent, SubidaArchivoComponent, PlazoPipe, PaginadorComponent,
   ],
   templateUrl: './lista-clases.component.html',
   styleUrl: './lista-clases.component.css',
 })
-export class ListaClasesComponent implements OnInit, OnDestroy {
+export class ListaClasesComponent implements OnInit {
 
   private readonly clasesService = inject(ClasesService);
   private readonly confirmacion = inject(ConfirmacionService);
   private readonly fb = inject(FormBuilder);
+  private readonly router = inject(Router);
   readonly auth = inject(AuthService);
 
   readonly paleta = PALETA_CLASE;
@@ -61,55 +64,43 @@ export class ListaClasesComponent implements OnInit, OnDestroy {
 
   // --- gestión (vista de administración) ---
   readonly busqueda = signal('');
-  private temporizadorBusqueda?: ReturnType<typeof setTimeout>;
+
+  readonly columnas: ColumnaTabla[] = [
+    { campo: 'name', titulo: 'Clase' },
+    { campo: 'profesores', titulo: 'Profesorado' },
+    { campo: 'alumnado', titulo: 'Alumnado' },
+    { campo: 'proximaEntrega', titulo: 'Próxima entrega' },
+  ];
 
   /**
-   * Busca en el servidor, esperando un momento a que se deje de teclear para no
-   * lanzar una petición por cada letra. Al cambiar la búsqueda se vuelve a la
-   * primera página: la que estábamos viendo podría no existir con menos resultados.
+   * La búsqueda se hace en el servidor (la tabla espera a que se deje de teclear
+   * antes de avisar). Al cambiarla se vuelve a la primera página: la que
+   * estábamos viendo podría no existir con menos resultados.
    */
-  buscar(texto: string): void {
-    this.busqueda.set(texto);
-    clearTimeout(this.temporizadorBusqueda);
-    this.temporizadorBusqueda = setTimeout(() => this.cargar(0), 300);
-  }
+  readonly filtros = computed<FiltroTabla[]>(() => [{
+    clave: 'q', tipo: 'busqueda', valor: this.busqueda(),
+    placeholder: 'Buscar por nombre o asignatura',
+    alCambiar: valor => { this.busqueda.set(valor); this.cargar(0); },
+  }]);
 
   limpiarBusqueda(): void {
-    clearTimeout(this.temporizadorBusqueda);
     this.busqueda.set('');
     this.cargar(0);
   }
 
+  abrirClase(clase: Clase): void {
+    this.router.navigate(['/clases', clase.id]);
+  }
+
   // --- selección en lote ---
+  // La selección se vacía al cargar otra página o búsqueda, así que siempre son
+  // clases que se están viendo.
   readonly seleccionados = signal<Set<string>>(new Set());
   readonly aplicandoLote = signal(false);
 
-  estaSeleccionado(claseId: string): boolean {
-    return this.seleccionados().has(claseId);
-  }
-
-  alternarSeleccion(clase: Clase, marcado: boolean): void {
-    this.seleccionados.update(actuales => {
-      const nuevo = new Set(actuales);
-      marcado ? nuevo.add(clase.id) : nuevo.delete(clase.id);
-      return nuevo;
-    });
-  }
-
-  get todosSeleccionados(): boolean {
-    const visibles = this.clases();
-    return visibles.length > 0 && visibles.every(c => this.estaSeleccionado(c.id));
-  }
-
-  alternarTodos(marcado: boolean): void {
-    const visibles = this.clases();
-    this.seleccionados.update(actuales => {
-      const nuevo = new Set(actuales);
-      for (const clase of visibles) {
-        marcado ? nuevo.add(clase.id) : nuevo.delete(clase.id);
-      }
-      return nuevo;
-    });
+  /** La tabla propone el nuevo conjunto; aquí solo se guarda. */
+  seleccionCambia(nuevos: Set<string>): void {
+    this.seleccionados.set(nuevos);
   }
 
   limpiarSeleccion(): void {
@@ -128,13 +119,10 @@ export class ListaClasesComponent implements OnInit, OnDestroy {
     this.cargar(0);
   }
 
-  ngOnDestroy(): void {
-    clearTimeout(this.temporizadorBusqueda);
-  }
-
   cargar(pagina = 0): void {
     this.cargando.set(true);
     this.error.set(null);
+    this.limpiarSeleccion();
 
     this.clasesService.misClases(pagina, this.busqueda()).subscribe({
       next: (resultado) => {

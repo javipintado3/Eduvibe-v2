@@ -9,53 +9,38 @@
 
   <app-aviso class="mb-2" tipo="error" [mensaje]="error()"></app-aviso>
 
-  <app-cargando *ngIf="cargando()"></app-cargando>
+  <app-tabla-datos
+    [columnas]="columnas"
+    [filas]="entregas()"
+    [idFila]="idEntrega"
+    [cargando]="cargando()"
+    [pagina]="pagina()?.pagina ?? 0"
+    [totalPaginas]="pagina()?.totalPaginas ?? 1"
+    [totalElementos]="pagina()?.totalElementos ?? null"
+    etiqueta="entrega(s) pendiente(s)"
+    (paginaCambia)="cargar($event)"
+    tituloVacio="Todo corregido"
+    descripcionVacia="No tienes entregas pendientes. Cuando el alumnado entregue algo, aparecerá aquí.">
 
-  <ng-container *ngIf="!cargando()">
-    <div class="tarjeta" *ngIf="entregas().length; else todoAlDia">
-      <div class="tabla-envoltorio">
-        <table class="tabla">
-          <thead>
-            <tr>
-              <th>Tarea</th>
-              <th>Clase</th>
-              <th>Alumno</th>
-              <th>Entregada</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let entrega of entregas()">
-              <td>
-                <a [routerLink]="['/tareas', entrega.assignmentId]" class="fuerte">{{ entrega.assignmentTitle }}</a>
-                <span class="pastilla pastilla-roja separado" *ngIf="entrega.entregadaTarde">Tarde</span>
-              </td>
-              <td>
-                <a [routerLink]="['/clases', entrega.classId]">{{ entrega.className }}</a>
-              </td>
-              <td>
-                <ng-container *ngIf="entrega.groupName; else alumnoSuelto">
-                  {{ entrega.groupName }}
-                  <span class="pastilla pastilla-gris separado">Grupo</span>
-                </ng-container>
-                <ng-template #alumnoSuelto>{{ entrega.studentName }}</ng-template>
-              </td>
-              <td class="pequeno apagado">{{ entrega.submittedAt | fecha }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <app-paginador *ngIf="pagina() as p"
-      [pagina]="p.pagina" [totalPaginas]="p.totalPaginas" [totalElementos]="p.totalElementos"
-      etiqueta="entrega(s) pendiente(s)" (cambio)="cargar($event)"></app-paginador>
-
-    <ng-template #todoAlDia>
-      <div class="tarjeta">
-        <app-estado-vacio
-          titulo="Todo corregido"
-          descripcion="No tienes entregas pendientes. Cuando el alumnado entregue algo, aparecerá aquí."></app-estado-vacio>
-      </div>
+    <ng-template appCeldaTabla="assignmentTitle" let-entrega>
+      <a [routerLink]="['/tareas', entrega.assignmentId]" class="fuerte">{{ entrega.assignmentTitle }}</a>
+      <span class="pastilla pastilla-roja separado" *ngIf="entrega.entregadaTarde">Tarde</span>
     </ng-template>
-  </ng-container>
+
+    <ng-template appCeldaTabla="className" let-entrega>
+      <a [routerLink]="['/clases', entrega.classId]">{{ entrega.className }}</a>
+    </ng-template>
+
+    <ng-template appCeldaTabla="studentName" let-entrega>
+      <ng-container *ngIf="entrega.groupName; else alumnoSuelto">
+        {{ entrega.groupName }}
+        <span class="pastilla pastilla-gris separado">Grupo</span>
+      </ng-container>
+      <ng-template #alumnoSuelto>{{ entrega.studentName }}</ng-template>
+    </ng-template>
+
+    <ng-template appCeldaTabla="submittedAt" let-entrega>
+      <span class="pequeno apagado">{{ entrega.submittedAt | fecha }}</span>
+    </ng-template>
+  </app-tabla-datos>
 </div>

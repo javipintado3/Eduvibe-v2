@@ -17,6 +17,9 @@ import { DialogoComponent } from '../../../../shared/dialogo/dialogo.component';
 import { EstadoVacioComponent } from '../../../../shared/estado-vacio/estado-vacio.component';
 import { PaginadorComponent } from '../../../../shared/paginador/paginador.component';
 import { PastillaEstadoComponent } from '../../../../shared/pastilla-estado/pastilla-estado.component';
+import { CeldaTablaDirective } from '../../../../shared/tabla-datos/celda-tabla.directive';
+import { TablaDatosComponent } from '../../../../shared/tabla-datos/tabla-datos.component';
+import { ColumnaTabla, FiltroTabla } from '../../../../shared/tabla-datos/tabla-datos.tipos';
 
 /**
  * Pestaña "Personas": quién imparte la clase, quién la cursa, y sus subgrupos.
@@ -34,7 +37,7 @@ import { PastillaEstadoComponent } from '../../../../shared/pastilla-estado/past
   imports: [
     NgIf, NgFor, ReactiveFormsModule,
     AvatarComponent, CargandoComponent, EstadoVacioComponent, AvisoComponent, DialogoComponent, PastillaEstadoComponent,
-    PaginadorComponent,
+    PaginadorComponent, TablaDatosComponent, CeldaTablaDirective,
   ],
   templateUrl: './pestana-personas.component.html',
   styleUrl: './pestana-personas.component.css',
@@ -78,9 +81,24 @@ export class PestanaPersonasComponent implements OnInit {
   readonly anadiendoLote = signal(false);
   readonly errorAnadir = signal<string | null>(null);
 
-  readonly formBusqueda = this.fb.nonNullable.group({
-    q: [''],
-  });
+  // La búsqueda y la tabla del diálogo, con la misma tabla genérica que el resto de la app
+  readonly busqueda = signal('');
+
+  readonly columnasAnadir: ColumnaTabla[] = [
+    { campo: 'name', titulo: 'Persona' },
+    { campo: 'status', titulo: 'Estado' },
+  ];
+
+  readonly filtrosAnadir = computed<FiltroTabla[]>(() => [{
+    clave: 'q', tipo: 'busqueda', valor: this.busqueda(),
+    placeholder: 'Buscar por nombre o email',
+    alCambiar: valor => { this.busqueda.set(valor); this.buscar(0); },
+  }]);
+
+  limpiarBusqueda(): void {
+    this.busqueda.set('');
+    this.buscar(0);
+  }
 
   get tituloAnadir(): string {
     return this.rolAAnadir() === 'teacher' ? 'Añadir profesorado' : 'Añadir alumnado';
@@ -92,7 +110,7 @@ export class PestanaPersonasComponent implements OnInit {
 
   abrirAnadir(rol: RolEnClase): void {
     this.rolAAnadir.set(rol);
-    this.formBusqueda.reset({ q: '' });
+    this.busqueda.set('');
     this.pagina.set(null);
     this.seleccionados.set(new Set());
     this.errorAnadir.set(null);
@@ -100,32 +118,9 @@ export class PestanaPersonasComponent implements OnInit {
     this.buscar(0);
   }
 
-  estaSeleccionado(usuarioId: string): boolean {
-    return this.seleccionados().has(usuarioId);
-  }
-
-  alternarSeleccion(usuario: Usuario, marcado: boolean): void {
-    this.seleccionados.update(actuales => {
-      const nuevo = new Set(actuales);
-      marcado ? nuevo.add(usuario.id) : nuevo.delete(usuario.id);
-      return nuevo;
-    });
-  }
-
-  get todosSeleccionadosEnPagina(): boolean {
-    const contenido = this.pagina()?.contenido ?? [];
-    return contenido.length > 0 && contenido.every(u => this.estaSeleccionado(u.id));
-  }
-
-  alternarTodosEnPagina(marcado: boolean): void {
-    const contenido = this.pagina()?.contenido ?? [];
-    this.seleccionados.update(actuales => {
-      const nuevo = new Set(actuales);
-      for (const usuario of contenido) {
-        marcado ? nuevo.add(usuario.id) : nuevo.delete(usuario.id);
-      }
-      return nuevo;
-    });
+  /** La tabla propone el nuevo conjunto; aquí solo se guarda. Se conserva al cambiar de página: se añaden todos de golpe. */
+  seleccionCambia(nuevos: Set<string>): void {
+    this.seleccionados.set(nuevos);
   }
 
   /**
@@ -138,7 +133,7 @@ export class PestanaPersonasComponent implements OnInit {
     this.errorAnadir.set(null);
 
     this.usuariosService.listar({
-      role: this.rolAAnadir(), q: this.formBusqueda.getRawValue().q, excludeClassId: this.claseId,
+      role: this.rolAAnadir(), q: this.busqueda(), excludeClassId: this.claseId,
       page: pagina, size: TAMANO_PAGINA,
     }).subscribe({
       next: (resultado) => {

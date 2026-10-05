@@ -122,65 +122,39 @@
 <app-dialogo [abierto]="dialogoAnadirAbierto()" [titulo]="tituloAnadir" ancho="grande"
              (cerrar)="dialogoAnadirAbierto.set(false)">
 
-  <form [formGroup]="formBusqueda" (ngSubmit)="buscar(0)" novalidate class="fila espaciado-sm mb-2">
-    <input class="entrada crecer" formControlName="q" placeholder="Buscar por nombre o email">
-    <button type="submit" class="boton boton-contorno">Buscar</button>
-  </form>
-
   <app-aviso class="mb-2" tipo="error" [mensaje]="errorAnadir()"></app-aviso>
 
-  <app-cargando *ngIf="buscando()"></app-cargando>
+  <app-tabla-datos
+    [columnas]="columnasAnadir"
+    [filas]="pagina()?.contenido ?? []"
+    [cargando]="buscando()"
+    [filtros]="filtrosAnadir()"
+    (limpiarFiltros)="limpiarBusqueda()"
+    [seleccionable]="true"
+    [seleccionados]="seleccionados()"
+    (seleccionCambia)="seleccionCambia($event)"
+    [pagina]="pagina()?.pagina ?? 0"
+    [totalPaginas]="pagina()?.totalPaginas ?? 1"
+    [totalElementos]="pagina()?.totalElementos ?? null"
+    etiqueta="persona(s)"
+    (paginaCambia)="buscar($event)"
+    tituloVacio="Nadie coincide"
+    descripcionVacia="Prueba a quitar el texto de búsqueda.">
 
-  <ng-container *ngIf="!buscando() && pagina() as p">
+    <ng-template appCeldaTabla="name" let-usuario>
+      <div class="fila espaciado-sm">
+        <app-avatar [nombre]="usuario.name" [pequeno]="true"></app-avatar>
+        <div style="min-width:0">
+          <p class="fuerte mb-0">{{ usuario.name }}</p>
+          <p class="pequeno apagado mb-0 correo">{{ usuario.email }}</p>
+        </div>
+      </div>
+    </ng-template>
 
-    <app-estado-vacio *ngIf="!p.contenido.length"
-      titulo="Nadie coincide"
-      descripcion="Prueba a quitar el texto de búsqueda."></app-estado-vacio>
-
-    <div class="tabla-envoltorio" *ngIf="p.contenido.length">
-      <table class="tabla">
-        <thead>
-          <tr>
-            <th style="width:36px">
-              <label class="casilla">
-                <input type="checkbox" [checked]="todosSeleccionadosEnPagina"
-                       (change)="alternarTodosEnPagina($any($event.target).checked)"
-                       aria-label="Seleccionar todos los de esta página">
-              </label>
-            </th>
-            <th>Persona</th>
-            <th>Estado</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let usuario of p.contenido" class="fila-seleccionable"
-              (click)="alternarSeleccion(usuario, !estaSeleccionado(usuario.id))">
-            <td (click)="$event.stopPropagation()">
-              <label class="casilla">
-                <input type="checkbox"
-                       [checked]="estaSeleccionado(usuario.id)"
-                       (change)="alternarSeleccion(usuario, $any($event.target).checked)"
-                       [attr.aria-label]="'Seleccionar a ' + usuario.name">
-              </label>
-            </td>
-            <td>
-              <div class="fila espaciado-sm">
-                <app-avatar [nombre]="usuario.name" [pequeno]="true"></app-avatar>
-                <div style="min-width:0">
-                  <p class="fuerte mb-0">{{ usuario.name }}</p>
-                  <p class="pequeno apagado mb-0 correo">{{ usuario.email }}</p>
-                </div>
-              </div>
-            </td>
-            <td><app-pastilla-estado [valor]="usuario.status"></app-pastilla-estado></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <app-paginador [pagina]="p.pagina" [totalPaginas]="p.totalPaginas" [totalElementos]="p.totalElementos"
-      etiqueta="persona(s)" (cambio)="buscar($event)"></app-paginador>
-  </ng-container>
+    <ng-template appCeldaTabla="status" let-usuario>
+      <app-pastilla-estado [valor]="usuario.status"></app-pastilla-estado>
+    </ng-template>
+  </app-tabla-datos>
 
   <ng-container acciones>
     <span class="pequeno apagado crecer" *ngIf="numSeleccionados">{{ numSeleccionados }} seleccionado(s)</span>

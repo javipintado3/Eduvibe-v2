@@ -26,23 +26,6 @@
 }
 
 
-/* Checkbox más grande y con el verde de la app, en vez del nativo diminuto. */
-.casilla {
-  display: inline-flex;
-  cursor: pointer;
-}
-
-.casilla input[type="checkbox"] {
-  width: 19px;
-  height: 19px;
-  margin: 0;
-  accent-color: var(--verde-600);
-  cursor: pointer;
-}
-
-.fila-seleccionable { cursor: pointer; }
-.fila-seleccionable:hover { background: var(--fondo); }
-
 .lista-miembros {
   max-height: 220px;
   overflow-y: auto;

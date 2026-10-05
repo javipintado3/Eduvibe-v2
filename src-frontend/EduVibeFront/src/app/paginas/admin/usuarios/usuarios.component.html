@@ -23,111 +23,67 @@
     </div>
   </div>
 
-  <!-- Filtros: se sustituyen por la barra de lote en cuanto hay selección -->
-  <form class="filtros mb-2" [formGroup]="filtros" (ngSubmit)="cargar()" *ngIf="!seleccionados().size">
-    <input class="entrada" formControlName="q" placeholder="Buscar por nombre o email">
-
-    <select class="selector" formControlName="role" (change)="cargar()">
-      <option value="">Cualquier rol</option>
-      <option value="admin">Administración</option>
-      <option value="teacher">Profesorado</option>
-      <option value="student">Alumnado</option>
-      <option value="guardian">Tutor legal</option>
-    </select>
-
-    <select class="selector" formControlName="status" (change)="cargar()">
-      <option value="">Cualquier estado</option>
-      <option value="pending">Pendiente</option>
-      <option value="active">Activa</option>
-      <option value="disabled">Desactivada</option>
-    </select>
-
-    <button type="submit" class="boton boton-contorno">Buscar</button>
-    <app-limpiar-filtros *ngIf="hayFiltrosActivos" (limpiar)="limpiarFiltros()"></app-limpiar-filtros>
-  </form>
-
   <app-aviso class="mb-2" tipo="error" [mensaje]="error()"></app-aviso>
+  <app-aviso class="mb-2" tipo="exito" [mensaje]="exito()"></app-aviso>
 
-  <!-- Barra de acciones en lote: sustituye a los filtros en cuanto hay selección -->
-  <div class="tarjeta tarjeta-cuerpo fila-entre envolver mb-2 barra-lote" *ngIf="seleccionados().size">
-    <p class="fuerte mb-0">{{ seleccionados().size }} seleccionado(s)</p>
-    <div class="fila espaciado-sm">
-      <button type="button" class="boton boton-suave boton-pequeno"
-              [disabled]="aplicandoLote()" (click)="cambiarEstadoLote('active')">Activar</button>
-      <button type="button" class="boton boton-contorno boton-pequeno"
-              [disabled]="aplicandoLote()" (click)="cambiarEstadoLote('disabled')">Desactivar</button>
-      <button type="button" class="boton boton-fantasma boton-pequeno" (click)="limpiarSeleccion()">Cancelar</button>
-    </div>
-  </div>
+  <app-tabla-datos
+    [columnas]="columnas"
+    [filas]="pagina()?.contenido ?? []"
+    [cargando]="cargando()"
+    [filtros]="filtros()"
+    (limpiarFiltros)="limpiarFiltros()"
+    [orden]="orden()"
+    (ordenCambia)="cambiarOrden($event)"
+    [seleccionable]="true"
+    [seleccionados]="seleccionados()"
+    (seleccionCambia)="seleccionCambia($event)"
+    [mostrarAcciones]="seleccionados().size > 0"
+    [filasClicables]="true"
+    (filaClic)="abrirUsuario($event)"
+    [pagina]="pagina()?.pagina ?? 0"
+    [totalPaginas]="pagina()?.totalPaginas ?? 1"
+    [totalElementos]="pagina()?.totalElementos ?? null"
+    etiqueta="usuario(s)"
+    tituloVacio="Ningún usuario coincide"
+    descripcionVacia="Prueba a quitar algún filtro, o da de alta una cuenta nueva."
+    (paginaCambia)="cargar($event)">
 
-  <app-cargando *ngIf="cargando()"></app-cargando>
-
-  <div class="tarjeta" *ngIf="!cargando() && pagina() as p">
-
-    <app-estado-vacio *ngIf="!p.contenido.length"
-      titulo="Ningún usuario coincide"
-      descripcion="Prueba a quitar algún filtro, o da de alta una cuenta nueva."></app-estado-vacio>
-
-    <div class="tabla-envoltorio" *ngIf="p.contenido.length">
-      <table class="tabla">
-        <thead>
-          <tr>
-            <th style="width:1px">
-              <input type="checkbox" [checked]="todosSeleccionadosEnPagina"
-                     (change)="alternarTodosEnPagina($any($event.target).checked)">
-            </th>
-            <th>Persona</th>
-            <th>Rol</th>
-            <th>Estado</th>
-            <th>Alta</th>
-            <th style="text-align:right">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let usuario of p.contenido" class="fila-usuario"
-              [routerLink]="['/admin/usuarios', usuario.id]">
-            <td (click)="$event.stopPropagation()">
-              <input type="checkbox" [checked]="estaSeleccionado(usuario.id)"
-                     (change)="alternarSeleccion(usuario, $any($event.target).checked)">
-            </td>
-            <td>
-              <div class="fila espaciado-sm">
-                <app-avatar [nombre]="usuario.name" [pequeno]="true"></app-avatar>
-                <div style="min-width:0">
-                  <p class="fuerte mb-0">{{ usuario.name }}</p>
-                  <p class="pequeno apagado mb-0 correo">{{ usuario.email }}</p>
-                </div>
-              </div>
-            </td>
-            <td><app-pastilla-estado [valor]="usuario.role"></app-pastilla-estado></td>
-            <td><app-pastilla-estado [valor]="usuario.status"></app-pastilla-estado></td>
-            <td class="pequeno apagado">{{ usuario.createdAt | fecha : false }}</td>
-            <td (click)="$event.stopPropagation()">
-              <div class="acciones">
-                <button type="button" class="boton boton-suave boton-pequeno"
-                        *ngIf="usuario.status === 'pending'"
-                        [disabled]="trabajandoCon() === usuario.id"
-                        (click)="reenviarInvitacion(usuario)">Reenviar invitación</button>
-
-                <button type="button" class="boton boton-contorno boton-pequeno"
-                        *ngIf="usuario.status === 'active'"
-                        [disabled]="trabajandoCon() === usuario.id"
-                        (click)="cambiarEstado(usuario, 'disabled')">Desactivar</button>
-
-                <button type="button" class="boton boton-suave boton-pequeno"
-                        *ngIf="usuario.status === 'disabled'"
-                        [disabled]="trabajandoCon() === usuario.id"
-                        (click)="cambiarEstado(usuario, 'active')">Reactivar</button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <!-- Acciones sobre lo seleccionado: sustituyen a los filtros y solo ofrecen lo que aplica a lo marcado -->
+    <div acciones class="fila-entre envolver" style="flex: 1">
+      <p class="fuerte mb-0">{{ seleccionados().size }} seleccionado(s)</p>
+      <div class="fila espaciado-sm envolver">
+        <button type="button" class="boton boton-suave boton-pequeno" *ngIf="activables().length"
+                [disabled]="aplicandoLote()" (click)="cambiarEstadoLote(activables(), 'active')">Activar</button>
+        <button type="button" class="boton boton-primario boton-pequeno" *ngIf="desactivables().length"
+                [disabled]="aplicandoLote()" (click)="cambiarEstadoLote(desactivables(), 'disabled')">Desactivar</button>
+        <button type="button" class="boton boton-suave boton-pequeno" *ngIf="pendientes().length"
+                [disabled]="aplicandoLote()" (click)="reenviarLote(pendientes())">Reenviar invitación</button>
+        <button type="button" class="boton boton-fantasma boton-pequeno" (click)="limpiarSeleccion()">Cancelar</button>
+      </div>
     </div>
 
-    <app-paginador [pagina]="p.pagina" [totalPaginas]="p.totalPaginas" [totalElementos]="p.totalElementos"
-      etiqueta="usuario(s)" (cambio)="cargar($event)"></app-paginador>
-  </div>
+    <ng-template appCeldaTabla="name" let-usuario>
+      <div class="fila espaciado-sm">
+        <app-avatar [nombre]="usuario.name" [pequeno]="true"></app-avatar>
+        <div style="min-width:0">
+          <p class="fuerte mb-0">{{ usuario.name }}</p>
+          <p class="pequeno apagado mb-0 correo">{{ usuario.email }}</p>
+        </div>
+      </div>
+    </ng-template>
+
+    <ng-template appCeldaTabla="role" let-usuario>
+      <app-pastilla-estado [valor]="usuario.role"></app-pastilla-estado>
+    </ng-template>
+
+    <ng-template appCeldaTabla="status" let-usuario>
+      <app-pastilla-estado [valor]="usuario.status"></app-pastilla-estado>
+    </ng-template>
+
+    <ng-template appCeldaTabla="createdAt" let-usuario>
+      <span class="pequeno apagado">{{ usuario.createdAt | fecha : false }}</span>
+    </ng-template>
+  </app-tabla-datos>
 </div>
 
 <!-- Alta / invitación -->

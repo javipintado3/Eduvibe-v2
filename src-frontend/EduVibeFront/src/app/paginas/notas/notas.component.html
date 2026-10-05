@@ -31,40 +31,35 @@
           </ng-template>
         </header>
 
-        <div class="tabla-envoltorio" *ngIf="materia.entregas.length">
-          <table class="tabla">
-            <thead>
-              <tr>
-                <th>Tarea</th>
-                <th>Estado</th>
-                <th style="text-align:right">Nota</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let entrega of entregasVisibles(materia)">
-                <td>
-                  <a [routerLink]="['/tareas', entrega.assignmentId]" class="fuerte">{{ entrega.assignmentTitle }}</a>
-                  <span class="pastilla pastilla-roja separado" *ngIf="entrega.entregadaTarde">Tarde</span>
-                  <span class="pastilla pastilla-gris separado" *ngIf="entrega.weight !== 1">
-                    Peso {{ entrega.weight }}
-                  </span>
-                </td>
-                <td><app-pastilla-estado [valor]="entrega.status"></app-pastilla-estado></td>
-                <td style="text-align:right">
-                  <ng-container *ngIf="entrega.grade; else sinNota">
-                    <span class="nota">{{ entrega.grade.score }}</span>
-                    <span class="apagado"> / {{ entrega.points }}</span>
-                  </ng-container>
-                  <ng-template #sinNota><span class="apagado">—</span></ng-template>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <app-tabla-datos *ngIf="materia.entregas.length" [plana]="true"
+          [columnas]="columnas"
+          [filas]="entregasVisibles(materia)"
+          [pagina]="paginaDeEntregas(materia)"
+          [totalPaginas]="totalPaginasDeEntregas(materia)"
+          [totalElementos]="materia.entregas.length"
+          etiqueta="tarea(s)"
+          (paginaCambia)="irAPaginaDeEntregas(materia, $event)">
 
-        <app-paginador class="pie-tabla" [pagina]="paginaDeEntregas(materia)"
-          [totalPaginas]="totalPaginasDeEntregas(materia)" [totalElementos]="materia.entregas.length"
-          etiqueta="tarea(s)" (cambio)="irAPaginaDeEntregas(materia, $event)"></app-paginador>
+          <ng-template appCeldaTabla="assignmentTitle" let-entrega>
+            <a [routerLink]="['/tareas', entrega.assignmentId]" class="fuerte">{{ entrega.assignmentTitle }}</a>
+            <span class="pastilla pastilla-roja separado" *ngIf="entrega.entregadaTarde">Tarde</span>
+            <span class="pastilla pastilla-gris separado" *ngIf="entrega.weight !== 1">
+              Peso {{ entrega.weight }}
+            </span>
+          </ng-template>
+
+          <ng-template appCeldaTabla="status" let-entrega>
+            <app-pastilla-estado [valor]="entrega.status"></app-pastilla-estado>
+          </ng-template>
+
+          <ng-template appCeldaTabla="grade" let-entrega>
+            <ng-container *ngIf="entrega.grade; else sinNota">
+              <span class="nota">{{ entrega.grade.score }}</span>
+              <span class="apagado"> / {{ entrega.points }}</span>
+            </ng-container>
+            <ng-template #sinNota><span class="apagado">—</span></ng-template>
+          </ng-template>
+        </app-tabla-datos>
 
         <p class="pequeno apagado materia-vacia mb-0" *ngIf="!materia.entregas.length">
           Todavía no has entregado nada en esta clase.
