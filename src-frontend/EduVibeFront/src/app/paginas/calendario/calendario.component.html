@@ -56,8 +56,7 @@
 
     <!-- Detalle del día elegido -->
     <div class="tarjeta">
-      <!-- Cabecera del día: se sustituye por la barra de lote en cuanto hay selección -->
-      <div class="fila-entre panel-dia" *ngIf="!seleccionados().size">
+      <div class="fila-entre panel-dia">
         <h3 class="mb-0">{{ tituloDia() }}</h3>
 
         <button type="button" class="boton boton-primario boton-pequeno" *ngIf="puedeCrear()" (click)="abrirDialogo()">
@@ -67,46 +66,59 @@
         </button>
       </div>
 
-      <div class="fila-entre envolver panel-dia barra-lote" *ngIf="seleccionados().size">
-        <p class="fuerte mb-0">{{ seleccionados().size }} seleccionado(s)</p>
-        <div class="fila espaciado-sm">
-          <button type="button" class="boton boton-peligro boton-pequeno"
-                  [disabled]="aplicandoLote()" (click)="eliminarSeleccionadas()">
-            {{ aplicandoLote() ? 'Borrando…' : 'Eliminar' }}
-          </button>
-          <button type="button" class="boton boton-fantasma boton-pequeno" (click)="limpiarSeleccion()">Cancelar</button>
+      <app-tabla-datos [plana]="true"
+        [columnas]="columnasDia"
+        [filas]="listaDia.visibles()"
+        [idFila]="idEntrada"
+        [filtros]="listaDia.filtros()"
+        (limpiarFiltros)="listaDia.limpiarFiltros()"
+        [orden]="listaDia.orden()"
+        (ordenCambia)="listaDia.ordenar($event)"
+        [seleccionable]="puedeCrear()"
+        [seleccionados]="seleccionados()"
+        (seleccionCambia)="seleccionCambia($event)"
+        [mostrarAcciones]="seleccionados().size > 0"
+        [filasClicables]="true"
+        (filaClic)="abrirEntrada($event)"
+        [pagina]="listaDia.pagina()"
+        [totalPaginas]="listaDia.totalPaginas()"
+        [totalElementos]="listaDia.total()"
+        etiqueta="entrada(s)"
+        (paginaCambia)="listaDia.irA($event)"
+        [tituloVacio]="listaDia.sinFiltrar() ? 'Ninguna entrada coincide' : 'Nada este día'"
+        [descripcionVacia]="listaDia.sinFiltrar() ? 'Prueba con otra búsqueda o quita los filtros.' : 'Ni eventos ni fechas de entrega.'">
+
+        <!-- Acciones sobre lo seleccionado: sustituyen a los filtros -->
+        <div acciones class="fila-entre envolver" style="flex: 1">
+          <p class="fuerte mb-0">{{ seleccionados().size }} seleccionado(s)</p>
+          <div class="fila espaciado-sm">
+            <button type="button" class="boton boton-peligro boton-pequeno"
+                    [disabled]="aplicandoLote()" (click)="eliminarSeleccionadas()">
+              {{ aplicandoLote() ? 'Borrando…' : 'Eliminar' }}
+            </button>
+            <button type="button" class="boton boton-fantasma boton-pequeno" (click)="limpiarSeleccion()">Cancelar</button>
+          </div>
         </div>
-      </div>
 
-      <app-estado-vacio *ngIf="!entradasDelDia().length"
-        titulo="Nada este día" descripcion="Ni eventos ni fechas de entrega."></app-estado-vacio>
+        <ng-template appCeldaTabla="fecha" let-entrada>
+          <span class="hora-entrada">{{ horaDe(entrada.fecha) }}</span>
+        </ng-template>
 
-      <article class="entrada-agenda" *ngFor="let entrada of paginacionDia.visibles()"
-               [class.clicable]="destinoDe(entrada)" [routerLink]="destinoDe(entrada)">
-        <span class="casilla-entrada" *ngIf="puedeBorrar(entrada)" (click)="$event.stopPropagation()">
-          <input type="checkbox" [checked]="estaSeleccionado(entrada.referencia)"
-                 (change)="alternarSeleccion(entrada, $any($event.target).checked)">
-        </span>
-        <span class="casilla-entrada" *ngIf="!puedeBorrar(entrada)"></span>
+        <ng-template appCeldaTabla="title" let-entrada>
+          <span class="franja-color" [style.background]="colorDe(entrada)"></span>
+          <span class="fuerte">{{ entrada.title }}</span>
+        </ng-template>
 
-        <span class="franja-color" [style.background]="colorDe(entrada)"></span>
+        <ng-template appCeldaTabla="tipo" let-entrada>
+          <app-pastilla-estado [valor]="entrada.tipo"></app-pastilla-estado>
+        </ng-template>
 
-        <span class="hora-entrada">{{ horaDe(entrada.fecha) }}</span>
-
-        <span class="crecer" style="min-width:0">
-          <span class="titulo">{{ entrada.title }}</span>
-          <span class="meta">
-            <app-pastilla-estado [valor]="entrada.tipo"></app-pastilla-estado>
-            <span class="apagado">
-              · {{ entrada.className ? (entrada.className + (entrada.classSubject ? ' · ' + entrada.classSubject : '')) : 'Todo el centro' }}
-            </span>
+        <ng-template appCeldaTabla="className" let-entrada>
+          <span class="apagado">
+            {{ entrada.className ? (entrada.className + (entrada.classSubject ? ' · ' + entrada.classSubject : '')) : 'Todo el centro' }}
           </span>
-        </span>
-      </article>
-
-      <app-paginador class="pie-dia" [pagina]="paginacionDia.pagina()" [totalPaginas]="paginacionDia.totalPaginas()"
-        [totalElementos]="paginacionDia.total()" etiqueta="entrada(s)"
-        (cambio)="paginacionDia.irA($event)"></app-paginador>
+        </ng-template>
+      </app-tabla-datos>
     </div>
   </ng-container>
 </div>

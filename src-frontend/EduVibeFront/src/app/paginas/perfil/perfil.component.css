@@ -74,33 +74,11 @@
   .disposicion-perfil { grid-template-columns: 1fr; }
 }
 
-.notificacion {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  width: 100%;
-  padding: 12px 18px;
-  border: none;
-  border-top: 1px solid var(--borde-sutil);
-  background: transparent;
-  text-align: left;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-}
-
-.notificacion:first-child { border-top: none; }
-.notificacion:hover { background: var(--fondo); }
-.notificacion.no-leida { background: var(--verde-50); }
-.notificacion.no-leida:hover { background: var(--verde-100); }
-
 .punto {
+  display: inline-block;
   width: 8px;
   height: 8px;
   border-radius: 999px;
   background: var(--verde-600);
-  margin-top: 6px;
-  flex-shrink: 0;
+  margin-right: 8px;
 }
-
-.texto-notificacion { display: block; font-size: .9rem; }

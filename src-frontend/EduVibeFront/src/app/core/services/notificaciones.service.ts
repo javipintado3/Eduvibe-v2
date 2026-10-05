@@ -13,8 +13,8 @@ export class NotificacionesService {
   private readonly api = `${environment.apiUrl}/notifications`;
 
   /** Una página de las notificaciones de quien consulta, las más recientes primero. */
-  misNotificaciones(pagina = 0): Observable<Pagina<Notificacion>> {
-    const params = new HttpParams().set('page', pagina).set('size', TAMANO_PAGINA);
+  misNotificaciones(pagina = 0, soloNoLeidas = false): Observable<Pagina<Notificacion>> {
+    const params = new HttpParams().set('page', pagina).set('size', TAMANO_PAGINA).set('soloNoLeidas', soloNoLeidas);
     return this.http.get<Pagina<Notificacion>>(this.api, { params });
   }
 

@@ -13,30 +13,35 @@
 
 <ng-container *ngIf="!cargando()">
 
-  <div class="tarjeta" *ngIf="!avisos().length">
-    <app-estado-vacio
-      titulo="Todavía no hay avisos"
-      [descripcion]="puedoEditar
-        ? 'Publica el primer aviso del muro de la clase.'
-        : 'Cuando el profesorado publique un aviso, aparecerá aquí.'">
-      <button type="button" class="boton boton-suave mt-2" *ngIf="puedoEditar" (click)="abrirDialogo()">
-        Publicar el primer aviso
-      </button>
-    </app-estado-vacio>
-  </div>
+  <app-tabla-datos
+    [columnas]="columnas()"
+    [filas]="lista.visibles()"
+    [filtros]="lista.filtros()"
+    (limpiarFiltros)="lista.limpiarFiltros()"
+    [orden]="lista.orden()"
+    (ordenCambia)="lista.ordenar($event)"
+    [pagina]="lista.pagina()"
+    [totalPaginas]="lista.totalPaginas()"
+    [totalElementos]="lista.total()"
+    etiqueta="aviso(s)"
+    (paginaCambia)="lista.irA($event)"
+    [tituloVacio]="lista.sinFiltrar() ? 'Ningún aviso coincide' : 'Todavía no hay avisos'"
+    [descripcionVacia]="lista.sinFiltrar()
+      ? 'Prueba con otra búsqueda o quita los filtros.'
+      : puedoEditar ? 'Publica el primer aviso del muro de la clase.' : 'Cuando el profesorado publique un aviso, aparecerá aquí.'">
 
-  <div class="tarjeta" *ngIf="avisos().length">
-    <article class="aviso-muro" *ngFor="let aviso of avisos()" [class.fijado]="aviso.pinned">
-
+    <ng-template appCeldaTabla="content" let-aviso>
       <span class="icono-fijado" *ngIf="aviso.pinned" title="Aviso fijado">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a1 1 0 0 1 1 1v6.5l3.4 3.4a1 1 0 0 1-.7 1.7H13v6a1 1 0 1 1-2 0v-6H8.3a1 1 0 0 1-.7-1.7L11 9.5V3a1 1 0 0 1 1-1Z"/></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a1 1 0 0 1 1 1v6.5l3.4 3.4a1 1 0 0 1-.7 1.7H13v6a1 1 0 1 1-2 0v-6H8.3a1 1 0 0 1-.7-1.7L11 9.5V3a1 1 0 0 1 1-1Z"/></svg>
       </span>
+      <span class="contenido">{{ aviso.content }}</span>
+    </ng-template>
 
-      <div class="crecer" style="min-width:0">
-        <p class="contenido mb-1">{{ aviso.content }}</p>
-        <p class="pequeno apagado mb-0">{{ aviso.authorName }} · {{ aviso.createdAt | fecha }}</p>
-      </div>
+    <ng-template appCeldaTabla="createdAt" let-aviso>
+      <span class="pequeno apagado">{{ aviso.createdAt | fecha }}</span>
+    </ng-template>
 
+    <ng-template appCeldaTabla="acciones" let-aviso>
       <button type="button" class="boton boton-fantasma boton-pequeno" *ngIf="aviso.puedoBorrar"
               [disabled]="borrando() === aviso.id" (click)="borrar(aviso)" aria-label="Retirar aviso">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -44,12 +49,8 @@
           <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/>
         </svg>
       </button>
-    </article>
-  </div>
-
-  <app-paginador *ngIf="pagina() as p"
-    [pagina]="p.pagina" [totalPaginas]="p.totalPaginas" [totalElementos]="p.totalElementos"
-    etiqueta="aviso(s)" (cambio)="cargar($event)"></app-paginador>
+    </ng-template>
+  </app-tabla-datos>
 </ng-container>
 
 <!-- Alta de aviso -->

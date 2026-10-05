@@ -13,40 +13,47 @@
 
 <ng-container *ngIf="!cargando()">
 
-  <div class="tarjeta" *ngIf="!materialesVisibles.length">
-    <app-estado-vacio
-      titulo="Todavía no hay materiales"
-      [descripcion]="puedoEditar
-        ? 'Sube el primer apunte, enlace o vídeo de la clase.'
-        : 'Cuando el profesorado suba materiales, aparecerán aquí.'">
-      <button type="button" class="boton boton-suave mt-2" *ngIf="puedoEditar" (click)="abrirCrear()">
-        Añadir el primer material
-      </button>
-    </app-estado-vacio>
-  </div>
+  <app-tabla-datos
+    [columnas]="columnas()"
+    [filas]="lista.visibles()"
+    [filtros]="lista.filtros()"
+    (limpiarFiltros)="lista.limpiarFiltros()"
+    [orden]="lista.orden()"
+    (ordenCambia)="lista.ordenar($event)"
+    [pagina]="lista.pagina()"
+    [totalPaginas]="lista.totalPaginas()"
+    [totalElementos]="lista.total()"
+    etiqueta="material(es)"
+    (paginaCambia)="lista.irA($event)"
+    [tituloVacio]="lista.sinFiltrar() ? 'Ningún material coincide' : 'Todavía no hay materiales'"
+    [descripcionVacia]="lista.sinFiltrar()
+      ? 'Prueba con otra búsqueda o quita los filtros.'
+      : puedoEditar ? 'Sube el primer apunte, enlace o vídeo de la clase.' : 'Cuando el profesorado suba materiales, aparecerán aquí.'">
 
-  <div class="tarjeta" *ngIf="materialesVisibles.length">
-    <article class="material" *ngFor="let material of materialesPagina">
+    <ng-template appCeldaTabla="title" let-material>
+      <a class="fuerte enlace-material" *ngIf="material.fileUrl" [href]="material.fileUrl | rutaArchivo" target="_blank" rel="noopener">
+        {{ material.title }}
+      </a>
+      <span class="fuerte" *ngIf="!material.fileUrl">{{ material.title }}</span>
+    </ng-template>
 
-      <span class="crecer" style="min-width:0">
-        <a class="titulo" *ngIf="material.fileUrl" [href]="material.fileUrl | rutaArchivo" target="_blank" rel="noopener">
-          {{ material.title }}
-        </a>
-        <span class="titulo" *ngIf="!material.fileUrl">{{ material.title }}</span>
+    <ng-template appCeldaTabla="type" let-material>
+      <app-pastilla-estado *ngIf="material.type" [valor]="material.type"></app-pastilla-estado>
+      <span class="apagado" *ngIf="!material.type">—</span>
+    </ng-template>
 
-        <span class="meta">
-          <app-pastilla-estado *ngIf="material.type" [valor]="material.type"></app-pastilla-estado>
-          <span class="apagado" *ngIf="temaFiltro === undefined"> · {{ tituloDelTema(material.topicId) }}</span>
-          <span class="pastilla pastilla-ambar" *ngIf="material.bloqueado">
-            Se ve a partir del {{ material.availableFrom | fecha }}
-          </span>
-          <span class="apagado" *ngIf="puedoEditar && !material.bloqueado && material.availableFrom">
-            · Programado desde el {{ material.availableFrom | fecha }}
-          </span>
-        </span>
+    <ng-template appCeldaTabla="availableFrom" let-material>
+      <span class="pastilla pastilla-ambar" *ngIf="material.bloqueado">
+        Se ve a partir del {{ material.availableFrom | fecha }}
       </span>
+      <span class="pequeno apagado" *ngIf="!material.bloqueado && material.availableFrom">
+        {{ puedoEditar ? 'Programado: ' : '' }}{{ material.availableFrom | fecha }}
+      </span>
+      <span class="apagado" *ngIf="!material.availableFrom">—</span>
+    </ng-template>
 
-      <span class="fila espaciado-sm" *ngIf="puedoEditar">
+    <ng-template appCeldaTabla="acciones" let-material>
+      <span class="fila espaciado-sm">
         <button type="button" class="boton boton-fantasma boton-pequeno"
                 (click)="abrirEditar(material)" aria-label="Editar material">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -63,12 +70,8 @@
           </svg>
         </button>
       </span>
-    </article>
-  </div>
-
-  <app-paginador [pagina]="paginaVisible" [totalPaginas]="totalPaginas"
-    [totalElementos]="materialesVisibles.length" etiqueta="material(es)"
-    (cambio)="paginaActual.set($event)"></app-paginador>
+    </ng-template>
+  </app-tabla-datos>
 </ng-container>
 
 <!-- Alta / edición de material -->

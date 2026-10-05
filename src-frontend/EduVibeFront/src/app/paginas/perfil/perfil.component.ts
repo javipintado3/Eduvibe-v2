@@ -15,9 +15,11 @@ import { CargandoComponent } from '../../shared/cargando/cargando.component';
 import { EstadoVacioComponent } from '../../shared/estado-vacio/estado-vacio.component';
 import { PastillaEstadoComponent } from '../../shared/pastilla-estado/pastilla-estado.component';
 import { TarjetaClaseComponent } from '../../shared/tarjeta-clase/tarjeta-clase.component';
+import { CeldaTablaDirective } from '../../shared/tabla-datos/celda-tabla.directive';
+import { TablaDatosComponent } from '../../shared/tabla-datos/tabla-datos.component';
+import { ColumnaTabla, FiltroTabla } from '../../shared/tabla-datos/tabla-datos.tipos';
 import { rutaDeNotificacion } from '../../shared/notificaciones/ruta-notificacion';
 import { FechaPipe } from '../../shared/pipes/fecha.pipe';
-import { PaginadorComponent } from '../../shared/paginador/paginador.component';
 
 /** Cómo se lee cada rol en el desglose de administración. */
 const ETIQUETAS_ROL: Record<string, string> = {
@@ -38,7 +40,8 @@ const ETIQUETAS_ROL: Record<string, string> = {
   imports: [
     NgIf, NgFor, RouterLink, DecimalPipe,
     AvatarComponent, AvisoComponent, CargandoComponent, EstadoVacioComponent,
-    PastillaEstadoComponent, TarjetaClaseComponent, FechaPipe, PaginadorComponent,
+    PastillaEstadoComponent, TarjetaClaseComponent, FechaPipe,
+    TablaDatosComponent, CeldaTablaDirective,
   ],
   templateUrl: './perfil.component.html',
   styleUrl: './perfil.component.css',
@@ -96,9 +99,28 @@ export class PerfilComponent implements OnInit {
     });
   }
 
-  /** Cambia de página de notificaciones; las pagina el servidor, de diez en diez. */
+  readonly soloNoLeidas = signal(false);
+
+  readonly columnasNotificaciones: ColumnaTabla[] = [
+    { campo: 'texto', titulo: 'Notificación' },
+    { campo: 'createdAt', titulo: 'Recibida', ancho: '1px' },
+  ];
+
+  readonly filtrosNotificaciones = computed<FiltroTabla[]>(() => [{
+    clave: 'estado', tipo: 'seleccion', valor: this.soloNoLeidas() ? 'no-leidas' : '',
+    placeholder: 'Todas',
+    opciones: [{ valor: 'no-leidas', etiqueta: 'Sin leer' }],
+    alCambiar: valor => { this.soloNoLeidas.set(valor === 'no-leidas'); this.cargarNotificaciones(0); },
+  }]);
+
+  limpiarFiltroNotificaciones(): void {
+    this.soloNoLeidas.set(false);
+    this.cargarNotificaciones(0);
+  }
+
+  /** Cambia de página o de filtro; las notificaciones las pagina y filtra el servidor, de diez en diez. */
   cargarNotificaciones(pagina: number): void {
-    this.notificacionesService.misNotificaciones(pagina).subscribe(resultado => {
+    this.notificacionesService.misNotificaciones(pagina, this.soloNoLeidas()).subscribe(resultado => {
       this.notificaciones.set(resultado.contenido);
       this.paginaNotificaciones.set(resultado);
     });
@@ -167,7 +189,8 @@ export class PerfilComponent implements OnInit {
     this.notificacionesService.marcarTodasLeidas().subscribe({
       next: () => {
         this.marcandoTodas.set(false);
-        this.notificaciones.update(lista => lista.map(n => ({ ...n, leida: true })));
+        // Recarga en vez de marcar a mano: con el filtro "sin leer" puesto, la lista debe quedar vacía
+        this.cargarNotificaciones(0);
       },
       error: () => this.marcandoTodas.set(false),
     });

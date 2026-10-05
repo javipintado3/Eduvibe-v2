@@ -1,6 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { NgFor, NgIf } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 
@@ -13,9 +13,11 @@ import { AvisoComponent } from '../../shared/aviso/aviso.component';
 import { CargandoComponent } from '../../shared/cargando/cargando.component';
 import { DialogoComponent } from '../../shared/dialogo/dialogo.component';
 import { EstadoVacioComponent } from '../../shared/estado-vacio/estado-vacio.component';
-import { PaginadorComponent } from '../../shared/paginador/paginador.component';
 import { PastillaEstadoComponent } from '../../shared/pastilla-estado/pastilla-estado.component';
-import { paginacionLocal } from '../../core/utils/paginacion';
+import { comparar, listaLocal } from '../../core/utils/lista-local';
+import { CeldaTablaDirective } from '../../shared/tabla-datos/celda-tabla.directive';
+import { TablaDatosComponent } from '../../shared/tabla-datos/tabla-datos.component';
+import { ColumnaTabla } from '../../shared/tabla-datos/tabla-datos.tipos';
 
 const MESES = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -58,8 +60,9 @@ interface Celda {
   selector: 'app-calendario',
   standalone: true,
   imports: [
-    NgIf, NgFor, RouterLink, ReactiveFormsModule,
-    CargandoComponent, EstadoVacioComponent, DialogoComponent, AvisoComponent, PastillaEstadoComponent, PaginadorComponent,
+    NgIf, NgFor, ReactiveFormsModule,
+    CargandoComponent, EstadoVacioComponent, DialogoComponent, AvisoComponent, PastillaEstadoComponent,
+    TablaDatosComponent, CeldaTablaDirective,
   ],
   templateUrl: './calendario.component.html',
   styleUrl: './calendario.component.css',
@@ -69,6 +72,7 @@ export class CalendarioComponent implements OnInit {
   private readonly calendarioService = inject(CalendarioService);
   private readonly clasesService = inject(ClasesService);
   private readonly confirmacion = inject(ConfirmacionService);
+  private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
   readonly auth = inject(AuthService);
 
@@ -98,8 +102,38 @@ export class CalendarioComponent implements OnInit {
     return this.entradas().filter(e => this.claveDe(new Date(e.fecha)) === clave);
   });
 
-  /** Diez entradas por página en el panel del día, para que un día cargado no alargue la pantalla. */
-  readonly paginacionDia = paginacionLocal(() => this.entradasDelDia());
+  /** Búsqueda, filtro por tipo, orden y diez por página en el panel del día, para que un día cargado no alargue la pantalla. */
+  readonly listaDia = listaLocal(() => this.entradasDelDia(), {
+    placeholderBusqueda: 'Buscar en el día',
+    textos: entrada => [entrada.title, entrada.className, entrada.classSubject],
+    selectores: {
+      tipo: {
+        placeholder: 'Todos los tipos',
+        opciones: () => [
+          { valor: 'exam', etiqueta: 'Examen' },
+          { valor: 'holiday', etiqueta: 'Festivo' },
+          { valor: 'other', etiqueta: 'Otro' },
+          { valor: 'assignment_due', etiqueta: 'Entrega' },
+        ],
+        encaja: (entrada, valor) => entrada.tipo === valor,
+      },
+    },
+    comparadores: {
+      fecha: (a, b) => comparar(a.fecha, b.fecha),
+      title: (a, b) => comparar(a.title, b.title),
+      tipo: (a, b) => comparar(a.tipo, b.tipo),
+      className: (a, b) => comparar(a.className, b.className),
+    },
+  });
+
+  readonly columnasDia: ColumnaTabla[] = [
+    { campo: 'fecha', titulo: 'Hora', ancho: '1px', ordenable: true },
+    { campo: 'title', titulo: 'Entrada', ordenable: true },
+    { campo: 'tipo', titulo: 'Tipo', ordenable: true },
+    { campo: 'className', titulo: 'Clase', ordenable: true },
+  ];
+
+  readonly idEntrada = (entrada: EntradaAgenda) => entrada.referencia;
 
   readonly tituloDia = computed(() => {
     const [anio, mes, dia] = this.diaSeleccionado().split('-').map(Number);
@@ -166,14 +200,14 @@ export class CalendarioComponent implements OnInit {
   hoy(): void {
     this.mesActual.set(this.inicioDeMes(new Date()));
     this.diaSeleccionado.set(this.claveDe(new Date()));
-    this.paginacionDia.reiniciar();
+    this.listaDia.reiniciar();
     this.limpiarSeleccion();
     this.cargar();
   }
 
   seleccionar(celda: Celda): void {
     this.diaSeleccionado.set(celda.clave);
-    this.paginacionDia.reiniciar();
+    this.listaDia.reiniciar();
     this.limpiarSeleccion();
   }
 
@@ -203,6 +237,14 @@ export class CalendarioComponent implements OnInit {
       return ['/tareas', entrada.referencia];
     }
     return entrada.classId ? ['/clases', entrada.classId] : null;
+  }
+
+  /** Pinchar una fila lleva a su tarea o clase; los eventos de todo el centro no tienen a dónde ir. */
+  abrirEntrada(entrada: EntradaAgenda): void {
+    const destino = this.destinoDe(entrada);
+    if (destino) {
+      this.router.navigate(destino);
+    }
   }
 
   abrirDialogo(): void {
@@ -256,16 +298,14 @@ export class CalendarioComponent implements OnInit {
 
   // --- selección en lote ---
 
-  estaSeleccionado(referencia: string): boolean {
-    return this.seleccionados().has(referencia);
-  }
-
-  alternarSeleccion(entrada: EntradaAgenda, marcado: boolean): void {
-    this.seleccionados.update(actuales => {
-      const nuevo = new Set(actuales);
-      marcado ? nuevo.add(entrada.referencia) : nuevo.delete(entrada.referencia);
-      return nuevo;
-    });
+  /**
+   * La tabla propone el nuevo conjunto marcado. Las entregas no son eventos
+   * reales (ver puedeBorrar), así que se descartan: "seleccionar todo" solo
+   * marca lo que se puede borrar.
+   */
+  seleccionCambia(nuevos: Set<string>): void {
+    const borrables = new Set(this.entradasDelDia().filter(e => this.puedeBorrar(e)).map(e => e.referencia));
+    this.seleccionados.set(new Set([...nuevos].filter(id => borrables.has(id))));
   }
 
   limpiarSeleccion(): void {
@@ -328,7 +368,7 @@ export class CalendarioComponent implements OnInit {
     const nuevoMes = new Date(mes.getFullYear(), mes.getMonth() + delta, 1);
     this.mesActual.set(nuevoMes);
     this.diaSeleccionado.set(this.claveDe(nuevoMes));
-    this.paginacionDia.reiniciar();
+    this.listaDia.reiniciar();
     this.limpiarSeleccion();
     this.cargar();
   }

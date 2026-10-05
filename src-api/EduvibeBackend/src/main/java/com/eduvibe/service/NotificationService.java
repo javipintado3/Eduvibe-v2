@@ -57,11 +57,14 @@ public class NotificationService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<NotificationResponse> misNotificaciones(Pageable pageable) {
+    public PageResponse<NotificationResponse> misNotificaciones(boolean soloNoLeidas, Pageable pageable) {
         UUID userId = authService.identidadActual().id();
+        Pageable sinOrden = Paginacion.sinOrden(pageable);
 
         return PageResponse.de(
-                notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, Paginacion.sinOrden(pageable)),
+                soloNoLeidas
+                        ? notificationRepository.findByUserIdAndReadAtIsNullOrderByCreatedAtDesc(userId, sinOrden)
+                        : notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, sinOrden),
                 NotificationResponse::de);
     }
 

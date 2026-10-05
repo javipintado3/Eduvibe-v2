@@ -154,25 +154,30 @@
           </button>
         </div>
 
-        <div class="tarjeta" *ngIf="!notificaciones().length">
-          <app-estado-vacio titulo="Sin notificaciones"
-            descripcion="Aquí aparecerán las novedades de tus clases."></app-estado-vacio>
-        </div>
+        <app-tabla-datos
+          [columnas]="columnasNotificaciones"
+          [filas]="notificaciones()"
+          [filtros]="filtrosNotificaciones()"
+          (limpiarFiltros)="limpiarFiltroNotificaciones()"
+          [filasClicables]="true"
+          (filaClic)="irA($event)"
+          [pagina]="paginaNotificaciones()?.pagina ?? 0"
+          [totalPaginas]="paginaNotificaciones()?.totalPaginas ?? 1"
+          [totalElementos]="paginaNotificaciones()?.totalElementos ?? null"
+          etiqueta="notificación(es)"
+          (paginaCambia)="cargarNotificaciones($event)"
+          [tituloVacio]="soloNoLeidas() ? 'Todo al día' : 'Sin notificaciones'"
+          [descripcionVacia]="soloNoLeidas() ? 'No tienes notificaciones sin leer.' : 'Aquí aparecerán las novedades de tus clases.'">
 
-        <div class="tarjeta" *ngIf="notificaciones().length">
-          <button type="button" class="notificacion" *ngFor="let n of notificaciones()"
-                  [class.no-leida]="!n.leida" (click)="irA(n)">
+          <ng-template appCeldaTabla="texto" let-n>
             <span class="punto" *ngIf="!n.leida" aria-hidden="true"></span>
-            <span class="crecer" style="min-width:0">
-              <span class="texto-notificacion">{{ n.texto }}</span>
-              <span class="pequeno apagado bloque">{{ n.createdAt | fecha }}</span>
-            </span>
-          </button>
-        </div>
+            <span [class.fuerte]="!n.leida">{{ n.texto }}</span>
+          </ng-template>
 
-        <app-paginador *ngIf="paginaNotificaciones() as p"
-          [pagina]="p.pagina" [totalPaginas]="p.totalPaginas" [totalElementos]="p.totalElementos"
-          etiqueta="notificación(es)" (cambio)="cargarNotificaciones($event)"></app-paginador>
+          <ng-template appCeldaTabla="createdAt" let-n>
+            <span class="pequeno apagado">{{ n.createdAt | fecha }}</span>
+          </ng-template>
+        </app-tabla-datos>
       </section>
     </div>
   </ng-container>

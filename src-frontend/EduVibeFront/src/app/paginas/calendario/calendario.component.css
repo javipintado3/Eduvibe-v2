@@ -121,57 +121,16 @@
 
 .panel-dia { padding: 18px 18px 12px; }
 
-.barra-lote { padding-bottom: 18px; }
-
-.casilla-entrada {
-  display: flex;
-  align-items: center;
-  width: 18px;
-  flex-shrink: 0;
-}
-
-.entrada-agenda {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-  padding: 13px 18px;
-  border-top: 1px solid var(--borde-sutil);
-}
-
-.entrada-agenda.clicable { cursor: pointer; }
-.entrada-agenda.clicable:hover { background: var(--borde-sutil); }
-
 .franja-color {
+  display: inline-block;
   width: 4px;
-  align-self: stretch;
+  height: 1em;
+  vertical-align: middle;
+  margin-right: 9px;
   border-radius: 999px;
-  flex-shrink: 0;
 }
 
-.hora-entrada {
-  flex-shrink: 0;
-  width: 44px;
-  font-size: .82rem;
-  font-weight: 600;
-  color: var(--tinta-70);
-}
-
-.titulo {
-  display: block;
-  font-weight: 550;
-  font-size: .93rem;
-  overflow-wrap: anywhere;
-}
-
-.pie-dia { display: block; padding: 0 18px 14px; }
-
-.meta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: .8rem;
-  margin-top: 3px;
-}
+.hora-entrada { font-size: .82rem; font-weight: 600; color: var(--tinta-70); }
 
 .dos-columnas { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 

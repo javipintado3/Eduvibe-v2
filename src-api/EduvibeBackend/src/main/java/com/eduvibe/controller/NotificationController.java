@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.eduvibe.dto.notification.NotificationResponse;
@@ -27,8 +28,9 @@ public class NotificationController {
     private final NotificationService notificationService;
 
     @GetMapping
-    public ResponseEntity<PageResponse<NotificationResponse>> misNotificaciones(Pageable pageable) {
-        return ResponseEntity.ok(notificationService.misNotificaciones(pageable));
+    public ResponseEntity<PageResponse<NotificationResponse>> misNotificaciones(
+            @RequestParam(defaultValue = "false") boolean soloNoLeidas, Pageable pageable) {
+        return ResponseEntity.ok(notificationService.misNotificaciones(soloNoLeidas, pageable));
     }
 
     @GetMapping("/unread-count")

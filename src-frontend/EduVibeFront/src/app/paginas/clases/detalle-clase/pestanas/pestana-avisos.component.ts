@@ -1,16 +1,19 @@
-import { Component, Input, OnInit, computed, inject, signal } from '@angular/core';
-import { NgFor, NgIf } from '@angular/common';
+import { Component, Input, OnChanges, OnInit, computed, inject, signal } from '@angular/core';
+import { NgIf } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { ClasesService } from '../../../../core/services/clases.service';
 import { ConfirmacionService } from '../../../../core/services/confirmacion.service';
-import { Anuncio, Pagina } from '../../../../core/models';
+import { Anuncio } from '../../../../core/models';
 import { AvisoComponent } from '../../../../shared/aviso/aviso.component';
 import { CargandoComponent } from '../../../../shared/cargando/cargando.component';
 import { DialogoComponent } from '../../../../shared/dialogo/dialogo.component';
-import { EstadoVacioComponent } from '../../../../shared/estado-vacio/estado-vacio.component';
 import { FechaPipe } from '../../../../shared/pipes/fecha.pipe';
-import { PaginadorComponent } from '../../../../shared/paginador/paginador.component';
+import { CeldaTablaDirective } from '../../../../shared/tabla-datos/celda-tabla.directive';
+import { TablaDatosComponent } from '../../../../shared/tabla-datos/tabla-datos.component';
+import { ColumnaTabla } from '../../../../shared/tabla-datos/tabla-datos.tipos';
+import { comparar, listaLocal } from '../../../../core/utils/lista-local';
+import { todasLasPaginas } from '../../../../core/utils/paginacion';
 
 /**
  * Pestaña "Avisos": el muro de la clase.
@@ -22,12 +25,12 @@ import { PaginadorComponent } from '../../../../shared/paginador/paginador.compo
 @Component({
   selector: 'app-pestana-avisos',
   standalone: true,
-  imports: [NgIf, NgFor, ReactiveFormsModule, CargandoComponent, EstadoVacioComponent, DialogoComponent, AvisoComponent, FechaPipe,
-    PaginadorComponent],
+  imports: [NgIf, ReactiveFormsModule, CargandoComponent, DialogoComponent, AvisoComponent, FechaPipe,
+    TablaDatosComponent, CeldaTablaDirective],
   templateUrl: './pestana-avisos.component.html',
   styleUrl: './pestana-avisos.component.css',
 })
-export class PestanaAvisosComponent implements OnInit {
+export class PestanaAvisosComponent implements OnInit, OnChanges {
 
   private readonly clasesService = inject(ClasesService);
   private readonly confirmacion = inject(ConfirmacionService);
@@ -36,9 +39,43 @@ export class PestanaAvisosComponent implements OnInit {
   @Input({ required: true }) claseId!: string;
   @Input() puedoEditar = false;
 
-  /** La página de avisos que se está viendo: la pagina el servidor, de diez en diez. */
-  readonly pagina = signal<Pagina<Anuncio> | null>(null);
-  readonly avisos = computed(() => this.pagina()?.contenido ?? []);
+  /**
+   * Todos los avisos de la clase: se piden entero (son pocos y de una sola clase) para poder
+   * buscar, filtrar y ordenar en el cliente. Sin orden elegido se respeta el del servidor,
+   * que deja los fijados arriba.
+   */
+  readonly avisos = signal<Anuncio[]>([]);
+
+  readonly lista = listaLocal(() => this.avisos(), {
+    placeholderBusqueda: 'Buscar en los avisos',
+    textos: aviso => [aviso.content, aviso.authorName],
+    selectores: {
+      fijado: {
+        placeholder: 'Todos',
+        opciones: () => [{ valor: 'si', etiqueta: 'Solo fijados' }],
+        encaja: (aviso, valor) => aviso.pinned === (valor === 'si'),
+      },
+    },
+    comparadores: {
+      content: (a, b) => comparar(a.content, b.content),
+      authorName: (a, b) => comparar(a.authorName, b.authorName),
+      createdAt: (a, b) => comparar(a.createdAt, b.createdAt),
+    },
+  });
+
+  /** `puedoEditar` como señal: la columna de acciones solo existe para quien edita. */
+  private readonly editor = signal(false);
+
+  ngOnChanges(): void {
+    this.editor.set(this.puedoEditar);
+  }
+
+  readonly columnas = computed<ColumnaTabla[]>(() => [
+    { campo: 'content', titulo: 'Aviso', ordenable: true },
+    { campo: 'authorName', titulo: 'Autor', ordenable: true },
+    { campo: 'createdAt', titulo: 'Publicado', ordenable: true },
+    ...(this.editor() ? [{ campo: 'acciones', titulo: '', ancho: '1px', bloqueaClicFila: true }] : []),
+  ]);
   readonly cargando = signal(true);
   readonly error = signal<string | null>(null);
   readonly borrando = signal<string | null>(null);
@@ -56,18 +93,13 @@ export class PestanaAvisosComponent implements OnInit {
     this.cargar();
   }
 
-  cargar(pagina = 0): void {
+  cargar(): void {
     this.cargando.set(true);
     this.error.set(null);
 
-    this.clasesService.avisos(this.claseId, pagina).subscribe({
-      next: (resultado) => {
-        // Si al retirar un aviso la página en la que estábamos se queda sin nada, se retrocede a la última
-        if (!resultado.contenido.length && resultado.pagina > 0) {
-          this.cargar(resultado.totalPaginas - 1);
-          return;
-        }
-        this.pagina.set(resultado);
+    todasLasPaginas(pagina => this.clasesService.avisos(this.claseId, pagina)).subscribe({
+      next: (avisos) => {
+        this.avisos.set(avisos);
         this.cargando.set(false);
       },
       error: (err) => {
@@ -100,7 +132,8 @@ export class PestanaAvisosComponent implements OnInit {
         this.publicando.set(false);
         this.dialogoAbierto.set(false);
         // El aviso nuevo va arriba del muro, así que se vuelve a la primera página
-        this.cargar(0);
+        this.lista.irA(0);
+        this.cargar();
       },
       error: (err) => {
         this.publicando.set(false);
@@ -123,8 +156,7 @@ export class PestanaAvisosComponent implements OnInit {
     this.clasesService.borrarAviso(aviso.id).subscribe({
       next: () => {
         this.borrando.set(null);
-        // Se vuelve a pedir la página: el servidor sube el aviso que estaba en la siguiente
-        this.cargar(this.pagina()?.pagina ?? 0);
+        this.avisos.update(lista => lista.filter(a => a.id !== aviso.id));
       },
       error: (err) => {
         this.borrando.set(null);

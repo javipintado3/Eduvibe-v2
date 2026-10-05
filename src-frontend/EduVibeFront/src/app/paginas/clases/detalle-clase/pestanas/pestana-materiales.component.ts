@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges, OnInit, inject, signal } from '@angular/core';
+import { Component, Input, OnChanges, OnInit, computed, inject, signal } from '@angular/core';
 import { NgFor, NgIf } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
@@ -9,13 +9,14 @@ import { Material, Tema, TipoMaterial } from '../../../../core/models';
 import { AvisoComponent } from '../../../../shared/aviso/aviso.component';
 import { CargandoComponent } from '../../../../shared/cargando/cargando.component';
 import { DialogoComponent } from '../../../../shared/dialogo/dialogo.component';
-import { EstadoVacioComponent } from '../../../../shared/estado-vacio/estado-vacio.component';
 import { PastillaEstadoComponent } from '../../../../shared/pastilla-estado/pastilla-estado.component';
 import { FechaPipe } from '../../../../shared/pipes/fecha.pipe';
 import { RutaArchivoPipe } from '../../../../shared/pipes/ruta-archivo.pipe';
 import { SubidaArchivoComponent } from '../../../../shared/subida-archivo/subida-archivo.component';
-import { PaginadorComponent } from '../../../../shared/paginador/paginador.component';
-import { totalDePaginas, trozo } from '../../../../core/utils/paginacion';
+import { CeldaTablaDirective } from '../../../../shared/tabla-datos/celda-tabla.directive';
+import { TablaDatosComponent } from '../../../../shared/tabla-datos/tabla-datos.component';
+import { ColumnaTabla } from '../../../../shared/tabla-datos/tabla-datos.tipos';
+import { comparar, listaLocal } from '../../../../core/utils/lista-local';
 
 /**
  * Pestaña "Materiales": apuntes, enlaces y vídeos de la clase.
@@ -24,42 +25,27 @@ import { totalDePaginas, trozo } from '../../../../core/utils/paginacion';
  * pantallas de la aplicación—, distinguido por `editando`: null es alta,
  * un material es edición.
  */
+/** Valor del filtro de unidad que significa "los materiales sin unidad". */
+const SIN_UNIDAD = '__sin-unidad';
+
+/** Un material ya emparejado con el título de la unidad a la que pertenece. */
+interface FilaMaterial extends Material {
+  temaTitulo: string;
+}
+
 @Component({
   selector: 'app-pestana-materiales',
   standalone: true,
   imports: [
     NgIf, NgFor, ReactiveFormsModule,
-    CargandoComponent, EstadoVacioComponent, DialogoComponent, AvisoComponent, PastillaEstadoComponent,
+    CargandoComponent, DialogoComponent, AvisoComponent, PastillaEstadoComponent,
     SubidaArchivoComponent, RutaArchivoPipe, FechaPipe,
-    PaginadorComponent,
+    TablaDatosComponent, CeldaTablaDirective,
   ],
   templateUrl: './pestana-materiales.component.html',
   styleUrl: './pestana-materiales.component.css',
 })
 export class PestanaMaterialesComponent implements OnInit, OnChanges {
-
-  /**
-   * Diez por página, en el cliente: la lista se carga entera porque cada unidad la
-   * filtra a su gusto ({@link temaFiltro}), así que el servidor no puede saber qué
-   * es "la página 2". Al cambiar de unidad se vuelve a la primera.
-   */
-  readonly paginaActual = signal(0);
-
-  get totalPaginas(): number {
-    return totalDePaginas(this.materialesVisibles.length);
-  }
-
-  get paginaVisible(): number {
-    return Math.min(this.paginaActual(), this.totalPaginas - 1);
-  }
-
-  get materialesPagina() {
-    return trozo(this.materialesVisibles, this.paginaVisible);
-  }
-
-  ngOnChanges(): void {
-    this.paginaActual.set(0);
-  }
 
   private readonly clasesService = inject(ClasesService);
   private readonly materialesService = inject(MaterialesService);
@@ -79,7 +65,74 @@ export class PestanaMaterialesComponent implements OnInit, OnChanges {
   /** Cómo llamar al agrupador en este modo de vista: "Unidad" o "Módulo". */
   @Input() etiquetaUnidad = 'Unidad';
 
+  /**
+   * Los @Input como señal, para que filas, columnas y filtros se recalculen
+   * solos cuando el padre cambia de unidad o llegan las unidades.
+   */
+  private readonly contexto = signal({
+    temas: [] as Tema[], temaFiltro: undefined as string | null | undefined, puedoEditar: false, etiquetaUnidad: 'Unidad',
+  });
+
+  ngOnChanges(): void {
+    this.contexto.set({
+      temas: this.temas, temaFiltro: this.temaFiltro, puedoEditar: this.puedoEditar, etiquetaUnidad: this.etiquetaUnidad,
+    });
+    this.lista.reiniciar();
+  }
+
   readonly materiales = signal<Material[]>([]);
+
+  /** Los materiales de la unidad elegida arriba ({@link temaFiltro}), con el título de su unidad. */
+  private readonly filas = computed<FilaMaterial[]>(() => {
+    const { temaFiltro } = this.contexto();
+    return this.materiales()
+      .filter(material => temaFiltro === undefined || material.topicId === temaFiltro)
+      .map(material => ({ ...material, temaTitulo: this.tituloDelTema(material.topicId) }));
+  });
+
+  /** Con una unidad ya elegida arriba, la columna y el filtro de unidad sobran. */
+  private readonly mostrarUnidad = () => this.contexto().temaFiltro === undefined && this.contexto().temas.length > 0;
+
+  readonly lista = listaLocal(() => this.filas(), {
+    placeholderBusqueda: 'Buscar material',
+    textos: material => [material.title],
+    selectores: {
+      unidad: {
+        placeholder: 'Todas',
+        visible: this.mostrarUnidad,
+        opciones: () => [
+          ...this.contexto().temas.map(tema => ({ valor: tema.id, etiqueta: tema.title })),
+          { valor: SIN_UNIDAD, etiqueta: this.etiquetaSinUnidad },
+        ],
+        encaja: (material, valor) => valor === SIN_UNIDAD ? !material.topicId : material.topicId === valor,
+      },
+      tipo: {
+        placeholder: 'Todos los tipos',
+        opciones: () => [
+          { valor: 'pdf', etiqueta: 'PDF' },
+          { valor: 'doc', etiqueta: 'Documento' },
+          { valor: 'link', etiqueta: 'Enlace' },
+          { valor: 'video', etiqueta: 'Vídeo' },
+          { valor: 'other', etiqueta: 'Otro' },
+        ],
+        encaja: (material, valor) => material.type === valor,
+      },
+    },
+    comparadores: {
+      title: (a, b) => comparar(a.title, b.title),
+      type: (a, b) => comparar(a.type, b.type),
+      temaTitulo: (a, b) => comparar(a.temaTitulo, b.temaTitulo),
+      availableFrom: (a, b) => comparar(a.availableFrom, b.availableFrom),
+    },
+  });
+
+  readonly columnas = computed<ColumnaTabla[]>(() => [
+    { campo: 'title', titulo: 'Material', ordenable: true },
+    { campo: 'type', titulo: 'Tipo', ordenable: true },
+    ...(this.mostrarUnidad() ? [{ campo: 'temaTitulo', titulo: this.contexto().etiquetaUnidad, ordenable: true }] : []),
+    { campo: 'availableFrom', titulo: 'Visible desde', ordenable: true },
+    ...(this.contexto().puedoEditar ? [{ campo: 'acciones', titulo: '', ancho: '1px', bloqueaClicFila: true }] : []),
+  ]);
   readonly cargando = signal(true);
   readonly error = signal<string | null>(null);
   readonly borrando = signal<string | null>(null);
@@ -115,15 +168,6 @@ export class PestanaMaterialesComponent implements OnInit, OnChanges {
         this.cargando.set(false);
       },
     });
-  }
-
-  /** Los materiales que toca pintar, según {@link temaFiltro}. */
-  get materialesVisibles(): Material[] {
-    const todos = this.materiales();
-    if (this.temaFiltro === undefined) {
-      return todos;
-    }
-    return todos.filter(m => m.topicId === this.temaFiltro);
   }
 
   get etiquetaUnidadMinuscula(): string {
