@@ -1,5 +1,5 @@
-import { Component, Input, OnChanges, OnInit, inject, signal } from '@angular/core';
-import { NgClass, NgFor, NgIf } from '@angular/common';
+import { Component, Input, OnChanges, OnInit, computed, inject, signal } from '@angular/core';
+import { NgFor, NgIf } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
@@ -11,17 +11,21 @@ import { DialogoComponent } from '../../../../shared/dialogo/dialogo.component';
 import { EstadoVacioComponent } from '../../../../shared/estado-vacio/estado-vacio.component';
 import { PastillaEstadoComponent } from '../../../../shared/pastilla-estado/pastilla-estado.component';
 import { FechaPipe, PlazoPipe } from '../../../../shared/pipes/fecha.pipe';
-import { PaginadorComponent } from '../../../../shared/paginador/paginador.component';
-import { paginarBloques, totalDePaginas } from '../../../../core/utils/paginacion';
+import { CeldaTablaDirective } from '../../../../shared/tabla-datos/celda-tabla.directive';
+import { TablaDatosComponent } from '../../../../shared/tabla-datos/tabla-datos.component';
+import { ColumnaTabla } from '../../../../shared/tabla-datos/tabla-datos.tipos';
+import { comparar, listaLocal } from '../../../../core/utils/lista-local';
 
-/** Una tarea ya emparejada con el tema al que pertenece. */
-interface Bloque {
-  tema: Tema | null;
-  tareas: Tarea[];
+/** Valor del filtro de unidad que significa "las tareas sin unidad". */
+const SIN_UNIDAD = '__sin-unidad';
+
+/** Una tarea ya emparejada con el título de la unidad a la que pertenece. */
+interface FilaTarea extends Tarea {
+  temaTitulo: string;
 }
 
 /**
- * Pestaña "Trabajo de clase": las tareas, agrupadas por tema.
+ * Pestaña "Trabajo de clase": las tareas en una tabla, con la unidad como columna y como filtro.
  *
  * Cada fila muestra lo que le interesa a quien mira: al alumnado, el estado de
  * su entrega; al profesorado, cuántas lleva recibidas. Esa distinción la hace
@@ -31,43 +35,15 @@ interface Bloque {
   selector: 'app-pestana-trabajo',
   standalone: true,
   imports: [
-    NgIf, NgFor, NgClass, RouterLink, ReactiveFormsModule,
+    NgIf, NgFor, RouterLink, ReactiveFormsModule,
     CargandoComponent, EstadoVacioComponent, PastillaEstadoComponent,
     DialogoComponent, AvisoComponent, FechaPipe, PlazoPipe,
-    PaginadorComponent,
+    TablaDatosComponent, CeldaTablaDirective,
   ],
   templateUrl: './pestana-trabajo.component.html',
   styleUrl: './pestana-trabajo.component.css',
 })
 export class PestanaTrabajoComponent implements OnInit, OnChanges {
-
-  /**
-   * Diez por página, en el cliente, contando tareas y no unidades (ver {@link paginarBloques}).
-   * Se carga todo de una vez porque cada unidad lo filtra a su gusto ({@link temaFiltro}).
-   * Al cambiar de unidad se vuelve a la primera página.
-   */
-  readonly paginaActual = signal(0);
-
-  get totalElementos(): number {
-    return this.bloquesVisibles.reduce((total, bloque) => total + bloque.tareas.length, 0);
-  }
-
-  get totalPaginas(): number {
-    return totalDePaginas(this.totalElementos);
-  }
-
-  get paginaVisible(): number {
-    return Math.min(this.paginaActual(), this.totalPaginas - 1);
-  }
-
-  get bloquesPagina(): Bloque[] {
-    return paginarBloques(this.bloquesVisibles, bloque => bloque.tareas,
-      (bloque, tareas) => ({ ...bloque, tareas }), this.paginaVisible);
-  }
-
-  ngOnChanges(): void {
-    this.paginaActual.set(0);
-  }
 
   private readonly clasesService = inject(ClasesService);
   private readonly fb = inject(FormBuilder);
@@ -85,7 +61,78 @@ export class PestanaTrabajoComponent implements OnInit, OnChanges {
   /** Cómo llamar al agrupador en este modo de vista: "Unidad" o "Módulo". */
   @Input() etiquetaUnidad = 'Unidad';
 
-  readonly bloques = signal<Bloque[]>([]);
+  /**
+   * Los @Input como señal, para que filas, columnas y filtros se recalculen
+   * solos cuando el padre cambia de unidad o llegan las unidades.
+   */
+  private readonly contexto = signal({
+    temas: [] as Tema[], temaFiltro: undefined as string | null | undefined, puedoEditar: false, etiquetaUnidad: 'Unidad',
+  });
+
+  ngOnChanges(): void {
+    this.contexto.set({
+      temas: this.temas, temaFiltro: this.temaFiltro, puedoEditar: this.puedoEditar, etiquetaUnidad: this.etiquetaUnidad,
+    });
+    this.lista.reiniciar();
+  }
+
+  readonly tareas = signal<Tarea[]>([]);
+
+  /** Las tareas de la unidad elegida arriba ({@link temaFiltro}), con el título de su unidad. */
+  private readonly filas = computed<FilaTarea[]>(() => {
+    const { temas, temaFiltro } = this.contexto();
+    return this.tareas()
+      .filter(tarea => temaFiltro === undefined || (temaFiltro === null ? !tarea.topicId : tarea.topicId === temaFiltro))
+      .map(tarea => ({
+        ...tarea,
+        temaTitulo: temas.find(tema => tema.id === tarea.topicId)?.title ?? this.etiquetaSinUnidad,
+      }));
+  });
+
+  /** Con una unidad ya elegida arriba, la columna y el filtro de unidad sobran. */
+  private readonly mostrarUnidad = () => this.contexto().temaFiltro === undefined && this.contexto().temas.length > 0;
+
+  readonly lista = listaLocal(() => this.filas(), {
+    placeholderBusqueda: 'Buscar tarea',
+    textos: tarea => [tarea.title],
+    selectores: {
+      unidad: {
+        placeholder: 'Todas',
+        visible: this.mostrarUnidad,
+        opciones: () => [
+          ...this.contexto().temas.map(tema => ({ valor: tema.id, etiqueta: tema.title })),
+          { valor: SIN_UNIDAD, etiqueta: this.etiquetaSinUnidad },
+        ],
+        encaja: (tarea, valor) => valor === SIN_UNIDAD ? !tarea.topicId : tarea.topicId === valor,
+      },
+      estado: {
+        placeholder: 'Cualquier estado',
+        visible: () => !this.contexto().puedoEditar,
+        opciones: () => [
+          { valor: 'sin-empezar', etiqueta: 'Sin empezar' },
+          { valor: 'draft', etiqueta: 'Borrador' },
+          { valor: 'submitted', etiqueta: 'Entregada' },
+          { valor: 'graded', etiqueta: 'Calificada' },
+        ],
+        encaja: (tarea, valor) => this.estadoDe(tarea) === valor,
+      },
+    },
+    comparadores: {
+      title: (a, b) => comparar(a.title, b.title),
+      temaTitulo: (a, b) => comparar(a.temaTitulo, b.temaTitulo),
+      dueDate: (a, b) => comparar(a.dueDate, b.dueDate),
+      points: (a, b) => comparar(a.points, b.points),
+      estado: (a, b) => comparar(a.entregasRecibidas ?? this.estadoDe(a), b.entregasRecibidas ?? this.estadoDe(b)),
+    },
+  });
+
+  readonly columnas = computed<ColumnaTabla[]>(() => [
+    { campo: 'title', titulo: 'Tarea', ordenable: true },
+    ...(this.mostrarUnidad() ? [{ campo: 'temaTitulo', titulo: this.contexto().etiquetaUnidad, ordenable: true }] : []),
+    { campo: 'dueDate', titulo: 'Fecha límite', ordenable: true },
+    { campo: 'points', titulo: 'Puntos', alinear: 'derecha' as const, ordenable: true },
+    { campo: 'estado', titulo: this.contexto().puedoEditar ? 'Entregas' : 'Estado', ordenable: true },
+  ]);
   readonly cargando = signal(true);
   readonly error = signal<string | null>(null);
 
@@ -114,7 +161,7 @@ export class PestanaTrabajoComponent implements OnInit, OnChanges {
 
     this.clasesService.tareas(this.claseId).subscribe({
       next: (tareas) => {
-        this.bloques.set(this.agrupar(tareas));
+        this.tareas.set(tareas);
         this.cargando.set(false);
       },
       error: (err) => {
@@ -124,49 +171,12 @@ export class PestanaTrabajoComponent implements OnInit, OnChanges {
     });
   }
 
-  /**
-   * Reparte las tareas por tema conservando el orden que ya trae la API (por
-   * fecha de entrega), y deja al final las que no cuelgan de ningún tema.
-   */
-  private agrupar(tareas: Tarea[]): Bloque[] {
-    const porTema = new Map<string, Tarea[]>();
-    const sueltas: Tarea[] = [];
-
-    for (const tarea of tareas) {
-      if (!tarea.topicId) {
-        sueltas.push(tarea);
-        continue;
-      }
-      const lista = porTema.get(tarea.topicId) ?? [];
-      lista.push(tarea);
-      porTema.set(tarea.topicId, lista);
-    }
-
-    const bloques: Bloque[] = this.temas
-      .filter(tema => porTema.has(tema.id))
-      .map(tema => ({ tema, tareas: porTema.get(tema.id)! }));
-
-    if (sueltas.length) {
-      bloques.push({ tema: null, tareas: sueltas });
-    }
-    return bloques;
-  }
-
   get etiquetaUnidadMinuscula(): string {
     return this.etiquetaUnidad.toLowerCase();
   }
 
   get etiquetaSinUnidad(): string {
     return 'Sin ' + this.etiquetaUnidadMinuscula;
-  }
-
-  /** Los bloques que toca pintar, según {@link temaFiltro}. */
-  get bloquesVisibles(): Bloque[] {
-    const todos = this.bloques();
-    if (this.temaFiltro === undefined) {
-      return todos;
-    }
-    return todos.filter(b => this.temaFiltro === null ? b.tema === null : b.tema?.id === this.temaFiltro);
   }
 
   /** Estado que se muestra al alumnado: sin entrega todavía cuenta como "sin empezar". */

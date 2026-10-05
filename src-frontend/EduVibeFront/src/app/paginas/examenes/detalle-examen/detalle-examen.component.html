@@ -105,27 +105,41 @@
           <span class="pastilla pastilla-gris">{{ intentos().length }}</span>
         </div>
 
-        <app-estado-vacio *ngIf="!intentos().length"
-          titulo="Todavía no hay intentos"
-          descripcion="Aquí aparecerá el alumnado según vaya haciendo el examen."></app-estado-vacio>
+        <app-tabla-datos [plana]="true"
+          [columnas]="columnasIntentos"
+          [filas]="listaIntentos.visibles()"
+          [idFila]="idIntento"
+          [filtros]="listaIntentos.filtros()"
+          (limpiarFiltros)="listaIntentos.limpiarFiltros()"
+          [orden]="listaIntentos.orden()"
+          (ordenCambia)="listaIntentos.ordenar($event)"
+          [pagina]="listaIntentos.pagina()"
+          [totalPaginas]="listaIntentos.totalPaginas()"
+          [totalElementos]="listaIntentos.total()"
+          etiqueta="intento(s)"
+          (paginaCambia)="listaIntentos.irA($event)"
+          [tituloVacio]="listaIntentos.sinFiltrar() ? 'Ningún intento coincide' : 'Todavía no hay intentos'"
+          [descripcionVacia]="listaIntentos.sinFiltrar()
+            ? 'Prueba con otra búsqueda o quita los filtros.'
+            : 'Aquí aparecerá el alumnado según vaya haciendo el examen.'">
 
-        <div class="intento" *ngFor="let intento of paginacionIntentos.visibles()">
-          <app-avatar [nombre]="intento.studentName" [pequeno]="true"></app-avatar>
-
-          <span class="crecer" style="min-width:0;text-align:left">
-            <span class="alumno">{{ intento.studentName }}</span>
-            <span class="pequeno apagado bloque">
-              {{ intento.submittedAt ? ('Entregado ' + (intento.submittedAt | fecha)) : 'Sin entregar' }}
+          <ng-template appCeldaTabla="studentName" let-intento>
+            <span class="fila espaciado-sm">
+              <app-avatar [nombre]="intento.studentName" [pequeno]="true"></app-avatar>
+              <span>
+                <span class="alumno">{{ intento.studentName }}</span>
+                <span class="pequeno apagado bloque">
+                  {{ intento.submittedAt ? ('Entregado ' + (intento.submittedAt | fecha)) : 'Sin entregar' }}
+                </span>
+              </span>
             </span>
-          </span>
+          </ng-template>
 
-          <span class="nota-lista" *ngIf="intento.entregado">{{ intento.score }}</span>
-          <app-pastilla-estado *ngIf="!intento.entregado" [valor]="'en_curso'"></app-pastilla-estado>
-        </div>
-
-        <app-paginador class="pie-lista" [pagina]="paginacionIntentos.pagina()"
-          [totalPaginas]="paginacionIntentos.totalPaginas()" [totalElementos]="paginacionIntentos.total()"
-          etiqueta="intento(s)" (cambio)="paginacionIntentos.irA($event)"></app-paginador>
+          <ng-template appCeldaTabla="resultado" let-intento>
+            <span class="nota-lista" *ngIf="intento.entregado">{{ intento.score }}</span>
+            <app-pastilla-estado *ngIf="!intento.entregado" [valor]="'en_curso'"></app-pastilla-estado>
+          </ng-template>
+        </app-tabla-datos>
 
         <div class="tarjeta-cuerpo">
           <button type="button" class="boton boton-peligro crecer" [disabled]="borrando()" (click)="eliminar()">

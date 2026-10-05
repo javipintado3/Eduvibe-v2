@@ -77,15 +77,6 @@
 
 /* ----------------------------------------------------------- lista de intentos */
 
-.intento {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 11px 18px;
-  border-bottom: 1px solid var(--borde-sutil);
-}
-
-.intento:last-child { border-bottom: none; }
 
 .alumno { font-weight: 550; font-size: .9rem; display: block; }
 

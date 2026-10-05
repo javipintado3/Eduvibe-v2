@@ -8,11 +8,12 @@ import { DetalleExamen, IntentoResumenExamen, PreguntaExamen } from '../../../co
 import { AvatarComponent } from '../../../shared/avatar/avatar.component';
 import { AvisoComponent } from '../../../shared/aviso/aviso.component';
 import { CargandoComponent } from '../../../shared/cargando/cargando.component';
-import { EstadoVacioComponent } from '../../../shared/estado-vacio/estado-vacio.component';
 import { PastillaEstadoComponent } from '../../../shared/pastilla-estado/pastilla-estado.component';
 import { FechaPipe, PlazoPipe } from '../../../shared/pipes/fecha.pipe';
-import { PaginadorComponent } from '../../../shared/paginador/paginador.component';
-import { paginacionLocal } from '../../../core/utils/paginacion';
+import { CeldaTablaDirective } from '../../../shared/tabla-datos/celda-tabla.directive';
+import { TablaDatosComponent } from '../../../shared/tabla-datos/tabla-datos.component';
+import { ColumnaTabla } from '../../../shared/tabla-datos/tabla-datos.tipos';
+import { comparar, listaLocal } from '../../../core/utils/lista-local';
 
 /**
  * Pantalla de aterrizaje de un examen. Es dos pantallas en una, según quién la abra:
@@ -28,17 +29,41 @@ import { paginacionLocal } from '../../../core/utils/paginacion';
   standalone: true,
   imports: [
     NgIf, NgFor, RouterLink,
-    CargandoComponent, EstadoVacioComponent, PastillaEstadoComponent, AvatarComponent,
+    CargandoComponent, PastillaEstadoComponent, AvatarComponent,
     AvisoComponent, FechaPipe, PlazoPipe,
-    PaginadorComponent,
+    TablaDatosComponent, CeldaTablaDirective,
   ],
   templateUrl: './detalle-examen.component.html',
   styleUrl: './detalle-examen.component.css',
 })
 export class DetalleExamenComponent implements OnInit {
 
-  /** Diez intentos por página en la lista de resultados. */
-  readonly paginacionIntentos = paginacionLocal(() => this.intentos());
+  /** Búsqueda por alumno, filtro por estado y orden de la lista de resultados, de diez en diez. */
+  readonly listaIntentos = listaLocal(() => this.intentos(), {
+    placeholderBusqueda: 'Buscar alumno',
+    textos: intento => [intento.studentName],
+    selectores: {
+      estado: {
+        placeholder: 'Todos',
+        opciones: () => [
+          { valor: 'entregado', etiqueta: 'Entregados' },
+          { valor: 'en_curso', etiqueta: 'En curso' },
+        ],
+        encaja: (intento, valor) => (intento.entregado ? 'entregado' : 'en_curso') === valor,
+      },
+    },
+    comparadores: {
+      studentName: (a, b) => comparar(a.studentName, b.studentName),
+      resultado: (a, b) => comparar(a.score, b.score),
+    },
+  });
+
+  readonly idIntento = (intento: IntentoResumenExamen) => intento.attemptId;
+
+  readonly columnasIntentos: ColumnaTabla[] = [
+    { campo: 'studentName', titulo: 'Alumno', ordenable: true },
+    { campo: 'resultado', titulo: 'Nota', alinear: 'derecha', ordenable: true },
+  ];
 
   private readonly examenesService = inject(ExamenesService);
   private readonly confirmacion = inject(ConfirmacionService);

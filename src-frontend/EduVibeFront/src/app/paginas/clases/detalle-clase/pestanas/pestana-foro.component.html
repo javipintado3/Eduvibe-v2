@@ -13,33 +13,35 @@
 
 <ng-container *ngIf="!cargando()">
 
-  <div class="tarjeta" *ngIf="!hilosVisibles.length">
-    <app-estado-vacio
-      titulo="Todavía no hay hilos"
-      descripcion="Abre el primero para empezar el debate.">
-      <button type="button" class="boton boton-suave mt-2" (click)="abrirDialogo()">
-        Abrir el primer hilo
-      </button>
-    </app-estado-vacio>
-  </div>
+  <app-tabla-datos
+    [columnas]="columnas()"
+    [filas]="lista.visibles()"
+    [filtros]="lista.filtros()"
+    (limpiarFiltros)="lista.limpiarFiltros()"
+    [orden]="lista.orden()"
+    (ordenCambia)="lista.ordenar($event)"
+    [pagina]="lista.pagina()"
+    [totalPaginas]="lista.totalPaginas()"
+    [totalElementos]="lista.total()"
+    etiqueta="hilo(s)"
+    (paginaCambia)="lista.irA($event)"
+    [tituloVacio]="lista.sinFiltrar() ? 'Ningún hilo coincide' : 'Todavía no hay hilos'"
+    [descripcionVacia]="lista.sinFiltrar()
+      ? 'Prueba con otra búsqueda o quita los filtros.'
+      : 'Abre el primero para empezar el debate.'">
 
-  <div class="tarjeta" *ngIf="hilosVisibles.length">
-    <a class="tarea" *ngFor="let hilo of hilosPagina" [routerLink]="['/foro', hilo.id]">
-      <span class="crecer" style="min-width:0">
-        <span class="titulo">{{ hilo.title }}</span>
-        <span class="meta">
-          {{ hilo.authorName }}<ng-container *ngIf="temaFiltro === undefined"> · {{ tituloDelTema(hilo.topicId) }}</ng-container>
-          <span class="apagado"> · última actividad {{ hilo.lastActivityAt | fecha }}</span>
-        </span>
-      </span>
+    <ng-template appCeldaTabla="title" let-hilo>
+      <a [routerLink]="['/foro', hilo.id]" class="fuerte">{{ hilo.title }}</a>
+    </ng-template>
 
-      <span class="pastilla pastilla-gris">{{ hilo.postCount }} mensaje(s)</span>
-    </a>
-  </div>
+    <ng-template appCeldaTabla="postCount" let-hilo>
+      <span class="pastilla pastilla-gris">{{ hilo.postCount }}</span>
+    </ng-template>
 
-  <app-paginador [pagina]="paginaVisible" [totalPaginas]="totalPaginas"
-    [totalElementos]="hilosVisibles.length" etiqueta="hilo(s)"
-    (cambio)="paginaActual.set($event)"></app-paginador>
+    <ng-template appCeldaTabla="lastActivityAt" let-hilo>
+      <span class="pequeno apagado">{{ hilo.lastActivityAt | fecha }}</span>
+    </ng-template>
+  </app-tabla-datos>
 </ng-container>
 
 <!-- Alta de hilo -->

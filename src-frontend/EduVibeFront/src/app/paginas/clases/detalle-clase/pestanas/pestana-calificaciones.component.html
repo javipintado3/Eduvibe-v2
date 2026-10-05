@@ -15,14 +15,18 @@
   </div>
   <app-tabla-datos
     [columnas]="columnas"
-    [filas]="paginacion.visibles()"
-    [pagina]="paginacion.pagina()"
-    [totalPaginas]="paginacion.totalPaginas()"
-    [totalElementos]="paginacion.total()"
+    [filas]="lista.visibles()"
+    [filtros]="lista.filtros()"
+    (limpiarFiltros)="lista.limpiarFiltros()"
+    [orden]="lista.orden()"
+    (ordenCambia)="lista.ordenar($event)"
+    [pagina]="lista.pagina()"
+    [totalPaginas]="lista.totalPaginas()"
+    [totalElementos]="lista.total()"
     etiqueta="entrega(s)"
-    (paginaCambia)="paginacion.irA($event)"
-    tituloVacio="Todavía no has entregado nada"
-    descripcionVacia="Las tareas que entregues aparecerán aquí con su calificación.">
+    (paginaCambia)="lista.irA($event)"
+    [tituloVacio]="lista.sinFiltrar() ? 'Ninguna entrega coincide' : 'Todavía no has entregado nada'"
+    [descripcionVacia]="lista.sinFiltrar() ? 'Prueba con otra búsqueda o quita los filtros.' : 'Las tareas que entregues aparecerán aquí con su calificación.'">
 
     <ng-template appCeldaTabla="assignmentTitle" let-entrega>
       <a [routerLink]="['/tareas', entrega.assignmentId]" class="fuerte">{{ entrega.assignmentTitle }}</a>

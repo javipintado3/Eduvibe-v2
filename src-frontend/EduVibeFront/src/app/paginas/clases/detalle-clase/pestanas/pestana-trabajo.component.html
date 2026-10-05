@@ -13,57 +13,46 @@
 
 <ng-container *ngIf="!cargando()">
 
-  <div class="tarjeta" *ngIf="!bloquesVisibles.length">
-    <app-estado-vacio
-      titulo="Todavía no hay tareas"
-      [descripcion]="puedoEditar
-        ? 'Crea la primera tarea de la clase.'
-        : 'Cuando el profesorado publique una tarea, aparecerá aquí.'">
-      <button type="button" class="boton boton-suave mt-2" *ngIf="puedoEditar" (click)="abrirDialogo()">
-        Crear la primera tarea
-      </button>
-    </app-estado-vacio>
-  </div>
+  <app-tabla-datos
+    [columnas]="columnas()"
+    [filas]="lista.visibles()"
+    [filtros]="lista.filtros()"
+    (limpiarFiltros)="lista.limpiarFiltros()"
+    [orden]="lista.orden()"
+    (ordenCambia)="lista.ordenar($event)"
+    [pagina]="lista.pagina()"
+    [totalPaginas]="lista.totalPaginas()"
+    [totalElementos]="lista.total()"
+    etiqueta="tarea(s)"
+    (paginaCambia)="lista.irA($event)"
+    [tituloVacio]="lista.sinFiltrar() ? 'Ninguna tarea coincide' : 'Todavía no hay tareas'"
+    [descripcionVacia]="lista.sinFiltrar()
+      ? 'Prueba con otra búsqueda o quita los filtros.'
+      : puedoEditar ? 'Crea la primera tarea de la clase.' : 'Cuando el profesorado publique una tarea, aparecerá aquí.'">
 
-  <section class="bloque" *ngFor="let bloque of bloquesPagina">
-    <h3 class="titulo-bloque" *ngIf="temaFiltro === undefined">{{ bloque.tema?.title || etiquetaSinUnidad }}</h3>
+    <ng-template appCeldaTabla="title" let-tarea>
+      <a [routerLink]="['/tareas', tarea.id]" class="fuerte">{{ tarea.title }}</a>
+    </ng-template>
 
-    <div class="tarjeta">
-      <a class="tarea" *ngFor="let tarea of bloque.tareas" [routerLink]="['/tareas', tarea.id]">
+    <ng-template appCeldaTabla="dueDate" let-tarea>
+      <ng-container *ngIf="tarea.dueDate; else sinFecha">
+        {{ tarea.dueDate | plazo }}
+        <span class="pequeno apagado bloque">{{ tarea.dueDate | fecha }}</span>
+      </ng-container>
+      <ng-template #sinFecha><span class="apagado">Sin fecha límite</span></ng-template>
+    </ng-template>
 
-        <span class="icono" [ngClass]="tarea.haVencido ? 'icono-gris' : 'icono-verde'">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-          </svg>
-        </span>
-
-        <span class="crecer" style="min-width:0">
-          <span class="titulo">{{ tarea.title }}</span>
-          <span class="meta">
-            {{ tarea.dueDate ? (tarea.dueDate | plazo) : 'Sin fecha límite' }}
-            <span class="apagado" *ngIf="tarea.dueDate"> · {{ tarea.dueDate | fecha }}</span>
-            <span class="apagado"> · {{ tarea.points }} puntos</span>
-          </span>
-        </span>
-
-        <!-- Vista de alumnado -->
-        <span class="fila espaciado-sm" *ngIf="tarea.entregasRecibidas === null">
-          <span class="pastilla pastilla-roja" *ngIf="tarea.miEntregaTarde">Tarde</span>
-          <app-pastilla-estado [valor]="estadoDe(tarea)"></app-pastilla-estado>
-        </span>
-
-        <!-- Vista de profesorado -->
-        <span class="pastilla pastilla-gris" *ngIf="tarea.entregasRecibidas !== null">
-          {{ tarea.entregasRecibidas }} entrega(s)
-        </span>
-      </a>
-    </div>
-  </section>
-
-  <app-paginador [pagina]="paginaVisible" [totalPaginas]="totalPaginas"
-    [totalElementos]="totalElementos" etiqueta="tarea(s)"
-    (cambio)="paginaActual.set($event)"></app-paginador>
+    <ng-template appCeldaTabla="estado" let-tarea>
+      <!-- Alumnado: el estado de su entrega; profesorado: cuántas lleva recibidas -->
+      <ng-container *ngIf="tarea.entregasRecibidas === null; else recibidas">
+        <span class="pastilla pastilla-roja separado" *ngIf="tarea.miEntregaTarde">Tarde</span>
+        <app-pastilla-estado [valor]="estadoDe(tarea)"></app-pastilla-estado>
+      </ng-container>
+      <ng-template #recibidas>
+        <span class="pastilla pastilla-gris">{{ tarea.entregasRecibidas }} entrega(s)</span>
+      </ng-template>
+    </ng-template>
+  </app-tabla-datos>
 </ng-container>
 
 <!-- Alta de tarea -->

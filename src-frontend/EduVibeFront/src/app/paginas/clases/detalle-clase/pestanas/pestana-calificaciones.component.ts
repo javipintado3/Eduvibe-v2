@@ -12,7 +12,7 @@ import { FechaPipe } from '../../../../shared/pipes/fecha.pipe';
 import { CeldaTablaDirective } from '../../../../shared/tabla-datos/celda-tabla.directive';
 import { TablaDatosComponent } from '../../../../shared/tabla-datos/tabla-datos.component';
 import { ColumnaTabla } from '../../../../shared/tabla-datos/tabla-datos.tipos';
-import { paginacionLocal } from '../../../../core/utils/paginacion';
+import { comparar, listaLocal } from '../../../../core/utils/lista-local';
 
 /**
  * Pestaña "Calificaciones" del alumnado: sus entregas en esta clase, con la
@@ -39,14 +39,34 @@ import { paginacionLocal } from '../../../../core/utils/paginacion';
 })
 export class PestanaCalificacionesComponent implements OnInit {
 
-  /** Diez por página; la media se calcula con todas las entregas, no solo con las de la página. */
-  readonly paginacion = paginacionLocal(() => this.entregas());
+  /** La media se calcula con todas las entregas, no solo con las de la página ni con las que dejen los filtros. */
+  readonly lista = listaLocal(() => this.entregas(), {
+    placeholderBusqueda: 'Buscar tarea',
+    textos: entrega => [entrega.assignmentTitle],
+    selectores: {
+      status: {
+        placeholder: 'Todos los estados',
+        opciones: () => [
+          { valor: 'graded', etiqueta: 'Calificadas' },
+          { valor: 'submitted', etiqueta: 'Entregadas' },
+          { valor: 'draft', etiqueta: 'Borrador' },
+        ],
+        encaja: (entrega, valor) => entrega.status === valor,
+      },
+    },
+    comparadores: {
+      assignmentTitle: (a, b) => comparar(a.assignmentTitle, b.assignmentTitle),
+      status: (a, b) => comparar(a.status, b.status),
+      submittedAt: (a, b) => comparar(a.submittedAt, b.submittedAt),
+      grade: (a, b) => comparar(a.grade?.score, b.grade?.score),
+    },
+  });
 
   readonly columnas: ColumnaTabla[] = [
-    { campo: 'assignmentTitle', titulo: 'Tarea' },
-    { campo: 'status', titulo: 'Estado' },
-    { campo: 'submittedAt', titulo: 'Entregada' },
-    { campo: 'grade', titulo: 'Nota', alinear: 'derecha' },
+    { campo: 'assignmentTitle', titulo: 'Tarea', ordenable: true },
+    { campo: 'status', titulo: 'Estado', ordenable: true },
+    { campo: 'submittedAt', titulo: 'Entregada', ordenable: true },
+    { campo: 'grade', titulo: 'Nota', alinear: 'derecha', ordenable: true },
   ];
 
   private readonly clasesService = inject(ClasesService);

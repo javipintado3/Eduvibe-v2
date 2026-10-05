@@ -13,59 +13,48 @@
 
 <ng-container *ngIf="!cargando()">
 
-  <div class="tarjeta" *ngIf="!bloquesVisibles.length">
-    <app-estado-vacio
-      titulo="Todavía no hay exámenes"
-      [descripcion]="puedoEditar
-        ? 'Crea el primer examen de la clase.'
-        : 'Cuando el profesorado publique un examen, aparecerá aquí.'">
-      <button type="button" class="boton boton-suave mt-2" *ngIf="puedoEditar" (click)="abrirDialogo()">
-        Crear el primer examen
-      </button>
-    </app-estado-vacio>
-  </div>
+  <app-tabla-datos
+    [columnas]="columnas()"
+    [filas]="lista.visibles()"
+    [filtros]="lista.filtros()"
+    (limpiarFiltros)="lista.limpiarFiltros()"
+    [orden]="lista.orden()"
+    (ordenCambia)="lista.ordenar($event)"
+    [pagina]="lista.pagina()"
+    [totalPaginas]="lista.totalPaginas()"
+    [totalElementos]="lista.total()"
+    etiqueta="examen(es)"
+    (paginaCambia)="lista.irA($event)"
+    [tituloVacio]="lista.sinFiltrar() ? 'Ningún examen coincide' : 'Todavía no hay exámenes'"
+    [descripcionVacia]="lista.sinFiltrar()
+      ? 'Prueba con otra búsqueda o quita los filtros.'
+      : puedoEditar ? 'Crea el primer examen de la clase.' : 'Cuando el profesorado publique un examen, aparecerá aquí.'">
 
-  <section class="bloque" *ngFor="let bloque of bloquesPagina">
-    <h3 class="titulo-bloque" *ngIf="temaFiltro === undefined">{{ bloque.tema?.title || etiquetaSinUnidad }}</h3>
+    <ng-template appCeldaTabla="title" let-examen>
+      <a [routerLink]="['/examenes', examen.id]" class="fuerte">{{ examen.title }}</a>
+    </ng-template>
 
-    <div class="tarjeta">
-      <a class="examen" *ngFor="let examen of bloque.examenes" [routerLink]="['/examenes', examen.id]">
+    <ng-template appCeldaTabla="dueDate" let-examen>
+      <ng-container *ngIf="examen.dueDate; else sinFecha">
+        {{ examen.dueDate | plazo }}
+        <span class="pequeno apagado bloque">{{ examen.dueDate | fecha }}</span>
+      </ng-container>
+      <ng-template #sinFecha><span class="apagado">Sin fecha límite</span></ng-template>
+    </ng-template>
 
-        <span class="icono" [ngClass]="examen.haVencido ? 'icono-gris' : 'icono-ambar'">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>
-          </svg>
-        </span>
+    <ng-template appCeldaTabla="durationMinutes" let-examen>{{ examen.durationMinutes }} min</ng-template>
 
-        <span class="crecer" style="min-width:0">
-          <span class="titulo">{{ examen.title }}</span>
-          <span class="meta">
-            {{ examen.dueDate ? (examen.dueDate | plazo) : 'Sin fecha límite' }}
-            <span class="apagado"> · {{ examen.durationMinutes }} min</span>
-            <span class="apagado"> · {{ examen.numeroPreguntas }} pregunta(s)</span>
-          </span>
-        </span>
-
-        <!-- Vista de alumnado -->
-        <span class="fila espaciado-sm" *ngIf="examen.intentosRecibidos === null">
-          <span class="pastilla pastilla-verde" *ngIf="examen.miEstado === 'entregado'">
-            {{ examen.miNota }} pts
-          </span>
-          <app-pastilla-estado [valor]="estadoDe(examen)"></app-pastilla-estado>
-        </span>
-
-        <!-- Vista de profesorado -->
-        <span class="pastilla pastilla-gris" *ngIf="examen.intentosRecibidos !== null">
-          {{ examen.intentosRecibidos }} intento(s)
-        </span>
-      </a>
-    </div>
-  </section>
-
-  <app-paginador [pagina]="paginaVisible" [totalPaginas]="totalPaginas"
-    [totalElementos]="totalElementos" etiqueta="examen(es)"
-    (cambio)="paginaActual.set($event)"></app-paginador>
+    <ng-template appCeldaTabla="estado" let-examen>
+      <!-- Alumnado: su nota y su estado; profesorado: cuántos intentos lleva recibidos -->
+      <ng-container *ngIf="examen.intentosRecibidos === null; else recibidos">
+        <span class="pastilla pastilla-verde separado" *ngIf="examen.miEstado === 'entregado'">{{ examen.miNota }} pts</span>
+        <app-pastilla-estado [valor]="estadoDe(examen)"></app-pastilla-estado>
+      </ng-container>
+      <ng-template #recibidos>
+        <span class="pastilla pastilla-gris">{{ examen.intentosRecibidos }} intento(s)</span>
+      </ng-template>
+    </ng-template>
+  </app-tabla-datos>
 </ng-container>
 
 <!-- Alta de examen -->
