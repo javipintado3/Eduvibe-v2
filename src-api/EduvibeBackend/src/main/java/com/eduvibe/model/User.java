@@ -103,6 +103,11 @@ public class User {
         this.status = UserStatus.ACTIVE;
     }
 
+    /** Cambia la contraseña de una cuenta que ya existe, sin tocar su estado. */
+    public void cambiarPassword(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
     /** Solo las cuentas activas y con contraseña pueden iniciar sesión. */
     public boolean puedeIniciarSesion() {
         return status == UserStatus.ACTIVE && passwordHash != null;

@@ -1,13 +1,7 @@
 package com.eduvibe.service;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Base64;
-import java.util.HexFormat;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -21,6 +15,7 @@ import com.eduvibe.model.Invitation;
 import com.eduvibe.model.User;
 import com.eduvibe.repository.InvitationRepository;
 import com.eduvibe.repository.UserRepository;
+import com.eduvibe.util.Tokens;
 
 import lombok.RequiredArgsConstructor;
 
@@ -39,11 +34,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class InvitationService {
 
-    /** 32 bytes de entropía: suficiente para que el token no sea adivinable. */
-    private static final int BYTES_DEL_TOKEN = 32;
-
-    private static final SecureRandom ALEATORIO = new SecureRandom();
-
     private final InvitationRepository invitationRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -60,11 +50,11 @@ public class InvitationService {
     public InvitationResponse emitirPara(User usuario) {
         invitationRepository.invalidarPendientesDe(usuario.getId());
 
-        String token = generarToken();
+        String token = Tokens.generar();
         Instant caducidad = Instant.now()
                 .plus(Duration.ofHours(propiedades.invitation().expirationHours()));
 
-        invitationRepository.save(new Invitation(usuario, hashear(token), caducidad));
+        invitationRepository.save(new Invitation(usuario, Tokens.hashear(token), caducidad));
 
         String enlace = construirEnlace(token);
         boolean enviado = mailService.enviarInvitacion(usuario, enlace);
@@ -113,30 +103,10 @@ public class InvitationService {
      * existido alguna vez.
      */
     private Invitation buscarUtilizable(String token) {
-        return invitationRepository.findByTokenHash(hashear(token))
+        return invitationRepository.findByTokenHash(Tokens.hashear(token))
                 .filter(Invitation::esUtilizable)
                 .orElseThrow(() -> new BadRequestException(
                         "La invitación no es válida o ha caducado. Pide que te la vuelvan a enviar."));
-    }
-
-    private String generarToken() {
-        byte[] bytes = new byte[BYTES_DEL_TOKEN];
-        ALEATORIO.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-
-    /**
-     * SHA-256 basta aquí, a diferencia de con las contraseñas: el token tiene
-     * 256 bits de entropía, así que no hay diccionario que probar y no hace
-     * falta un algoritmo deliberadamente lento.
-     */
-    private String hashear(String token) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(digest.digest(token.getBytes(StandardCharsets.UTF_8)));
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 debería estar disponible siempre", e);
-        }
     }
 
     private String construirEnlace(String token) {

@@ -29,6 +29,20 @@ export const routes: Routes = [
       .then(m => m.LoginComponent),
   },
   {
+    path: 'olvide-contrasena',
+    canActivate: [invitadoGuard],
+    title: 'Recuperar contraseña · Eduvibe',
+    loadComponent: () => import('./paginas/olvide-contrasena/olvide-contrasena.component')
+      .then(m => m.OlvideContrasenaComponent),
+  },
+  {
+    path: 'restablecer/:token',
+    canActivate: [invitadoGuard],
+    title: 'Nueva contraseña · Eduvibe',
+    loadComponent: () => import('./paginas/restablecer-contrasena/restablecer-contrasena.component')
+      .then(m => m.RestablecerContrasenaComponent),
+  },
+  {
     path: 'invitacion/:token',
     title: 'Activar cuenta · Eduvibe',
     loadComponent: () => import('./paginas/invitacion/invitacion.component')

@@ -5,7 +5,9 @@ import { catchError, throwError } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 
 /** Rutas que no necesitan sesión, y en las que un 401 es una respuesta normal. */
-const RUTAS_PUBLICAS = ['/auth/login', '/auth/invitations', '/health'];
+const RUTAS_PUBLICAS = [
+  '/auth/login', '/auth/invitations', '/auth/forgot-password', '/auth/reset-password', '/health',
+];
 
 const esRutaPublica = (url: string) => RUTAS_PUBLICAS.some(ruta => url.includes(ruta));
 

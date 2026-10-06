@@ -67,6 +67,10 @@
           </span>
         </div>
 
+        <p class="mb-1 mt-0" style="text-align:right">
+          <a routerLink="/olvide-contrasena" class="pequeno">¿Has olvidado tu contraseña?</a>
+        </p>
+
         <button type="submit" class="boton boton-primario boton-bloque mt-1" [disabled]="enviando()">
           <span class="cargando" *ngIf="enviando()" style="width:15px;height:15px;border-color:rgba(255,255,255,.4);border-top-color:#fff"></span>
           {{ enviando() ? 'Entrando…' : 'Entrar' }}

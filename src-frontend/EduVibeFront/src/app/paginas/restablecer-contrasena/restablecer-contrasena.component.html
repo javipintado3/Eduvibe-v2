@@ -1,0 +1,48 @@
+<div class="pagina">
+  <div class="caja">
+
+    <div class="centrado mb-3">
+      <app-logo [size]="36"></app-logo>
+    </div>
+
+    <div class="tarjeta">
+      <div class="tarjeta-cuerpo">
+
+        <h2 class="mb-1">Elige una contraseña nueva</h2>
+        <p class="apagado mb-3">Después podrás entrar con ella.</p>
+
+        <app-aviso class="mb-2" tipo="error" [mensaje]="error()"></app-aviso>
+
+        <form [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
+
+          <div class="campo">
+            <label class="etiqueta" for="password">Contraseña nueva</label>
+            <input id="password" type="password" class="entrada" formControlName="password"
+                   [class.invalida]="campoInvalido('password')"
+                   autocomplete="new-password" placeholder="Mínimo 8 caracteres">
+            <span class="error-campo" *ngIf="campoInvalido('password')">
+              La contraseña debe tener al menos 8 caracteres
+            </span>
+          </div>
+
+          <div class="campo">
+            <label class="etiqueta" for="repetir">Repite la contraseña</label>
+            <input id="repetir" type="password" class="entrada" formControlName="repetir"
+                   [class.invalida]="noCoinciden" autocomplete="new-password">
+            <span class="error-campo" *ngIf="noCoinciden">
+              Las dos contraseñas no coinciden
+            </span>
+          </div>
+
+          <button type="submit" class="boton boton-primario boton-bloque mt-1" [disabled]="enviando()">
+            {{ enviando() ? 'Guardando…' : 'Guardar contraseña' }}
+          </button>
+        </form>
+
+        <p class="centrado mt-2 mb-0">
+          <a routerLink="/olvide-contrasena" class="pequeno">Pedir un enlace nuevo</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

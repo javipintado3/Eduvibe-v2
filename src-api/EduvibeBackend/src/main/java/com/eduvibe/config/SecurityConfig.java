@@ -91,6 +91,10 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.GET, "/api/auth/invitations/*").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/auth/invitations/*/accept").permitAll()
 
+                    // Recuperar la contraseña de una cuenta existente
+                    .requestMatchers(HttpMethod.POST, "/api/auth/forgot-password").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/auth/reset-password/*").permitAll()
+
                     // Comprobación de estado, para el despliegue
                     .requestMatchers(HttpMethod.GET, "/api/health").permitAll()
 

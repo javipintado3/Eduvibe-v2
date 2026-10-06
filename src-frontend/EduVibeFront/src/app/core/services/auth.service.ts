@@ -65,6 +65,16 @@ export class AuthService {
       .pipe(tap(respuesta => this.guardarSesion(respuesta)));
   }
 
+  /** Pide un enlace para elegir otra contraseña. Responde igual exista o no el email. */
+  olvideMiContrasena(email: string): Observable<void> {
+    return this.http.post<void>(`${this.api}/auth/forgot-password`, { email });
+  }
+
+  /** Establece la contraseña nueva con el enlace recibido por correo. */
+  restablecerContrasena(token: string, password: string): Observable<void> {
+    return this.http.post<void>(`${this.api}/auth/reset-password/${token}`, { password });
+  }
+
   /** Relee el usuario del servidor; sirve para detectar un token ya caducado. */
   refrescarUsuario(): Observable<Usuario> {
     return this.http.get<Usuario>(`${this.api}/auth/me`)

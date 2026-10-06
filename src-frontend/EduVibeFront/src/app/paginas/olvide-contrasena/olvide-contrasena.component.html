@@ -1,0 +1,58 @@
+<div class="pagina">
+  <div class="caja">
+
+    <div class="centrado mb-3">
+      <app-logo [size]="36"></app-logo>
+    </div>
+
+    <div class="tarjeta">
+      <div class="tarjeta-cuerpo">
+
+        <!-- Petición enviada -->
+        <ng-container *ngIf="enviado(); else formularioEmail">
+          <h2 class="mb-1">Revisa tu correo</h2>
+          <p class="apagado">
+            Si existe una cuenta con ese email, te hemos enviado un enlace para elegir
+            una contraseña nueva. El enlace caduca en una hora.
+          </p>
+          <p class="pequeno apagado mb-3">
+            ¿No te llega? Mira en la carpeta de spam o espera un minuto antes de pedirlo otra vez.
+          </p>
+          <a routerLink="/login" class="boton boton-secundario boton-bloque">Volver a entrar</a>
+        </ng-container>
+
+        <!-- Formulario -->
+        <ng-template #formularioEmail>
+          <h2 class="mb-1">¿Has olvidado tu contraseña?</h2>
+          <p class="apagado mb-3">
+            Escribe el email de tu cuenta y te enviaremos un enlace para elegir otra.
+          </p>
+
+          <app-aviso class="mb-2" tipo="error" [mensaje]="error()"></app-aviso>
+
+          <form [formGroup]="formulario" (ngSubmit)="enviar()" novalidate>
+
+            <div class="campo">
+              <label class="etiqueta" for="email">Email</label>
+              <input id="email" type="email" class="entrada" formControlName="email"
+                     [class.invalida]="campoInvalido()"
+                     autocomplete="username" placeholder="nombre@centro.es">
+              <span class="error-campo" *ngIf="campoInvalido()">
+                Escribe un email válido
+              </span>
+            </div>
+
+            <button type="submit" class="boton boton-primario boton-bloque mt-1" [disabled]="enviando()">
+              {{ enviando() ? 'Enviando…' : 'Enviar enlace' }}
+            </button>
+          </form>
+
+          <p class="centrado mt-2 mb-0">
+            <a routerLink="/login" class="pequeno">Volver a entrar</a>
+          </p>
+        </ng-template>
+
+      </div>
+    </div>
+  </div>
+</div>

@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
@@ -30,6 +31,46 @@ public class MailService {
 
     @Value("${spring.mail.username:}")
     private String remitente;
+
+    /**
+     * Enlace para elegir una contraseña nueva.
+     *
+     * Va en segundo plano (@Async) para que la petición no tarde más cuando el
+     * email existe que cuando no: esa diferencia de tiempo delataría qué
+     * direcciones están dadas de alta, aunque la respuesta sea idéntica.
+     */
+    @Async
+    public void enviarRestablecimiento(User destinatario, String enlace) {
+        if (remitente == null || remitente.isBlank()) {
+            LOG.info("Correo no configurado. Enlace para restablecer la contraseña de {}: {}",
+                    destinatario.getEmail(), enlace);
+            return;
+        }
+
+        try {
+            SimpleMailMessage mensaje = new SimpleMailMessage();
+            mensaje.setFrom(remitente);
+            mensaje.setTo(destinatario.getEmail());
+            mensaje.setSubject("Restablece tu contraseña de Eduvibe");
+            mensaje.setText("""
+                    Hola %s:
+
+                    Has pedido restablecer tu contraseña en Eduvibe. Para elegir una
+                    nueva, entra en este enlace:
+
+                    %s
+
+                    El enlace sirve una sola vez y caduca pronto. Si no lo has pedido
+                    tú, ignora este correo: tu contraseña no cambiará.
+                    """.formatted(destinatario.getName(), enlace));
+
+            mailSender.send(mensaje);
+
+        } catch (Exception e) {
+            LOG.warn("No se ha podido enviar el restablecimiento a {}: {}",
+                    destinatario.getEmail(), e.getMessage());
+        }
+    }
 
     /**
      * @return true si el correo ha salido; false si no hay remitente

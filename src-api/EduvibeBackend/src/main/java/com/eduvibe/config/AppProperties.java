@@ -16,6 +16,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param frontendUrl URL pública del frontend, para componer los enlaces de invitación
  * @param invitation plazo de las invitaciones de alta
  * @param login      límite de intentos de inicio de sesión
+ * @param passwordReset plazo de los enlaces de "olvidé mi contraseña"
  */
 @ConfigurationProperties(prefix = "app")
 public record AppProperties(
@@ -23,7 +24,8 @@ public record AppProperties(
         Jwt jwt,
         String frontendUrl,
         Invitation invitation,
-        Login login) {
+        Login login,
+        PasswordReset passwordReset) {
 
     public record Cors(List<String> allowedOrigins) {
     }
@@ -43,5 +45,9 @@ public record AppProperties(
      * @param lockoutMinutes    minutos que dura el bloqueo
      */
     public record Login(int maxFailedAttempts, long lockoutMinutes) {
+    }
+
+    /** @param expirationMinutes minutos que vale un enlace de "olvidé mi contraseña" */
+    public record PasswordReset(long expirationMinutes) {
     }
 }

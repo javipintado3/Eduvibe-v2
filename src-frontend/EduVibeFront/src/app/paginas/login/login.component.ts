@@ -1,7 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { NgFor, NgIf } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../core/services/auth.service';
 import { AvisoComponent } from '../../shared/aviso/aviso.component';
@@ -28,7 +28,7 @@ interface CuentaDemo {
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [NgIf, NgFor, ReactiveFormsModule, AvisoComponent, LogoComponent],
+  imports: [NgIf, NgFor, ReactiveFormsModule, RouterLink, AvisoComponent, LogoComponent],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css',
 })

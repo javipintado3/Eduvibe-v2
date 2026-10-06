@@ -11,11 +11,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.eduvibe.dto.auth.AcceptInvitationRequest;
 import com.eduvibe.dto.auth.AuthResponse;
+import com.eduvibe.dto.auth.ForgotPasswordRequest;
 import com.eduvibe.dto.auth.InvitationInfoResponse;
 import com.eduvibe.dto.auth.LoginRequest;
+import com.eduvibe.dto.auth.ResetPasswordRequest;
 import com.eduvibe.dto.user.UserResponse;
 import com.eduvibe.service.AuthService;
 import com.eduvibe.service.InvitationService;
+import com.eduvibe.service.PasswordResetService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +40,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final InvitationService invitationService;
+    private final PasswordResetService passwordResetService;
 
     /** Inicio de sesión con email y contraseña. */
     @PostMapping("/login")
@@ -70,5 +74,26 @@ public class AuthController {
             @Valid @RequestBody AcceptInvitationRequest peticion) {
 
         return ResponseEntity.ok(authService.aceptarInvitacion(token, peticion));
+    }
+
+    /**
+     * Pide un enlace para elegir otra contraseña. Responde siempre igual, exista
+     * o no el email: distinguirlo permitiría averiguar qué direcciones están
+     * dadas de alta.
+     */
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Void> olvideMiContrasena(@Valid @RequestBody ForgotPasswordRequest peticion) {
+        passwordResetService.solicitar(peticion.email());
+        return ResponseEntity.accepted().build();
+    }
+
+    /** Establece la contraseña nueva con el enlace recibido. */
+    @PostMapping("/reset-password/{token}")
+    public ResponseEntity<Void> restablecerContrasena(
+            @PathVariable String token,
+            @Valid @RequestBody ResetPasswordRequest peticion) {
+
+        passwordResetService.restablecer(token, peticion.password());
+        return ResponseEntity.noContent().build();
     }
 }
