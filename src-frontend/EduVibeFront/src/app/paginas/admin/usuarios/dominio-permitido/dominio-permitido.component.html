@@ -1,0 +1,20 @@
+<div class="tarjeta mb-3" *ngIf="organizacion()">
+  <div class="tarjeta-cuerpo">
+    <h3 class="mb-0">Dominio de correo permitido</h3>
+    <p class="pequeno apagado mb-2">
+      Si lo rellenas, solo se podrán dar de alta emails de ese dominio. Déjalo vacío para no
+      limitar. Las cuentas que ya existen no se modifican.
+    </p>
+
+    <app-aviso class="mb-2" tipo="error" [mensaje]="error()"></app-aviso>
+
+    <form [formGroup]="formulario" (ngSubmit)="guardar()" class="fila espaciado-sm envolver">
+      <input type="text" class="entrada" formControlName="dominio" placeholder="iesalixar.edu"
+             style="max-width:260px" aria-label="Dominio de correo permitido">
+      <button type="submit" class="boton boton-contorno" [disabled]="guardando()">
+        {{ guardando() ? 'Guardando…' : 'Guardar' }}
+      </button>
+      <span class="pequeno" style="color:var(--verde)" *ngIf="guardado()">Guardado</span>
+    </form>
+  </div>
+</div>

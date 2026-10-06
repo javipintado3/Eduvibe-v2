@@ -23,6 +23,13 @@ export interface Usuario {
   totpEnabled: boolean;
 }
 
+/** El centro del administrador; allowedDomain es null si las altas no tienen restricción. */
+export interface Organizacion {
+  id: string;
+  name: string;
+  allowedDomain: string | null;
+}
+
 /** Datos para añadir la cuenta a una app de autenticación. */
 export interface ConfiguracionDosPasos {
   secret: string;

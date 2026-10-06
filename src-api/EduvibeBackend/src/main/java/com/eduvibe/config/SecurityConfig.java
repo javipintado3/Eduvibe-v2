@@ -104,6 +104,7 @@ public class SecurityConfig {
 
                     // La gestión de usuarios es cosa de la administración
                     .requestMatchers("/api/users/**").hasRole("ADMIN")
+                    .requestMatchers("/api/organization/**").hasRole("ADMIN")
 
                     // Crear una clase también. El resto de operaciones sobre
                     // clases dependen de la relación con esa clase concreta y

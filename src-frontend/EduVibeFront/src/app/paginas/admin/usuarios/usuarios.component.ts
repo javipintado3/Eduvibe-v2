@@ -7,6 +7,7 @@ import { forkJoin } from 'rxjs';
 import { ConfirmacionService } from '../../../core/services/confirmacion.service';
 import { UsuariosService } from '../../../core/services/usuarios.service';
 import { EstadoCuenta, Invitacion, Pagina, ResultadoImportacion, Rol, Usuario } from '../../../core/models';
+import { DominioPermitidoComponent } from './dominio-permitido/dominio-permitido.component';
 import { AvatarComponent } from '../../../shared/avatar/avatar.component';
 import { AvisoComponent } from '../../../shared/aviso/aviso.component';
 import { DialogoComponent } from '../../../shared/dialogo/dialogo.component';
@@ -34,7 +35,7 @@ import { ColumnaTabla, FiltroTabla, OrdenTabla } from '../../../shared/tabla-dat
   imports: [
     NgIf, NgFor, ReactiveFormsModule,
     AvatarComponent, PastillaEstadoComponent, DialogoComponent, AvisoComponent, FechaPipe,
-    TablaDatosComponent, CeldaTablaDirective,
+    TablaDatosComponent, CeldaTablaDirective, DominioPermitidoComponent,
   ],
   templateUrl: './usuarios.component.html',
   styleUrl: './usuarios.component.css',
