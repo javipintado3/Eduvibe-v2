@@ -146,6 +146,7 @@ class PasswordResetServiceTest {
             assertThat(usuario.getPasswordHash()).isEqualTo("$2a$10$hashNuevo");
             verify(userRepository).save(usuario);
             verify(passwordResetRepository).invalidarPendientesDe(usuario.getId());
+            assertThat(usuario.getTokenVersion()).isEqualTo(1);
         }
 
         @Test

@@ -73,6 +73,13 @@ public class User {
     @Column(name = "totp_enabled", nullable = false)
     private boolean totpEnabled;
 
+    /**
+     * Versión de las sesiones de esta persona. Cada token lleva la que había al
+     * emitirse; subirla invalida de golpe todos los anteriores.
+     */
+    @Column(name = "token_version", nullable = false)
+    private int tokenVersion;
+
     /** Null hasta que la persona sube una foto: mientras tanto se ven sus iniciales. */
     @Column(name = "avatar_url")
     private String avatarUrl;
@@ -113,6 +120,11 @@ public class User {
     public void activarCon(String passwordHash) {
         this.passwordHash = passwordHash;
         this.status = UserStatus.ACTIVE;
+    }
+
+    /** Cierra todas las sesiones abiertas: los tokens ya emitidos dejan de valer. */
+    public void invalidarSesiones() {
+        this.tokenVersion++;
     }
 
     /** Cambia la contraseña de una cuenta que ya existe, sin tocar su estado. */

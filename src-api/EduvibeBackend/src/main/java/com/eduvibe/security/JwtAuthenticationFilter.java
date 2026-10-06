@@ -11,10 +11,13 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.eduvibe.service.SesionService;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -33,6 +36,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String PREFIJO = "Bearer ";
 
     private final JwtService jwtService;
+    private final SesionService sesionService;
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
@@ -44,7 +48,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (token != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             AuthenticatedUser usuario = jwtService.leer(token);
 
-            if (usuario != null) {
+            if (usuario != null && sesionService.estaVigente(usuario)) {
                 // Spring Security espera las autoridades de rol con el prefijo ROLE_,
                 // que es lo que después permite escribir hasRole("ADMIN").
                 var autoridades = List.of(

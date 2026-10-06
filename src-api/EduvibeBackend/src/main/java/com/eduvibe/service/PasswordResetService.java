@@ -78,6 +78,8 @@ public class PasswordResetService {
         }
 
         usuario.cambiarPassword(passwordEncoder.encode(password));
+        // Si alguien más tenía la cuenta abierta (el motivo habitual para recuperarla), se le cierra
+        usuario.invalidarSesiones();
         userRepository.save(usuario);
 
         passwordResetRepository.invalidarPendientesDe(usuario.getId());

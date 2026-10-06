@@ -95,10 +95,15 @@ export class AuthService {
     return this.http.post<void>(`${this.api}/auth/reset-password/${token}`, { password });
   }
 
-  /** Cambia la contraseña de la sesión en curso; hay que dar la actual. */
-  cambiarContrasena(actual: string, nueva: string): Observable<void> {
-    return this.http.put<void>(`${this.api}/auth/password`,
-      { currentPassword: actual, newPassword: nueva });
+  /**
+   * Cambia la contraseña de la sesión en curso; hay que dar la actual. El
+   * servidor cierra las demás sesiones y devuelve una nueva para esta, que es
+   * la que hay que guardar: la anterior ya no vale.
+   */
+  cambiarContrasena(actual: string, nueva: string): Observable<RespuestaAutenticacion> {
+    return this.http.put<RespuestaAutenticacion>(`${this.api}/auth/password`,
+      { currentPassword: actual, newPassword: nueva })
+      .pipe(tap(respuesta => this.guardarSesion(respuesta)));
   }
 
   /** Relee el usuario del servidor; sirve para detectar un token ya caducado. */
@@ -110,6 +115,23 @@ export class AuthService {
       }));
   }
 
+  /**
+   * Cierre de sesión desde el botón "Salir": primero se revoca el token en el
+   * servidor, para que deje de valer aunque alguien lo hubiera copiado, y
+   * después se limpia la sesión local.
+   *
+   * Si la llamada falla (sin red, o el token ya había caducado) se cierra la
+   * sesión local igualmente: quedarse dentro porque el servidor no responde
+   * sería peor.
+   */
+  cerrarSesion(): void {
+    this.http.post<void>(`${this.api}/auth/logout`, {}).subscribe({
+      next: () => this.logout(),
+      error: () => this.logout(),
+    });
+  }
+
+  /** Cierre local, sin avisar al servidor. Lo usa el interceptor cuando el token ya no vale. */
   logout(destino = '/login'): void {
     this.borrar(CLAVE_TOKEN);
     this.borrar(CLAVE_USUARIO);

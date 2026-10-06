@@ -124,7 +124,7 @@ public class AuthService {
      * la sesión, y equivocarse al teclear la contraseña actual no es eso.
      */
     @Transactional
-    public void cambiarPassword(ChangePasswordRequest peticion, String ip) {
+    public AuthResponse cambiarPassword(ChangePasswordRequest peticion, String ip) {
         AuthenticatedUser autenticado = identidadActual();
         User usuario = userRepository.findById(autenticado.id())
                 .orElseThrow(() -> NotFoundException.de("Usuario", autenticado.id()));
@@ -144,7 +144,12 @@ public class AuthService {
         }
 
         usuario.cambiarPassword(passwordEncoder.encode(peticion.newPassword()));
+        // Cierra el resto de sesiones: si alguien más tenía la cuenta abierta, deja de tenerla
+        usuario.invalidarSesiones();
         userRepository.save(usuario);
+
+        // La sesión actual también se habría invalidado, así que se devuelve una nueva
+        return construirRespuesta(usuario);
     }
 
     /** Usuario de la petición en curso, releído de base de datos. */

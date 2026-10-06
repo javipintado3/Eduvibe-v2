@@ -25,6 +25,7 @@ import com.eduvibe.dto.user.UserResponse;
 import com.eduvibe.service.AuthService;
 import com.eduvibe.service.InvitationService;
 import com.eduvibe.service.PasswordResetService;
+import com.eduvibe.service.SesionService;
 import com.eduvibe.service.TwoFactorService;
 
 import jakarta.validation.Valid;
@@ -49,6 +50,7 @@ public class AuthController {
     private final InvitationService invitationService;
     private final PasswordResetService passwordResetService;
     private final TwoFactorService twoFactorService;
+    private final SesionService sesionService;
 
     /** Inicio de sesión con email y contraseña. */
     @PostMapping("/login")
@@ -105,11 +107,20 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
-    /** Cambia la contraseña de la sesión en curso, pidiendo la actual. */
+    /**
+     * Cambia la contraseña de la sesión en curso, pidiendo la actual. Cierra las
+     * demás sesiones y devuelve una nueva para que esta siga abierta.
+     */
     @PutMapping("/password")
-    public ResponseEntity<Void> cambiarContrasena(@Valid @RequestBody ChangePasswordRequest peticion,
-                                                  HttpServletRequest http) {
-        authService.cambiarPassword(peticion, http.getRemoteAddr());
+    public ResponseEntity<AuthResponse> cambiarContrasena(@Valid @RequestBody ChangePasswordRequest peticion,
+                                                          HttpServletRequest http) {
+        return ResponseEntity.ok(authService.cambiarPassword(peticion, http.getRemoteAddr()));
+    }
+
+    /** Cierra la sesión: el token con el que se llama deja de valer desde este momento. */
+    @PostMapping("/logout")
+    public ResponseEntity<Void> cerrarSesion() {
+        sesionService.cerrar(authService.identidadActual());
         return ResponseEntity.noContent().build();
     }
 

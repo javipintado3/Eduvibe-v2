@@ -81,7 +81,7 @@ export class NavbarComponent {
 
   salir(): void {
     this.cerrarTodo();
-    this.auth.logout();
+    this.auth.cerrarSesion();
   }
 
   /** Cierra el menú al pulsar en cualquier otro sitio de la página. */

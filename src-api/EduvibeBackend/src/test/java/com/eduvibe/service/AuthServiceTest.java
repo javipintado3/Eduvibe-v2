@@ -266,10 +266,16 @@ class AuthServiceTest {
             when(passwordEncoder.matches("nueva-clave-1", "$2a$10$hashActual")).thenReturn(false);
             when(passwordEncoder.encode("nueva-clave-1")).thenReturn("$2a$10$hashNuevo");
 
-            authService.cambiarPassword(new ChangePasswordRequest("actual-ok", "nueva-clave-1"), IP);
+            when(jwtService.emitirPara(usuario)).thenReturn("token-nuevo");
+
+            AuthResponse respuesta = authService.cambiarPassword(
+                    new ChangePasswordRequest("actual-ok", "nueva-clave-1"), IP);
 
             assertThat(usuario.getPasswordHash()).isEqualTo("$2a$10$hashNuevo");
             verify(userRepository).save(usuario);
+            // Las demás sesiones se cierran, y esta recibe un token nuevo para seguir abierta
+            assertThat(usuario.getTokenVersion()).isEqualTo(1);
+            assertThat(respuesta.token()).isEqualTo("token-nuevo");
         }
 
         @Test
