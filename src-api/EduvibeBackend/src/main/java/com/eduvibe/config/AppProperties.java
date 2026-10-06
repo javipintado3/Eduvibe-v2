@@ -15,13 +15,15 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param jwt        firma y validez de los tokens
  * @param frontendUrl URL pública del frontend, para componer los enlaces de invitación
  * @param invitation plazo de las invitaciones de alta
+ * @param login      límite de intentos de inicio de sesión
  */
 @ConfigurationProperties(prefix = "app")
 public record AppProperties(
         Cors cors,
         Jwt jwt,
         String frontendUrl,
-        Invitation invitation) {
+        Invitation invitation,
+        Login login) {
 
     public record Cors(List<String> allowedOrigins) {
     }
@@ -34,5 +36,12 @@ public record AppProperties(
     }
 
     public record Invitation(long expirationHours) {
+    }
+
+    /**
+     * @param maxFailedAttempts fallos seguidos de un email que provocan el bloqueo
+     * @param lockoutMinutes    minutos que dura el bloqueo
+     */
+    public record Login(int maxFailedAttempts, long lockoutMinutes) {
     }
 }

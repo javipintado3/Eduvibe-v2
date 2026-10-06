@@ -1,5 +1,6 @@
 package com.eduvibe.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -39,8 +40,9 @@ public class AuthController {
 
     /** Inicio de sesión con email y contraseña. */
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest peticion) {
-        return ResponseEntity.ok(authService.login(peticion));
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest peticion,
+                                              HttpServletRequest http) {
+        return ResponseEntity.ok(authService.login(peticion, http.getRemoteAddr()));
     }
 
     /** Datos de la sesión en curso. */

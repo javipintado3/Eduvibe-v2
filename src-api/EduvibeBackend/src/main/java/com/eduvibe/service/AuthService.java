@@ -15,6 +15,7 @@ import com.eduvibe.dto.auth.AuthResponse;
 import com.eduvibe.dto.auth.LoginRequest;
 import com.eduvibe.dto.user.UserResponse;
 import com.eduvibe.exception.NotFoundException;
+import com.eduvibe.exception.TooManyRequestsException;
 import com.eduvibe.model.User;
 import com.eduvibe.repository.UserRepository;
 import com.eduvibe.security.AuthenticatedUser;
@@ -54,10 +55,20 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final InvitationService invitationService;
+    private final LoginAttemptService loginAttemptService;
 
     @Transactional(readOnly = true)
-    public AuthResponse login(LoginRequest peticion) {
-        Optional<User> usuario = userRepository.findByEmail(User.normalizarEmail(peticion.email()));
+    public AuthResponse login(LoginRequest peticion, String ip) {
+        String email = User.normalizarEmail(peticion.email());
+
+        // Se comprueba antes de mirar la contraseña, y se aplica igual a emails
+        // que existen y que no: así el bloqueo no delata qué direcciones hay
+        if (loginAttemptService.estaBloqueado(email)) {
+            throw new TooManyRequestsException("Demasiados intentos fallidos. Vuelve a intentarlo en "
+                    + loginAttemptService.minutosDeBloqueo() + " minutos");
+        }
+
+        Optional<User> usuario = userRepository.findByEmail(email);
 
         String hash = usuario.map(User::getPasswordHash).orElse(HASH_FICTICIO);
         boolean contrasenaCorrecta = passwordEncoder.matches(peticion.password(), hash);
@@ -70,9 +81,11 @@ public class AuthService {
                 && contrasenaCorrecta;
 
         if (!credencialesValidas) {
+            loginAttemptService.registrarFallo(email, ip);
             throw new BadCredentialsException(CREDENCIALES_INVALIDAS);
         }
 
+        loginAttemptService.registrarExito(email, ip);
         return construirRespuesta(usuario.get());
     }
 

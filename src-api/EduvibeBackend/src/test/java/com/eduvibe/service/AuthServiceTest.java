@@ -3,7 +3,9 @@ package com.eduvibe.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -22,6 +24,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.eduvibe.dto.auth.AuthResponse;
 import com.eduvibe.dto.auth.LoginRequest;
+import com.eduvibe.exception.TooManyRequestsException;
 import com.eduvibe.model.Organization;
 import com.eduvibe.model.User;
 import com.eduvibe.model.enums.UserRole;
@@ -32,6 +35,7 @@ import com.eduvibe.security.JwtService;
 class AuthServiceTest {
 
     private static final String MENSAJE_CREDENCIALES_INVALIDAS = "Usuario y/o contraseña incorrectos";
+    private static final String IP = "127.0.0.1";
 
     @Mock
     private UserRepository userRepository;
@@ -45,11 +49,14 @@ class AuthServiceTest {
     @Mock
     private InvitationService invitationService;
 
+    @Mock
+    private LoginAttemptService loginAttemptService;
+
     private AuthService authService;
 
     @BeforeEach
     void crearServicio() {
-        authService = new AuthService(userRepository, passwordEncoder, jwtService, invitationService);
+        authService = new AuthService(userRepository, passwordEncoder, jwtService, invitationService, loginAttemptService);
     }
 
     private User usuarioActivo(String email, String passwordHash) {
@@ -68,7 +75,7 @@ class AuthServiceTest {
             when(userRepository.findByEmail("no-existe@centro.es")).thenReturn(Optional.empty());
             when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
 
-            assertThatThrownBy(() -> authService.login(new LoginRequest("no-existe@centro.es", "cualquiera")))
+            assertThatThrownBy(() -> authService.login(new LoginRequest("no-existe@centro.es", "cualquiera"), IP))
                     .isInstanceOf(BadCredentialsException.class)
                     .hasMessage(MENSAJE_CREDENCIALES_INVALIDAS);
         }
@@ -80,7 +87,7 @@ class AuthServiceTest {
             when(userRepository.findByEmail("no-existe@centro.es")).thenReturn(Optional.empty());
             when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
 
-            assertThatThrownBy(() -> authService.login(new LoginRequest("no-existe@centro.es", "cualquiera")));
+            assertThatThrownBy(() -> authService.login(new LoginRequest("no-existe@centro.es", "cualquiera"), IP));
 
             // BCrypt.matches() es la operación lenta a propósito. Si se salta
             // cuando el usuario no existe, esa petición responde más rápido que
@@ -97,7 +104,7 @@ class AuthServiceTest {
             when(userRepository.findByEmail("ana@centro.es")).thenReturn(Optional.of(usuario));
             when(passwordEncoder.matches("mala", "$2a$10$hash")).thenReturn(false);
 
-            assertThatThrownBy(() -> authService.login(new LoginRequest("ana@centro.es", "mala")))
+            assertThatThrownBy(() -> authService.login(new LoginRequest("ana@centro.es", "mala"), IP))
                     .isInstanceOf(BadCredentialsException.class)
                     .hasMessage(MENSAJE_CREDENCIALES_INVALIDAS);
         }
@@ -109,9 +116,49 @@ class AuthServiceTest {
             when(userRepository.findByEmail("pendiente@centro.es")).thenReturn(Optional.of(usuario));
             when(passwordEncoder.matches(anyString(), anyString())).thenReturn(true);
 
-            assertThatThrownBy(() -> authService.login(new LoginRequest("pendiente@centro.es", "loQueSea")))
+            assertThatThrownBy(() -> authService.login(new LoginRequest("pendiente@centro.es", "loQueSea"), IP))
                     .isInstanceOf(BadCredentialsException.class)
                     .hasMessage(MENSAJE_CREDENCIALES_INVALIDAS);
+        }
+
+        @Test
+        @DisplayName("con el email bloqueado rechaza el intento sin llegar a mirar usuario ni contraseña")
+        void emailBloqueado() {
+            when(loginAttemptService.estaBloqueado("ana@centro.es")).thenReturn(true);
+            when(loginAttemptService.minutosDeBloqueo()).thenReturn(15L);
+
+            assertThatThrownBy(() -> authService.login(new LoginRequest("ana@centro.es", "correcta"), IP))
+                    .isInstanceOf(TooManyRequestsException.class)
+                    .hasMessageContaining("15 minutos");
+
+            verifyNoInteractions(userRepository, passwordEncoder);
+        }
+
+        @Test
+        @DisplayName("apunta el fallo, también cuando el email no existe, para que el bloqueo no delate "
+                + "qué emails están dados de alta")
+        void apuntaElFalloDeUnEmailInexistente() {
+            when(userRepository.findByEmail("no-existe@centro.es")).thenReturn(Optional.empty());
+            when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
+
+            assertThatThrownBy(() -> authService.login(new LoginRequest("no-existe@centro.es", "x"), IP));
+
+            verify(loginAttemptService).registrarFallo("no-existe@centro.es", IP);
+        }
+
+        @Test
+        @DisplayName("apunta el acceso correcto, que deja el contador de fallos a cero")
+        void apuntaElExito() {
+            User usuario = usuarioActivo("ana@centro.es", "$2a$10$hash");
+            when(userRepository.findByEmail("ana@centro.es")).thenReturn(Optional.of(usuario));
+            when(passwordEncoder.matches("correcta", "$2a$10$hash")).thenReturn(true);
+            when(jwtService.emitirPara(usuario)).thenReturn("token-emitido");
+            when(jwtService.caducidadDeUnTokenNuevo()).thenReturn(Instant.MAX);
+
+            authService.login(new LoginRequest("ana@centro.es", "correcta"), IP);
+
+            verify(loginAttemptService).registrarExito("ana@centro.es", IP);
+            verify(loginAttemptService, never()).registrarFallo(anyString(), anyString());
         }
 
         @Test
@@ -123,7 +170,7 @@ class AuthServiceTest {
             when(jwtService.emitirPara(usuario)).thenReturn("token-emitido");
             when(jwtService.caducidadDeUnTokenNuevo()).thenReturn(Instant.MAX);
 
-            AuthResponse respuesta = authService.login(new LoginRequest("ana@centro.es", "correcta"));
+            AuthResponse respuesta = authService.login(new LoginRequest("ana@centro.es", "correcta"), IP);
 
             assertThat(respuesta.token()).isEqualTo("token-emitido");
             assertThat(respuesta.user().email()).isEqualTo("ana@centro.es");
