@@ -12,6 +12,9 @@ RUN npm run build --prod
 FROM nginx:stable-alpine
 # Copia los archivos 
 COPY --from=build /app/dist/edu-vibe-front/browser /usr/share/nginx/html
+# Sin esta configuración nginx no sabe volver a index.html y cualquier enlace
+# directo de la aplicación (invitación, recuperar contraseña...) da 404
+COPY nginx.conf /etc/nginx/nginx.conf
 
 EXPOSE 80
 # Comando para iniciar Nginx
