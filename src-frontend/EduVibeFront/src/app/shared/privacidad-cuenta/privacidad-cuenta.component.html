@@ -1,0 +1,81 @@
+<div class="tarjeta">
+  <div class="tarjeta-cuerpo">
+
+    <!-- ============================================================ Descargar -->
+    <div class="fila-entre envolver">
+      <div>
+        <h3 class="mb-0">Tus datos</h3>
+        <p class="pequeno apagado mb-0">
+          Descarga en un archivo todo lo que Eduvibe guarda sobre ti: perfil, clases, entregas, notas,
+          mensajes, notificaciones y accesos.
+        </p>
+      </div>
+      <button type="button" class="boton boton-contorno boton-pequeno" [disabled]="descargando()"
+              (click)="descargar()">
+        {{ descargando() ? 'Preparando…' : 'Descargar mis datos' }}
+      </button>
+    </div>
+
+    <app-aviso class="mt-2" tipo="error" [mensaje]="error()" *ngIf="!confirmando()"></app-aviso>
+
+    <hr class="mt-3 mb-3">
+
+    <!-- =============================================================== Borrar -->
+    <div class="fila-entre envolver">
+      <div>
+        <h3 class="mb-0">Borrar mi cuenta</h3>
+        <p class="pequeno apagado mb-0">Se elimina tu acceso y tus datos personales. No se puede deshacer.</p>
+      </div>
+      <button type="button" class="boton boton-peligro boton-pequeno" (click)="alternarBorrado()">
+        {{ confirmando() ? 'Cancelar' : 'Borrar mi cuenta' }}
+      </button>
+    </div>
+
+    <div *ngIf="confirmando()" class="mt-2">
+
+      <div class="explicacion mb-2">
+        <p class="fuerte mb-1">Antes de seguir, esto es lo que pasa</p>
+
+        <p class="pequeno mb-0"><strong>Se borra:</strong> tu email, tu foto, tu contraseña, tu historial de
+          accesos (con la IP), tus notificaciones, las entregas que nadie ha calificado y el texto de tus
+          mensajes en los foros.</p>
+
+        <p class="pequeno mb-0 mt-1"><strong>Se conserva, con tu nombre:</strong> tus notas y las entregas ya
+          evaluadas. No es un capricho: el centro está obligado a conservar el expediente académico durante un
+          plazo legal, y un expediente anónimo no sirve para emitir certificados. Pasado ese plazo, el centro
+          debe eliminarlo.</p>
+
+        <p class="pequeno apagado mb-0 mt-1">Los plazos concretos los determina quien lleve la protección de
+          datos de tu centro.</p>
+      </div>
+
+      <app-aviso class="mb-2" tipo="error" [mensaje]="error()"></app-aviso>
+
+      <form [formGroup]="formulario" (ngSubmit)="borrar()" novalidate>
+
+        <div class="campo">
+          <label class="etiqueta" for="password-borrar">Tu contraseña</label>
+          <input id="password-borrar" type="password" class="entrada" formControlName="password"
+                 autocomplete="current-password">
+        </div>
+
+        <div class="campo" *ngIf="auth.usuario()?.totpEnabled">
+          <label class="etiqueta" for="codigo-borrar">Código de verificación</label>
+          <input id="codigo-borrar" type="text" class="entrada" formControlName="codigo"
+                 autocomplete="one-time-code" placeholder="123456 o código de recuperación">
+        </div>
+
+        <div class="campo">
+          <label class="etiqueta" for="confirmacion-borrar">Escribe {{ palabra }} para confirmar</label>
+          <input id="confirmacion-borrar" type="text" class="entrada" formControlName="confirmacion"
+                 autocomplete="off" [placeholder]="palabra">
+        </div>
+
+        <button type="submit" class="boton boton-peligro"
+                [disabled]="borrando() || confirmacionIncorrecta">
+          {{ borrando() ? 'Borrando…' : 'Borrar mi cuenta definitivamente' }}
+        </button>
+      </form>
+    </div>
+  </div>
+</div>

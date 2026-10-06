@@ -14,6 +14,11 @@ import org.springframework.data.domain.Pageable;
 
 public interface NotificationRepository extends JpaRepository<Notification, UUID> {
 
+    /** Borrar la cuenta elimina sus notificaciones. */
+    @Modifying
+    @Query("DELETE FROM Notification n WHERE n.user.id = :userId")
+    int borrarDe(@Param("userId") UUID userId);
+
     Page<Notification> findByUserIdOrderByCreatedAtDesc(UUID userId, Pageable pageable);
 
     Page<Notification> findByUserIdAndReadAtIsNullOrderByCreatedAtDesc(UUID userId, Pageable pageable);

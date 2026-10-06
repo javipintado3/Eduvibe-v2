@@ -122,6 +122,25 @@ public class User {
         this.status = UserStatus.ACTIVE;
     }
 
+    /**
+     * Baja de la cuenta por el derecho de supresión (RGPD): se borran los datos
+     * de contacto y de acceso, y la cuenta queda desactivada. El nombre y el
+     * identificador se conservan porque las notas y entregas evaluadas del
+     * expediente tienen que seguir siendo identificables durante el plazo legal.
+     *
+     * El email se sustituye por uno que no puede existir (.invalid, reservado
+     * para eso), y no por null, porque es obligatorio y único.
+     */
+    public void darDeBajaPorSupresion() {
+        this.email = "borrada-" + id + "@eduvibe.invalid";
+        this.avatarUrl = null;
+        this.passwordHash = null;
+        this.totpSecret = null;
+        this.totpEnabled = false;
+        this.status = UserStatus.DISABLED;
+        invalidarSesiones();
+    }
+
     /** Cierra todas las sesiones abiertas: los tokens ya emitidos dejan de valer. */
     public void invalidarSesiones() {
         this.tokenVersion++;

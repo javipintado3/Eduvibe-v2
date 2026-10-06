@@ -12,6 +12,10 @@ import com.eduvibe.model.RevokedToken;
 
 public interface RevokedTokenRepository extends JpaRepository<RevokedToken, UUID> {
 
+    @Modifying
+    @Query("DELETE FROM RevokedToken r WHERE r.userId = :userId")
+    int borrarDe(@Param("userId") UUID userId);
+
     /** Retención: un token revocado que ya habría caducado no hace falta recordarlo. */
     @Modifying
     @Query("DELETE FROM RevokedToken r WHERE r.expiresAt < :antesDe")

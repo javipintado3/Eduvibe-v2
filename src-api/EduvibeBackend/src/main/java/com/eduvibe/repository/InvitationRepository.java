@@ -13,6 +13,10 @@ import com.eduvibe.model.Invitation;
 
 public interface InvitationRepository extends JpaRepository<Invitation, UUID> {
 
+    @Modifying
+    @Query("DELETE FROM Invitation i WHERE i.user.id = :userId")
+    int borrarDe(@Param("userId") UUID userId);
+
     /** Se busca por el hash: el token en claro nunca llega a la base de datos. */
     Optional<Invitation> findByTokenHash(String tokenHash);
 

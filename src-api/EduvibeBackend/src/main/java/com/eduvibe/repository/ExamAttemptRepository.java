@@ -13,6 +13,8 @@ import com.eduvibe.model.ExamAttempt;
 
 public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, UUID> {
 
+    List<ExamAttempt> findByStudentIdOrderByStartedAtAsc(UUID studentId);
+
     Optional<ExamAttempt> findByExamIdAndStudentId(UUID examId, UUID studentId);
 
     long countByExamId(UUID examId);

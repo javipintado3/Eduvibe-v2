@@ -17,6 +17,9 @@ import com.eduvibe.model.enums.UserStatus;
  */
 public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificationExecutor<User> {
 
+    /** Cuántas personas con ese rol y estado hay en el centro; para no dejarlo sin administración. */
+    long countByOrganizationIdAndRoleAndStatus(UUID organizationId, UserRole role, UserStatus status);
+
     /**
      * El email es único en toda la plataforma (ver V2__email_unico_global.sql),
      * así que identifica a una sola persona sin necesidad de indicar el centro.

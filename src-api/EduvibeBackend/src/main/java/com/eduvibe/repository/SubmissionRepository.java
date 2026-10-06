@@ -15,6 +15,17 @@ import org.springframework.data.domain.Pageable;
 
 public interface SubmissionRepository extends JpaRepository<Submission, UUID> {
 
+    /** Todas las entregas de una persona, para exportar sus datos. */
+    List<Submission> findByStudentIdOrderByCreatedAtAsc(UUID studentId);
+
+    /**
+     * Entregas que no forman parte del expediente: las que nadie ha calificado.
+     * Al borrar una cuenta se eliminan; las evaluadas se conservan.
+     */
+    @Query("SELECT s FROM Submission s WHERE s.student.id = :studentId "
+         + "AND NOT EXISTS (SELECT g.id FROM Grade g WHERE g.submission = s)")
+    List<Submission> findSinCalificarDe(@Param("studentId") UUID studentId);
+
     Optional<Submission> findByAssignmentIdAndStudentId(UUID assignmentId, UUID studentId);
 
     /** Todas las entregas de una tarea, para la pantalla de corrección. */

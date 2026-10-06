@@ -13,6 +13,8 @@ import com.eduvibe.model.ClassGroupMember;
 
 public interface ClassGroupMemberRepository extends JpaRepository<ClassGroupMember, UUID> {
 
+    List<ClassGroupMember> findByUserId(UUID userId);
+
     @EntityGraph(attributePaths = "user")
     List<ClassGroupMember> findByClassGroupId(UUID groupId);
 

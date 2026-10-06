@@ -8,6 +8,8 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -24,6 +26,8 @@ import com.eduvibe.exception.BadRequestException;
  */
 @Service
 public class FileStorageService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(FileStorageService.class);
 
     private static final Set<String> EXTENSIONES_IMAGEN = Set.of("jpg", "jpeg", "png", "webp", "gif");
 
@@ -71,6 +75,31 @@ public class FileStorageService {
         }
 
         return "/uploads/" + nombre;
+    }
+
+    /**
+     * Borra un archivo subido a partir de la ruta pública que devolvió
+     * {@link #guardar}. Si la ruta no es de este almacén, o el archivo ya no
+     * está, no hace nada; un fallo al borrar no debe tumbar la operación que lo
+     * pide (por ejemplo, borrar una cuenta).
+     */
+    public void borrar(String rutaPublica) {
+        if (rutaPublica == null || !rutaPublica.startsWith("/uploads/")) {
+            return;
+        }
+
+        Path archivo = raiz.resolve(rutaPublica.substring("/uploads/".length())).normalize();
+
+        // Nunca se sale de la carpeta de subidas, aunque la ruta traiga "../"
+        if (!archivo.startsWith(raiz)) {
+            return;
+        }
+
+        try {
+            Files.deleteIfExists(archivo);
+        } catch (IOException e) {
+            LOG.warn("No se ha podido borrar el archivo {}: {}", archivo.getFileName(), e.getMessage());
+        }
     }
 
     private String extensionDe(String nombreOriginal) {

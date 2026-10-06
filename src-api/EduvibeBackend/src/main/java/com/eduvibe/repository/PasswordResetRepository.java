@@ -13,6 +13,10 @@ import com.eduvibe.model.PasswordReset;
 
 public interface PasswordResetRepository extends JpaRepository<PasswordReset, UUID> {
 
+    @Modifying
+    @Query("DELETE FROM PasswordReset p WHERE p.user.id = :userId")
+    int borrarDe(@Param("userId") UUID userId);
+
     /** Se busca por el hash: el token en claro nunca llega a la base de datos. */
     Optional<PasswordReset> findByTokenHash(String tokenHash);
 

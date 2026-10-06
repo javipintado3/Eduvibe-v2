@@ -19,4 +19,17 @@ export class PerfilService {
   actualizarAvatar(url = ''): Observable<Usuario> {
     return this.http.put<Usuario>(`${this.api}/avatar`, { url });
   }
+
+  /** Todos los datos de la persona, como archivo JSON (derecho de acceso y portabilidad). */
+  exportarDatos(): Observable<Blob> {
+    return this.http.get(`${this.api}/export`, { responseType: 'blob' });
+  }
+
+  /**
+   * Borra la cuenta conservando solo el expediente. `code` solo hace falta si la
+   * cuenta tiene la verificación en dos pasos.
+   */
+  borrarCuenta(password: string, code?: string): Observable<void> {
+    return this.http.post<void>(`${this.api}/erase`, { password, code });
+  }
 }

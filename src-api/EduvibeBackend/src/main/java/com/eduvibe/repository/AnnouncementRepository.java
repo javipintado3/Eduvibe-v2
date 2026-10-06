@@ -12,6 +12,8 @@ import org.springframework.data.domain.Pageable;
 
 public interface AnnouncementRepository extends JpaRepository<Announcement, UUID> {
 
+    List<Announcement> findByAuthorIdOrderByCreatedAtAsc(UUID authorId);
+
     /**
      * Muro de la clase: primero los fijados, y dentro de cada grupo lo más
      * reciente arriba. Se trae el autor en la misma consulta porque siempre se

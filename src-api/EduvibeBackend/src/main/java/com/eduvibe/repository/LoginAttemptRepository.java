@@ -1,6 +1,7 @@
 package com.eduvibe.repository;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,6 +12,13 @@ import org.springframework.data.repository.query.Param;
 import com.eduvibe.model.LoginAttempt;
 
 public interface LoginAttemptRepository extends JpaRepository<LoginAttempt, UUID> {
+
+    List<LoginAttempt> findByEmailOrderByAttemptedAtDesc(String email);
+
+    /** Borrar la cuenta elimina todo su historial de accesos, que incluye su IP. */
+    @Modifying
+    @Query("DELETE FROM LoginAttempt a WHERE a.email = :email")
+    int borrarTodosDe(@Param("email") String email);
 
     /** Fallos de un email desde el instante indicado. */
     long countByEmailAndSucceededFalseAndAttemptedAtAfter(String email, Instant desde);
