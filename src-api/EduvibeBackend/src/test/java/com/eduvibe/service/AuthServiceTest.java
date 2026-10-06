@@ -32,6 +32,7 @@ import com.eduvibe.dto.auth.ChangePasswordRequest;
 import com.eduvibe.dto.auth.LoginRequest;
 import com.eduvibe.exception.BadRequestException;
 import com.eduvibe.exception.TooManyRequestsException;
+import com.eduvibe.exception.TwoFactorRequiredException;
 import com.eduvibe.model.Organization;
 import com.eduvibe.model.User;
 import com.eduvibe.model.enums.UserRole;
@@ -60,11 +61,14 @@ class AuthServiceTest {
     @Mock
     private LoginAttemptService loginAttemptService;
 
+    @Mock
+    private TwoFactorService twoFactorService;
+
     private AuthService authService;
 
     @BeforeEach
     void crearServicio() {
-        authService = new AuthService(userRepository, passwordEncoder, jwtService, invitationService, loginAttemptService);
+        authService = new AuthService(userRepository, passwordEncoder, jwtService, invitationService, loginAttemptService, twoFactorService);
     }
 
     private User usuarioActivo(String email, String passwordHash) {
@@ -167,6 +171,54 @@ class AuthServiceTest {
 
             verify(loginAttemptService).registrarExito("ana@centro.es", IP);
             verify(loginAttemptService, never()).registrarFallo(anyString(), anyString());
+        }
+
+        private User usuarioConDosPasos() {
+            User usuario = usuarioActivo("ana@centro.es", "$2a$10$hash");
+            usuario.setTotpEnabled(true);
+            when(userRepository.findByEmail("ana@centro.es")).thenReturn(Optional.of(usuario));
+            when(passwordEncoder.matches("correcta", "$2a$10$hash")).thenReturn(true);
+            return usuario;
+        }
+
+        @Test
+        @DisplayName("con 2FA activado y sin código pide el código, sin contarlo como fallo")
+        void dosPasosSinCodigo() {
+            usuarioConDosPasos();
+
+            assertThatThrownBy(() -> authService.login(new LoginRequest("ana@centro.es", "correcta"), IP))
+                    .isInstanceOf(TwoFactorRequiredException.class);
+
+            verify(loginAttemptService, never()).registrarFallo(anyString(), anyString());
+            verify(loginAttemptService, never()).registrarExito(anyString(), anyString());
+        }
+
+        @Test
+        @DisplayName("con 2FA activado y un código incorrecto lo trata como credenciales inválidas y apunta el fallo")
+        void dosPasosCodigoIncorrecto() {
+            User usuario = usuarioConDosPasos();
+            when(twoFactorService.codigoValido(usuario, "000000")).thenReturn(false);
+
+            assertThatThrownBy(() -> authService.login(
+                    new LoginRequest("ana@centro.es", "correcta", "000000"), IP))
+                    .isInstanceOf(BadCredentialsException.class);
+
+            verify(loginAttemptService).registrarFallo("ana@centro.es", IP);
+        }
+
+        @Test
+        @DisplayName("con 2FA activado y el código correcto inicia sesión")
+        void dosPasosCodigoCorrecto() {
+            User usuario = usuarioConDosPasos();
+            when(twoFactorService.codigoValido(usuario, "123456")).thenReturn(true);
+            when(jwtService.emitirPara(usuario)).thenReturn("token-emitido");
+            when(jwtService.caducidadDeUnTokenNuevo()).thenReturn(Instant.MAX);
+
+            AuthResponse respuesta = authService.login(
+                    new LoginRequest("ana@centro.es", "correcta", "123456"), IP);
+
+            assertThat(respuesta.token()).isEqualTo("token-emitido");
+            verify(loginAttemptService).registrarExito("ana@centro.es", IP);
         }
 
         @Test

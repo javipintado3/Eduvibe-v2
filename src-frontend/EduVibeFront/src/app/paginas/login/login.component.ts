@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { NgFor, NgIf } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
@@ -42,7 +43,12 @@ export class LoginComponent {
   readonly formulario = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required]],
+    // Solo se pide cuando el servidor avisa de que la cuenta tiene 2FA
+    codigo: [''],
   });
+
+  /** El servidor ha dicho que falta el código de verificación en dos pasos. */
+  readonly pedirCodigo = signal(false);
 
   readonly enviando = signal(false);
   readonly error = signal<string | null>(null);
@@ -61,7 +67,8 @@ export class LoginComponent {
   }
 
   usarCuenta(cuenta: CuentaDemo): void {
-    this.formulario.setValue({ email: cuenta.email, password: this.contrasenaDemo });
+    this.formulario.setValue({ email: cuenta.email, password: this.contrasenaDemo, codigo: '' });
+    this.pedirCodigo.set(false);
     this.error.set(null);
   }
 
@@ -75,9 +82,9 @@ export class LoginComponent {
     this.enviando.set(true);
     this.error.set(null);
 
-    const { email, password } = this.formulario.getRawValue();
+    const { email, password, codigo } = this.formulario.getRawValue();
 
-    this.auth.login(email, password).subscribe({
+    this.auth.login(email, password, codigo.trim() || undefined).subscribe({
       next: () => {
         // Si el guard mandó aquí desde otra pantalla, se vuelve a ella
         const destino = this.ruta.snapshot.queryParamMap.get('volverA') || '/clases';
@@ -85,6 +92,13 @@ export class LoginComponent {
       },
       error: (err) => {
         this.enviando.set(false);
+
+        // 428: la contraseña es correcta pero falta el código de la app de
+        // autenticación. No es un error: se muestra el campo y se vuelve a enviar
+        if (err instanceof HttpErrorResponse && err.status === 428) {
+          this.pedirCodigo.set(true);
+          return;
+        }
         this.error.set(AvisoComponent.mensajeDe(err, 'Usuario y/o contraseña incorrectos'));
       },
     });

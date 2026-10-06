@@ -18,6 +18,7 @@ import com.eduvibe.dto.user.UserResponse;
 import com.eduvibe.exception.BadRequestException;
 import com.eduvibe.exception.NotFoundException;
 import com.eduvibe.exception.TooManyRequestsException;
+import com.eduvibe.exception.TwoFactorRequiredException;
 import com.eduvibe.model.User;
 import com.eduvibe.repository.UserRepository;
 import com.eduvibe.security.AuthenticatedUser;
@@ -58,8 +59,9 @@ public class AuthService {
     private final JwtService jwtService;
     private final InvitationService invitationService;
     private final LoginAttemptService loginAttemptService;
+    private final TwoFactorService twoFactorService;
 
-    @Transactional(readOnly = true)
+    @Transactional
     public AuthResponse login(LoginRequest peticion, String ip) {
         String email = User.normalizarEmail(peticion.email());
 
@@ -85,6 +87,18 @@ public class AuthService {
         if (!credencialesValidas) {
             loginAttemptService.registrarFallo(email, ip);
             throw new BadCredentialsException(CREDENCIALES_INVALIDAS);
+        }
+
+        // Contraseña correcta: si la cuenta tiene el 2FA activado, falta el código.
+        // Pedirlo no cuenta como fallo; equivocarse al darlo, sí.
+        if (usuario.get().isTotpEnabled()) {
+            if (peticion.totpCode() == null || peticion.totpCode().isBlank()) {
+                throw new TwoFactorRequiredException();
+            }
+            if (!twoFactorService.codigoValido(usuario.get(), peticion.totpCode())) {
+                loginAttemptService.registrarFallo(email, ip);
+                throw new BadCredentialsException("Código de verificación incorrecto");
+            }
         }
 
         loginAttemptService.registrarExito(email, ip);

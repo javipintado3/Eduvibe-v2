@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { DatosInvitacion, RespuestaAutenticacion, Usuario } from '../models';
+import { ConfiguracionDosPasos, DatosInvitacion, RespuestaAutenticacion, Usuario } from '../models';
 
 const CLAVE_TOKEN = 'eduvibe.token';
 const CLAVE_USUARIO = 'eduvibe.usuario';
@@ -48,9 +48,29 @@ export class AuthService {
       .join('');
   });
 
-  login(email: string, password: string): Observable<RespuestaAutenticacion> {
-    return this.http.post<RespuestaAutenticacion>(`${this.api}/auth/login`, { email, password })
+  /**
+   * Si la cuenta tiene la verificación en dos pasos y no se envía código, el
+   * servidor responde 428: es la señal para pedirlo y volver a llamar.
+   */
+  login(email: string, password: string, totpCode?: string): Observable<RespuestaAutenticacion> {
+    return this.http.post<RespuestaAutenticacion>(`${this.api}/auth/login`, { email, password, totpCode })
       .pipe(tap(respuesta => this.guardarSesion(respuesta)));
+  }
+
+  /** Primer paso del 2FA: pide un secreto nuevo y el enlace para el QR. */
+  iniciarDosPasos(): Observable<ConfiguracionDosPasos> {
+    return this.http.post<ConfiguracionDosPasos>(`${this.api}/auth/2fa/setup`, {});
+  }
+
+  /** Segundo paso: confirma con un código y devuelve los códigos de recuperación. */
+  activarDosPasos(code: string): Observable<{ recoveryCodes: string[] }> {
+    return this.http.post<{ recoveryCodes: string[] }>(`${this.api}/auth/2fa/enable`, { code })
+      .pipe(tap(() => this.refrescarUsuario().subscribe()));
+  }
+
+  desactivarDosPasos(password: string, code: string): Observable<void> {
+    return this.http.post<void>(`${this.api}/auth/2fa/disable`, { password, code })
+      .pipe(tap(() => this.refrescarUsuario().subscribe()));
   }
 
   /** Comprueba un enlace de invitación antes de pedir la contraseña. */

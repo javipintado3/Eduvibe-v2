@@ -1,6 +1,7 @@
 <div class="tarjeta">
   <div class="tarjeta-cuerpo">
 
+    <!-- ============================================================ Contraseña -->
     <div class="fila-entre">
       <div>
         <h3 class="mb-0">Contraseña</h3>
@@ -49,6 +50,103 @@
 
       <button type="submit" class="boton boton-primario" [disabled]="enviando()">
         {{ enviando() ? 'Guardando…' : 'Guardar contraseña' }}
+      </button>
+    </form>
+
+    <hr class="mt-3 mb-3">
+
+    <!-- ===================================================== Dos pasos (2FA) -->
+    <div class="fila-entre">
+      <div>
+        <h3 class="mb-0">Verificación en dos pasos</h3>
+        <p class="pequeno apagado mb-0">
+          {{ auth.usuario()?.totpEnabled
+              ? 'Activada: al entrar te pediremos un código de tu app de autenticación.'
+              : 'Añade una capa extra: además de la contraseña, un código de tu móvil.' }}
+        </p>
+      </div>
+
+      <ng-container *ngIf="auth.usuario()?.totpEnabled; else botonActivar">
+        <button type="button" class="boton boton-contorno boton-pequeno" (click)="alternarDesactivar()">
+          {{ desactivando() ? 'Cancelar' : 'Desactivar' }}
+        </button>
+      </ng-container>
+      <ng-template #botonActivar>
+        <button type="button" class="boton boton-contorno boton-pequeno"
+                *ngIf="!configuracion()" [disabled]="trabajandoDosPasos()" (click)="empezarDosPasos()">
+          Activar
+        </button>
+      </ng-template>
+    </div>
+
+    <app-aviso class="mt-2" tipo="error" [mensaje]="errorDosPasos()"></app-aviso>
+
+    <!-- Códigos de recuperación: se enseñan una sola vez -->
+    <div class="ficha mt-2" *ngIf="codigosRecuperacion() as codigos">
+      <p class="fuerte mb-1">Guarda estos códigos de recuperación</p>
+      <p class="pequeno apagado mb-2">
+        Si pierdes el móvil, cada código te deja entrar una vez. Ahora es la única vez que se
+        muestran: guárdalos en un sitio seguro.
+      </p>
+      <ul class="lista-codigos mb-2">
+        <li *ngFor="let codigo of codigos"><code>{{ codigo }}</code></li>
+      </ul>
+      <div class="fila espaciado-sm">
+        <button type="button" class="boton boton-contorno boton-pequeno" (click)="copiarCodigos()">Copiar</button>
+        <button type="button" class="boton boton-primario boton-pequeno" (click)="cerrarCodigos()">
+          Ya los he guardado
+        </button>
+      </div>
+    </div>
+
+    <!-- Configuración: QR + confirmación con un código -->
+    <div class="mt-2" *ngIf="configuracion() as config">
+      <p class="mb-1">
+        <strong>1.</strong> Escanea este QR con Google Authenticator, Authy o similar.
+      </p>
+      <div class="fila espaciado envolver mb-2" style="align-items:center">
+        <img *ngIf="qr() as imagen" [src]="imagen" width="180" height="180" alt="Código QR para la app de autenticación">
+        <div style="min-width:0">
+          <p class="pequeno apagado mb-0">¿No puedes escanear? Escribe este código a mano:</p>
+          <code style="word-break:break-all">{{ config.secret }}</code>
+        </div>
+      </div>
+
+      <p class="mb-1"><strong>2.</strong> Escribe el código de 6 dígitos que muestra la app.</p>
+      <form [formGroup]="formularioActivar" (ngSubmit)="confirmarActivacion()" novalidate>
+        <div class="campo">
+          <input type="text" class="entrada" formControlName="codigo" inputmode="numeric"
+                 maxlength="6" autocomplete="one-time-code" placeholder="123456"
+                 [class.invalida]="formularioActivar.controls.codigo.invalid && formularioActivar.controls.codigo.touched"
+                 aria-label="Código de 6 dígitos">
+        </div>
+        <div class="fila espaciado-sm">
+          <button type="submit" class="boton boton-primario" [disabled]="trabajandoDosPasos()">
+            {{ trabajandoDosPasos() ? 'Comprobando…' : 'Activar' }}
+          </button>
+          <button type="button" class="boton boton-contorno" (click)="cancelarConfiguracion()">Cancelar</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Desactivar -->
+    <form *ngIf="desactivando()" [formGroup]="formularioDesactivar" (ngSubmit)="confirmarDesactivacion()"
+          novalidate class="mt-2">
+      <p class="pequeno apagado mb-2">
+        Para desactivarla, confirma tu contraseña y escribe un código de tu app (o uno de recuperación).
+      </p>
+      <div class="campo">
+        <label class="etiqueta" for="password-2fa">Contraseña</label>
+        <input id="password-2fa" type="password" class="entrada" formControlName="password"
+               autocomplete="current-password">
+      </div>
+      <div class="campo">
+        <label class="etiqueta" for="codigo-2fa">Código</label>
+        <input id="codigo-2fa" type="text" class="entrada" formControlName="codigo"
+               autocomplete="one-time-code" placeholder="123456 o código de recuperación">
+      </div>
+      <button type="submit" class="boton boton-primario" [disabled]="trabajandoDosPasos()">
+        {{ trabajandoDosPasos() ? 'Desactivando…' : 'Desactivar verificación en dos pasos' }}
       </button>
     </form>
   </div>

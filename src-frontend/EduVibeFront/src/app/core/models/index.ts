@@ -20,6 +20,13 @@ export interface Usuario {
   avatarUrl: string | null;
   organizationId: string;
   createdAt: string | null;
+  totpEnabled: boolean;
+}
+
+/** Datos para añadir la cuenta a una app de autenticación. */
+export interface ConfiguracionDosPasos {
+  secret: string;
+  otpauthUri: string;
 }
 
 export interface RespuestaAutenticacion {

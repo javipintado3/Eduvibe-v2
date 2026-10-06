@@ -16,11 +16,16 @@ import com.eduvibe.dto.auth.ChangePasswordRequest;
 import com.eduvibe.dto.auth.ForgotPasswordRequest;
 import com.eduvibe.dto.auth.InvitationInfoResponse;
 import com.eduvibe.dto.auth.LoginRequest;
+import com.eduvibe.dto.auth.TwoFactorCodeRequest;
+import com.eduvibe.dto.auth.TwoFactorDisableRequest;
+import com.eduvibe.dto.auth.TwoFactorEnabledResponse;
+import com.eduvibe.dto.auth.TwoFactorSetupResponse;
 import com.eduvibe.dto.auth.ResetPasswordRequest;
 import com.eduvibe.dto.user.UserResponse;
 import com.eduvibe.service.AuthService;
 import com.eduvibe.service.InvitationService;
 import com.eduvibe.service.PasswordResetService;
+import com.eduvibe.service.TwoFactorService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +48,7 @@ public class AuthController {
     private final AuthService authService;
     private final InvitationService invitationService;
     private final PasswordResetService passwordResetService;
+    private final TwoFactorService twoFactorService;
 
     /** Inicio de sesión con email y contraseña. */
     @PostMapping("/login")
@@ -104,6 +110,31 @@ public class AuthController {
     public ResponseEntity<Void> cambiarContrasena(@Valid @RequestBody ChangePasswordRequest peticion,
                                                   HttpServletRequest http) {
         authService.cambiarPassword(peticion, http.getRemoteAddr());
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Primer paso del 2FA: genera el secreto y devuelve lo necesario para el QR. */
+    @PostMapping("/2fa/setup")
+    public ResponseEntity<TwoFactorSetupResponse> iniciarDosPasos() {
+        return ResponseEntity.ok(twoFactorService.iniciarConfiguracion(authService.identidadActual().id()));
+    }
+
+    /** Segundo paso: confirma con un código, activa y devuelve los códigos de recuperación. */
+    @PostMapping("/2fa/enable")
+    public ResponseEntity<TwoFactorEnabledResponse> activarDosPasos(
+            @Valid @RequestBody TwoFactorCodeRequest peticion) {
+
+        return ResponseEntity.ok(new TwoFactorEnabledResponse(
+                twoFactorService.activar(authService.identidadActual().id(), peticion.code())));
+    }
+
+    /** Desactiva el 2FA, pidiendo la contraseña y un código. */
+    @PostMapping("/2fa/disable")
+    public ResponseEntity<Void> desactivarDosPasos(@Valid @RequestBody TwoFactorDisableRequest peticion,
+                                                   HttpServletRequest http) {
+
+        twoFactorService.desactivar(authService.identidadActual().id(),
+                peticion.password(), peticion.code(), http.getRemoteAddr());
         return ResponseEntity.noContent().build();
     }
 }

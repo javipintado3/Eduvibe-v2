@@ -20,7 +20,8 @@ public record UserResponse(
         String status,
         String avatarUrl,
         UUID organizationId,
-        Instant createdAt) {
+        Instant createdAt,
+        boolean totpEnabled) {
 
     public static UserResponse de(User usuario) {
         return new UserResponse(
@@ -31,6 +32,7 @@ public record UserResponse(
                 usuario.getStatus().getValor(),
                 usuario.getAvatarUrl(),
                 usuario.getOrganization().getId(),
-                usuario.getCreatedAt());
+                usuario.getCreatedAt(),
+                usuario.isTotpEnabled());
     }
 }

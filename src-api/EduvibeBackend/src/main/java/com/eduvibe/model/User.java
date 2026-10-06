@@ -61,6 +61,18 @@ public class User {
     @Column(name = "password_hash")
     private String passwordHash;
 
+    /**
+     * Secreto del 2FA en Base32. Se rellena al empezar la configuración, pero
+     * solo cuenta cuando {@code totpEnabled} es true. Tiene que poder leerse de
+     * vuelta para verificar códigos, así que (a diferencia de la contraseña) no
+     * se puede guardar como hash.
+     */
+    @Column(name = "totp_secret")
+    private String totpSecret;
+
+    @Column(name = "totp_enabled", nullable = false)
+    private boolean totpEnabled;
+
     /** Null hasta que la persona sube una foto: mientras tanto se ven sus iniciales. */
     @Column(name = "avatar_url")
     private String avatarUrl;
