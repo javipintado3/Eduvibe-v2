@@ -5,12 +5,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.eduvibe.dto.auth.AcceptInvitationRequest;
 import com.eduvibe.dto.auth.AuthResponse;
+import com.eduvibe.dto.auth.ChangePasswordRequest;
 import com.eduvibe.dto.auth.ForgotPasswordRequest;
 import com.eduvibe.dto.auth.InvitationInfoResponse;
 import com.eduvibe.dto.auth.LoginRequest;
@@ -94,6 +96,14 @@ public class AuthController {
             @Valid @RequestBody ResetPasswordRequest peticion) {
 
         passwordResetService.restablecer(token, peticion.password());
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Cambia la contraseña de la sesión en curso, pidiendo la actual. */
+    @PutMapping("/password")
+    public ResponseEntity<Void> cambiarContrasena(@Valid @RequestBody ChangePasswordRequest peticion,
+                                                  HttpServletRequest http) {
+        authService.cambiarPassword(peticion, http.getRemoteAddr());
         return ResponseEntity.noContent().build();
     }
 }

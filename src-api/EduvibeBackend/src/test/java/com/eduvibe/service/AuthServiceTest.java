@@ -10,8 +10,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -20,15 +23,20 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.eduvibe.dto.auth.AuthResponse;
+import com.eduvibe.dto.auth.ChangePasswordRequest;
 import com.eduvibe.dto.auth.LoginRequest;
+import com.eduvibe.exception.BadRequestException;
 import com.eduvibe.exception.TooManyRequestsException;
 import com.eduvibe.model.Organization;
 import com.eduvibe.model.User;
 import com.eduvibe.model.enums.UserRole;
 import com.eduvibe.repository.UserRepository;
+import com.eduvibe.security.AuthenticatedUser;
 import com.eduvibe.security.JwtService;
 
 @ExtendWith(MockitoExtension.class)
@@ -174,6 +182,85 @@ class AuthServiceTest {
 
             assertThat(respuesta.token()).isEqualTo("token-emitido");
             assertThat(respuesta.user().email()).isEqualTo("ana@centro.es");
+        }
+    }
+
+    @Nested
+    @DisplayName("Cambiar contraseña")
+    class CambiarPassword {
+
+        private final UUID idUsuario = UUID.randomUUID();
+        private User usuario;
+
+        @BeforeEach
+        void iniciarSesion() {
+            usuario = usuarioActivo("ana@centro.es", "$2a$10$hashActual");
+            AuthenticatedUser identidad = new AuthenticatedUser(
+                    idUsuario, "ana@centro.es", "Ana", UserRole.STUDENT, UUID.randomUUID());
+            SecurityContextHolder.getContext().setAuthentication(
+                    new UsernamePasswordAuthenticationToken(identidad, null, List.of()));
+        }
+
+        @AfterEach
+        void cerrarSesion() {
+            SecurityContextHolder.clearContext();
+        }
+
+        @Test
+        @DisplayName("con la contraseña actual correcta guarda el hash de la nueva")
+        void cambioCorrecto() {
+            when(userRepository.findById(idUsuario)).thenReturn(Optional.of(usuario));
+            when(passwordEncoder.matches("actual-ok", "$2a$10$hashActual")).thenReturn(true);
+            when(passwordEncoder.matches("nueva-clave-1", "$2a$10$hashActual")).thenReturn(false);
+            when(passwordEncoder.encode("nueva-clave-1")).thenReturn("$2a$10$hashNuevo");
+
+            authService.cambiarPassword(new ChangePasswordRequest("actual-ok", "nueva-clave-1"), IP);
+
+            assertThat(usuario.getPasswordHash()).isEqualTo("$2a$10$hashNuevo");
+            verify(userRepository).save(usuario);
+        }
+
+        @Test
+        @DisplayName("con la actual incorrecta lanza 400 (no 401, que cerraría la sesión) y apunta el fallo")
+        void actualIncorrecta() {
+            when(userRepository.findById(idUsuario)).thenReturn(Optional.of(usuario));
+            when(passwordEncoder.matches("mala", "$2a$10$hashActual")).thenReturn(false);
+
+            assertThatThrownBy(() -> authService.cambiarPassword(
+                    new ChangePasswordRequest("mala", "nueva-clave-1"), IP))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessage("La contraseña actual no es correcta");
+
+            verify(loginAttemptService).registrarFallo("ana@centro.es", IP);
+            verify(userRepository, never()).save(usuario);
+            assertThat(usuario.getPasswordHash()).isEqualTo("$2a$10$hashActual");
+        }
+
+        @Test
+        @DisplayName("con la cuenta bloqueada por intentos fallidos no llega a mirar la contraseña")
+        void cuentaBloqueada() {
+            when(userRepository.findById(idUsuario)).thenReturn(Optional.of(usuario));
+            when(loginAttemptService.estaBloqueado("ana@centro.es")).thenReturn(true);
+            when(loginAttemptService.minutosDeBloqueo()).thenReturn(15L);
+
+            assertThatThrownBy(() -> authService.cambiarPassword(
+                    new ChangePasswordRequest("actual-ok", "nueva-clave-1"), IP))
+                    .isInstanceOf(TooManyRequestsException.class);
+
+            verifyNoInteractions(passwordEncoder);
+        }
+
+        @Test
+        @DisplayName("rechaza una contraseña nueva igual a la actual")
+        void nuevaIgualQueLaActual() {
+            when(userRepository.findById(idUsuario)).thenReturn(Optional.of(usuario));
+            when(passwordEncoder.matches("misma-clave-1", "$2a$10$hashActual")).thenReturn(true);
+
+            assertThatThrownBy(() -> authService.cambiarPassword(
+                    new ChangePasswordRequest("misma-clave-1", "misma-clave-1"), IP))
+                    .isInstanceOf(BadRequestException.class);
+
+            verify(userRepository, never()).save(usuario);
         }
     }
 }

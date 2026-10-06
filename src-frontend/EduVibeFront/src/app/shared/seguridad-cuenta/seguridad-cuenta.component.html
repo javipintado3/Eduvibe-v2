@@ -1,0 +1,55 @@
+<div class="tarjeta">
+  <div class="tarjeta-cuerpo">
+
+    <div class="fila-entre">
+      <div>
+        <h3 class="mb-0">Contraseña</h3>
+        <p class="pequeno apagado mb-0">Cámbiala cuando quieras; te pediremos la actual.</p>
+      </div>
+      <button type="button" class="boton boton-contorno boton-pequeno" (click)="alternar()">
+        {{ abierto() ? 'Cancelar' : 'Cambiar contraseña' }}
+      </button>
+    </div>
+
+    <p class="pequeno mt-2 mb-0" style="color:var(--verde)" *ngIf="cambiada()">
+      Contraseña actualizada.
+    </p>
+
+    <form *ngIf="abierto()" [formGroup]="formulario" (ngSubmit)="guardar()" novalidate class="mt-2">
+
+      <app-aviso class="mb-2" tipo="error" [mensaje]="error()"></app-aviso>
+
+      <div class="campo">
+        <label class="etiqueta" for="actual">Contraseña actual</label>
+        <input id="actual" type="password" class="entrada" formControlName="actual"
+               [class.invalida]="campoInvalido('actual')" autocomplete="current-password">
+        <span class="error-campo" *ngIf="campoInvalido('actual')">
+          Escribe tu contraseña actual
+        </span>
+      </div>
+
+      <div class="campo">
+        <label class="etiqueta" for="nueva">Contraseña nueva</label>
+        <input id="nueva" type="password" class="entrada" formControlName="nueva"
+               [class.invalida]="campoInvalido('nueva')"
+               autocomplete="new-password" placeholder="Mínimo 8 caracteres">
+        <span class="error-campo" *ngIf="campoInvalido('nueva')">
+          La contraseña debe tener al menos 8 caracteres
+        </span>
+      </div>
+
+      <div class="campo">
+        <label class="etiqueta" for="repetir">Repite la contraseña nueva</label>
+        <input id="repetir" type="password" class="entrada" formControlName="repetir"
+               [class.invalida]="noCoinciden" autocomplete="new-password">
+        <span class="error-campo" *ngIf="noCoinciden">
+          Las dos contraseñas no coinciden
+        </span>
+      </div>
+
+      <button type="submit" class="boton boton-primario" [disabled]="enviando()">
+        {{ enviando() ? 'Guardando…' : 'Guardar contraseña' }}
+      </button>
+    </form>
+  </div>
+</div>

@@ -75,6 +75,12 @@ export class AuthService {
     return this.http.post<void>(`${this.api}/auth/reset-password/${token}`, { password });
   }
 
+  /** Cambia la contraseña de la sesión en curso; hay que dar la actual. */
+  cambiarContrasena(actual: string, nueva: string): Observable<void> {
+    return this.http.put<void>(`${this.api}/auth/password`,
+      { currentPassword: actual, newPassword: nueva });
+  }
+
   /** Relee el usuario del servidor; sirve para detectar un token ya caducado. */
   refrescarUsuario(): Observable<Usuario> {
     return this.http.get<Usuario>(`${this.api}/auth/me`)

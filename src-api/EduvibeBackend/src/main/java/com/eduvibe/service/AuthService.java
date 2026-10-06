@@ -12,8 +12,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.eduvibe.dto.auth.AcceptInvitationRequest;
 import com.eduvibe.dto.auth.AuthResponse;
+import com.eduvibe.dto.auth.ChangePasswordRequest;
 import com.eduvibe.dto.auth.LoginRequest;
 import com.eduvibe.dto.user.UserResponse;
+import com.eduvibe.exception.BadRequestException;
 import com.eduvibe.exception.NotFoundException;
 import com.eduvibe.exception.TooManyRequestsException;
 import com.eduvibe.model.User;
@@ -97,6 +99,38 @@ public class AuthService {
     public AuthResponse aceptarInvitacion(String token, AcceptInvitationRequest peticion) {
         User usuario = invitationService.aceptar(token, peticion.password());
         return construirRespuesta(usuario);
+    }
+
+    /**
+     * Cambia la contraseña de quien tiene la sesión abierta.
+     *
+     * Exige la actual. Un fallo cuenta como un intento de login fallido: si no,
+     * quien robara un token podría probar contraseñas aquí sin ningún límite.
+     * Se responde 400 y no 401 a propósito: el 401 hace que el frontend cierre
+     * la sesión, y equivocarse al teclear la contraseña actual no es eso.
+     */
+    @Transactional
+    public void cambiarPassword(ChangePasswordRequest peticion, String ip) {
+        AuthenticatedUser autenticado = identidadActual();
+        User usuario = userRepository.findById(autenticado.id())
+                .orElseThrow(() -> NotFoundException.de("Usuario", autenticado.id()));
+
+        if (loginAttemptService.estaBloqueado(usuario.getEmail())) {
+            throw new TooManyRequestsException("Demasiados intentos fallidos. Vuelve a intentarlo en "
+                    + loginAttemptService.minutosDeBloqueo() + " minutos");
+        }
+
+        if (!passwordEncoder.matches(peticion.currentPassword(), usuario.getPasswordHash())) {
+            loginAttemptService.registrarFallo(usuario.getEmail(), ip);
+            throw new BadRequestException("La contraseña actual no es correcta");
+        }
+
+        if (passwordEncoder.matches(peticion.newPassword(), usuario.getPasswordHash())) {
+            throw new BadRequestException("La contraseña nueva debe ser distinta de la actual");
+        }
+
+        usuario.cambiarPassword(passwordEncoder.encode(peticion.newPassword()));
+        userRepository.save(usuario);
     }
 
     /** Usuario de la petición en curso, releído de base de datos. */

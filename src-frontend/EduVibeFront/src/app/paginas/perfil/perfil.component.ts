@@ -13,6 +13,7 @@ import { AvatarComponent } from '../../shared/avatar/avatar.component';
 import { AvisoComponent } from '../../shared/aviso/aviso.component';
 import { CargandoComponent } from '../../shared/cargando/cargando.component';
 import { EstadoVacioComponent } from '../../shared/estado-vacio/estado-vacio.component';
+import { SeguridadCuentaComponent } from '../../shared/seguridad-cuenta/seguridad-cuenta.component';
 import { PastillaEstadoComponent } from '../../shared/pastilla-estado/pastilla-estado.component';
 import { TarjetaClaseComponent } from '../../shared/tarjeta-clase/tarjeta-clase.component';
 import { CeldaTablaDirective } from '../../shared/tabla-datos/celda-tabla.directive';
@@ -41,7 +42,7 @@ const ETIQUETAS_ROL: Record<string, string> = {
     NgIf, NgFor, RouterLink, DecimalPipe,
     AvatarComponent, AvisoComponent, CargandoComponent, EstadoVacioComponent,
     PastillaEstadoComponent, TarjetaClaseComponent, FechaPipe,
-    TablaDatosComponent, CeldaTablaDirective,
+    TablaDatosComponent, CeldaTablaDirective, SeguridadCuentaComponent,
   ],
   templateUrl: './perfil.component.html',
   styleUrl: './perfil.component.css',
