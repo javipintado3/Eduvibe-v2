@@ -29,7 +29,7 @@ public class MailService {
 
     private final JavaMailSender mailSender;
 
-    @Value("${spring.mail.username:}")
+    @Value("${app.mail.from:}")
     private String remitente;
 
     /**
