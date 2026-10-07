@@ -1,8 +1,4 @@
-.dos-columnas { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-
 /* ------------------------------------------------------------- preguntas */
-
-.separador { border: none; border-top: 1px solid var(--borde-sutil); margin: 18px 0; }
 
 .pregunta {
   background: var(--fondo);
@@ -61,8 +57,3 @@
 .pregunta-banco label { cursor: pointer; }
 
 .texto-pregunta-banco { display: block; font-size: .9rem; font-weight: 550; }
-
-@media (max-width: 560px) {
-  .dos-columnas { grid-template-columns: 1fr; }
-  .meta { white-space: normal; }
-}

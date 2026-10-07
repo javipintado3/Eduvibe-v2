@@ -76,6 +76,12 @@ export const routes: Routes = [
           .then(m => m.NuevaTareaComponent),
       },
       {
+        path: 'clases/:id/examenes/nuevo',
+        title: 'Nuevo examen · Eduvibe',
+        loadComponent: () => import('./paginas/clases/nuevo-examen/nuevo-examen.component')
+          .then(m => m.NuevoExamenComponent),
+      },
+      {
         path: 'clases/:id',
         title: 'Clase · Eduvibe',
         loadComponent: () => import('./paginas/clases/detalle-clase/detalle-clase.component')
@@ -137,6 +143,13 @@ export const routes: Routes = [
         title: 'Usuarios · Eduvibe',
         loadComponent: () => import('./paginas/admin/usuarios/usuarios.component')
           .then(m => m.UsuariosComponent),
+      },
+      {
+        path: 'admin/usuarios/nuevo',
+        canActivate: [adminGuard],
+        title: 'Nuevo usuario · Eduvibe',
+        loadComponent: () => import('./paginas/admin/usuarios/nuevo-usuario/nuevo-usuario.component')
+          .then(m => m.NuevoUsuarioComponent),
       },
       {
         path: 'admin/usuarios/:id',

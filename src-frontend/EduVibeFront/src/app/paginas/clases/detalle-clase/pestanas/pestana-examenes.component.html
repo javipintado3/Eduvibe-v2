@@ -1,10 +1,11 @@
 <div class="fila-entre mb-2" *ngIf="puedoEditar">
   <p class="pequeno apagado mb-0">Los exámenes se agrupan por {{ etiquetaUnidadMinuscula }}.</p>
-  <button type="button" class="boton boton-primario boton-pequeno" (click)="abrirDialogo()">
+  <a class="boton boton-primario boton-pequeno" [routerLink]="['/clases', claseId, 'examenes', 'nuevo']"
+     [queryParams]="temaFiltro ? { tema: temaFiltro } : null">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
          stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
     Nuevo examen
-  </button>
+  </a>
 </div>
 
 <app-aviso class="mb-2" tipo="error" [mensaje]="error()"></app-aviso>
@@ -56,128 +57,3 @@
     </ng-template>
   </app-tabla-datos>
 </ng-container>
-
-<!-- Alta de examen -->
-<app-dialogo [abierto]="dialogoAbierto()" titulo="Nuevo examen" [ancho]="'grande'"
-             [cierraAlPulsarFuera]="false" (cerrar)="dialogoAbierto.set(false)">
-
-  <app-aviso class="mb-2" tipo="error" [mensaje]="errorFormulario()"></app-aviso>
-
-  <form [formGroup]="formulario" (ngSubmit)="crear()" novalidate id="form-examen">
-
-    <div class="campo">
-      <label class="etiqueta" for="titulo-examen">Título</label>
-      <input id="titulo-examen" class="entrada" formControlName="title" placeholder="Examen del segundo trimestre">
-    </div>
-
-    <div class="campo">
-      <label class="etiqueta" for="enunciado-examen">Descripción</label>
-      <textarea id="enunciado-examen" class="area" formControlName="description"
-                placeholder="Qué entra y cómo se corrige."></textarea>
-    </div>
-
-    <div class="dos-columnas">
-      <div class="campo">
-        <label class="etiqueta" for="duracion">Duración (minutos)</label>
-        <input id="duracion" type="number" min="1" max="480" class="entrada" formControlName="durationMinutes">
-      </div>
-
-      <div class="campo">
-        <label class="etiqueta" for="fecha-examen">Fecha límite</label>
-        <input id="fecha-examen" type="datetime-local" class="entrada" formControlName="dueDate">
-        <span class="ayuda-campo">Opcional</span>
-      </div>
-    </div>
-
-    <div class="campo" *ngIf="temas.length">
-      <label class="etiqueta" for="tema-examen">{{ etiquetaUnidad }}</label>
-      <select id="tema-examen" class="selector" formControlName="topicId">
-        <option value="">{{ etiquetaSinUnidad }}</option>
-        <option *ngFor="let tema of temas" [value]="tema.id">{{ tema.title }}</option>
-      </select>
-    </div>
-
-    <ng-container *ngIf="banco().length">
-      <hr class="separador">
-
-      <label class="etiqueta">Reutilizar del banco de preguntas</label>
-      <p class="pequeno apagado mb-2">Preguntas ya usadas en otros exámenes de esta clase. Se copian, así que retocarlas aquí no afecta al examen original.</p>
-
-      <div class="pregunta-banco" *ngFor="let pregunta of banco()">
-        <label class="fila espaciado-sm">
-          <input type="checkbox" [checked]="estaEnBanco(pregunta.id)"
-                 (change)="alternarDelBanco(pregunta, $any($event.target).checked)">
-          <span class="crecer" style="min-width:0">
-            <span class="texto-pregunta-banco">{{ pregunta.text }}</span>
-            <span class="pequeno apagado bloque">De "{{ pregunta.examTitle }}" · {{ pregunta.options.length }} opciones</span>
-          </span>
-          <input type="number" min="1" class="entrada entrada-corta" *ngIf="estaEnBanco(pregunta.id)"
-                 [value]="seleccionBanco().get(pregunta.id)"
-                 (input)="actualizarPuntosDelBanco(pregunta.id, +$any($event.target).value)">
-        </label>
-      </div>
-    </ng-container>
-
-    <hr class="separador">
-
-    <div class="fila-entre mb-2">
-      <label class="etiqueta mb-0">Preguntas nuevas</label>
-      <button type="button" class="boton boton-contorno boton-pequeno" (click)="anadirPregunta()">
-        Añadir pregunta
-      </button>
-    </div>
-
-    <p class="pequeno apagado mb-2" *ngIf="!preguntas.length">
-      Este examen usará solo preguntas del banco, sin ninguna nueva.
-    </p>
-
-    <div formArrayName="questions">
-      <div class="pregunta" *ngFor="let pregunta of preguntas.controls; let i = index" [formGroupName]="i">
-
-        <div class="fila-entre mb-2">
-          <span class="numero-pregunta">Pregunta {{ i + 1 }}</span>
-          <button type="button" class="boton-quitar"
-                  (click)="quitarPregunta(i)" aria-label="Quitar pregunta">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-          </button>
-        </div>
-
-        <div class="fila-pregunta">
-          <div class="campo crecer mb-0">
-            <input class="entrada" formControlName="text" placeholder="Texto de la pregunta">
-          </div>
-
-          <div class="campo mb-0">
-            <label class="etiqueta">Puntos</label>
-            <input type="number" min="1" class="entrada entrada-corta" formControlName="points">
-          </div>
-        </div>
-
-        <div class="rejilla-opciones mt-2" formArrayName="options">
-          <div class="opcion" *ngFor="let opcion of opcionesDe(i).controls; let j = index" [formGroupName]="j">
-            <input type="radio" [name]="'correcta-' + i" [checked]="opcion.get('correct')?.value"
-                   (change)="marcarCorrecta(i, j)" [attr.aria-label]="'Opción ' + (j + 1) + ' correcta'">
-            <input class="entrada" formControlName="text" [placeholder]="'Opción ' + (j + 1)">
-            <button type="button" class="boton-quitar" *ngIf="opcionesDe(i).length > 2"
-                    (click)="quitarOpcion(i, j)" aria-label="Quitar opción">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-            </button>
-          </div>
-        </div>
-
-        <button type="button" class="boton boton-fantasma boton-pequeno mt-1" (click)="anadirOpcion(i)">
-          Añadir opción
-        </button>
-      </div>
-    </div>
-  </form>
-
-  <ng-container acciones>
-    <button type="button" class="boton boton-contorno" (click)="dialogoAbierto.set(false)">Cancelar</button>
-    <button type="submit" form="form-examen" class="boton boton-primario" [disabled]="creando()">
-      {{ creando() ? 'Creando…' : 'Crear examen' }}
-    </button>
-  </ng-container>
-</app-dialogo>

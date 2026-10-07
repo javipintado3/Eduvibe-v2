@@ -1,7 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { NgFor, NgIf } from '@angular/common';
-import { Router } from '@angular/router';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
 import { ConfirmacionService } from '../../../core/services/confirmacion.service';
@@ -33,7 +32,7 @@ import { ColumnaTabla, FiltroTabla, OrdenTabla } from '../../../shared/tabla-dat
   selector: 'app-usuarios',
   standalone: true,
   imports: [
-    NgIf, NgFor, ReactiveFormsModule,
+    NgIf, NgFor, RouterLink,
     AvatarComponent, PastillaEstadoComponent, DialogoComponent, AvisoComponent, FechaPipe,
     TablaDatosComponent, CeldaTablaDirective, DominioPermitidoComponent,
   ],
@@ -44,7 +43,6 @@ export class UsuariosComponent implements OnInit {
 
   private readonly usuariosService = inject(UsuariosService);
   private readonly confirmacion = inject(ConfirmacionService);
-  private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
 
   readonly pagina = signal<Pagina<Usuario> | null>(null);
@@ -305,18 +303,12 @@ export class UsuariosComponent implements OnInit {
     this.cargar();
   }
 
-  // --- alta ---
+  // --- invitación reenviada ---
+  // El alta de usuarios vive en su propia página (nuevo-usuario); aquí solo
+  // queda el diálogo que enseña el enlace al reenviar una invitación.
   readonly dialogoAbierto = signal(false);
-  readonly creando = signal(false);
-  readonly errorFormulario = signal<string | null>(null);
   readonly invitacionEmitida = signal<{ nombre: string; invitacion: Invitacion } | null>(null);
   readonly enlaceCopiado = signal(false);
-
-  readonly formulario = this.fb.nonNullable.group({
-    name: ['', [Validators.required]],
-    email: ['', [Validators.required, Validators.email]],
-    role: ['student' as Rol, [Validators.required]],
-  });
 
   ngOnInit(): void {
     this.cargar();
@@ -354,42 +346,7 @@ export class UsuariosComponent implements OnInit {
     this.cargar();
   }
 
-  // ------------------------------------------------------------------ alta
-
-  abrirDialogo(): void {
-    this.formulario.reset({ name: '', email: '', role: 'student' });
-    this.errorFormulario.set(null);
-    this.invitacionEmitida.set(null);
-    this.enlaceCopiado.set(false);
-    this.dialogoAbierto.set(true);
-  }
-
-  crear(): void {
-    this.formulario.markAllAsTouched();
-
-    if (this.formulario.invalid || this.creando()) {
-      return;
-    }
-
-    this.creando.set(true);
-    this.errorFormulario.set(null);
-
-    const datos = this.formulario.getRawValue();
-
-    this.usuariosService.crear(datos).subscribe({
-      next: (resultado) => {
-        this.creando.set(false);
-        // El diálogo no se cierra: ahora muestra el enlace de invitación, que
-        // es lo único que el administrador necesita llevarse de aquí
-        this.invitacionEmitida.set({ nombre: resultado.user.name, invitacion: resultado.invitation });
-        this.cargar();
-      },
-      error: (err) => {
-        this.creando.set(false);
-        this.errorFormulario.set(AvisoComponent.mensajeDe(err));
-      },
-    });
-  }
+  // ------------------------------------------------------------ invitación
 
   copiarEnlace(enlace: string): void {
     navigator.clipboard?.writeText(enlace).then(

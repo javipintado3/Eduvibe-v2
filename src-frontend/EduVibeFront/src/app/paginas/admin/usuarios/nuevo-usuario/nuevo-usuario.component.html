@@ -1,0 +1,83 @@
+<!-- Paso 1: el formulario -->
+<app-pagina-formulario *ngIf="!invitacionEmitida()"
+  titulo="Nuevo usuario"
+  descripcion="La cuenta nace sin contraseña: la persona la elige al abrir la invitación."
+  formId="form-usuario"
+  rutaVolver="/admin/usuarios"
+  textoGuardar="Crear e invitar"
+  textoGuardando="Creando…"
+  [guardando]="guardando()"
+  [error]="error()">
+
+  <form [formGroup]="formulario" (ngSubmit)="guardar()" novalidate id="form-usuario">
+
+    <app-seccion-formulario titulo="Datos personales">
+      <app-campo etiqueta="Nombre y apellidos" para="nombre" [requerido]="true" [error]="errorDe('name')">
+        <input id="nombre" class="entrada" formControlName="name" placeholder="Marina Vázquez"
+               [class.invalida]="errorDe('name')" (blur)="recortar('name')">
+      </app-campo>
+
+      <app-campo etiqueta="Email" para="correo" [requerido]="true" [error]="errorDe('email')">
+        <input id="correo" type="email" class="entrada" formControlName="email"
+               placeholder="marina.vazquez@centro.es"
+               [class.invalida]="errorDe('email')" (blur)="recortar('email')">
+      </app-campo>
+    </app-seccion-formulario>
+
+    <app-seccion-formulario titulo="Rol y acceso">
+      <app-campo etiqueta="Rol" para="rol" [requerido]="true"
+                 ayuda="La cuenta nace sin contraseña; la elige la propia persona.">
+        <select id="rol" class="selector" formControlName="role">
+          <option value="student">Alumnado</option>
+          <option value="teacher">Profesorado</option>
+          <option value="admin">Administración</option>
+          <option value="guardian">Tutor legal</option>
+        </select>
+      </app-campo>
+    </app-seccion-formulario>
+  </form>
+</app-pagina-formulario>
+
+<!-- Paso 2: el enlace de invitación -->
+<div class="pagina" *ngIf="invitacionEmitida() as emitida">
+  <div class="cabecera">
+    <a class="boton boton-contorno boton-pequeno" routerLink="/admin/usuarios">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Volver
+    </a>
+    <h1>Nuevo usuario</h1>
+  </div>
+
+  <app-seccion-formulario titulo="Invitación lista">
+    <p class="mb-2">
+      La cuenta de <strong>{{ emitida.nombre }}</strong> ya está creada. Para activarla tiene que
+      abrir este enlace y elegir su contraseña.
+    </p>
+
+    <div class="aviso aviso-atencion mb-2" *ngIf="!emitida.invitacion.emailEnviado">
+      <span>No hay servidor de correo configurado, así que el enlace no se ha enviado. Cópialo y hazlo llegar tú.</span>
+    </div>
+
+    <div class="aviso aviso-exito mb-2" *ngIf="emitida.invitacion.emailEnviado">
+      <span>Se ha enviado por correo. Aquí lo tienes también por si acaso.</span>
+    </div>
+
+    <div class="enlace">
+      <code>{{ emitida.invitacion.link }}</code>
+      <button type="button" class="boton boton-contorno boton-pequeno"
+              (click)="copiarEnlace(emitida.invitacion.link)">
+        {{ enlaceCopiado() ? 'Copiado' : 'Copiar' }}
+      </button>
+    </div>
+
+    <p class="pequeno apagado mt-2 mb-0">
+      Sirve una sola vez y caduca el {{ emitida.invitacion.expiresAt | fecha }}.
+    </p>
+  </app-seccion-formulario>
+
+  <div class="acciones">
+    <button type="button" class="boton boton-contorno" (click)="crearOtro()">Crear otro usuario</button>
+    <a class="boton boton-primario" routerLink="/admin/usuarios">Volver a usuarios</a>
+  </div>
+</div>

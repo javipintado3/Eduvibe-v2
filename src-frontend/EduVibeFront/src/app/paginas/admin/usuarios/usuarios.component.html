@@ -15,11 +15,11 @@
       <button type="button" class="boton boton-contorno" (click)="abrirImportar()">
         Importar CSV
       </button>
-      <button type="button" class="boton boton-primario" (click)="abrirDialogo()">
+      <a class="boton boton-primario" routerLink="/admin/usuarios/nuevo">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
         Nuevo usuario
-      </button>
+      </a>
     </div>
   </div>
 
@@ -88,13 +88,11 @@
   </app-tabla-datos>
 </div>
 
-<!-- Alta / invitación -->
-<app-dialogo [abierto]="dialogoAbierto()"
-             [titulo]="invitacionEmitida() ? 'Invitación lista' : 'Nuevo usuario'"
+<!-- Invitación reenviada desde la tabla (el alta es la página /admin/usuarios/nuevo) -->
+<app-dialogo [abierto]="dialogoAbierto()" titulo="Invitación lista"
              [cierraAlPulsarFuera]="false"
              (cerrar)="dialogoAbierto.set(false)">
 
-  <!-- Paso 2: el enlace -->
   <ng-container *ngIf="invitacionEmitida() as emitida">
     <p class="mb-2">
       La cuenta de <strong>{{ emitida.nombre }}</strong> ya está creada. Para activarla tiene que
@@ -122,43 +120,8 @@
     </p>
   </ng-container>
 
-  <!-- Paso 1: el formulario -->
-  <ng-container *ngIf="!invitacionEmitida()">
-    <app-aviso class="mb-2" tipo="error" [mensaje]="errorFormulario()"></app-aviso>
-
-    <form [formGroup]="formulario" (ngSubmit)="crear()" novalidate id="form-usuario">
-      <div class="campo">
-        <label class="etiqueta" for="nombre">Nombre y apellidos</label>
-        <input id="nombre" class="entrada" formControlName="name" placeholder="Marina Vázquez">
-      </div>
-
-      <div class="campo">
-        <label class="etiqueta" for="correo">Email</label>
-        <input id="correo" type="email" class="entrada" formControlName="email"
-               placeholder="marina.vazquez@centro.es">
-      </div>
-
-      <div class="campo mb-0">
-        <label class="etiqueta" for="rol">Rol</label>
-        <select id="rol" class="selector" formControlName="role">
-          <option value="student">Alumnado</option>
-          <option value="teacher">Profesorado</option>
-          <option value="admin">Administración</option>
-          <option value="guardian">Tutor legal</option>
-        </select>
-        <span class="ayuda-campo">La cuenta nace sin contraseña; la elige la propia persona.</span>
-      </div>
-    </form>
-  </ng-container>
-
   <ng-container acciones>
-    <button type="button" class="boton boton-contorno" (click)="dialogoAbierto.set(false)">
-      {{ invitacionEmitida() ? 'Cerrar' : 'Cancelar' }}
-    </button>
-    <button type="submit" form="form-usuario" class="boton boton-primario"
-            *ngIf="!invitacionEmitida()" [disabled]="creando()">
-      {{ creando() ? 'Creando…' : 'Crear e invitar' }}
-    </button>
+    <button type="button" class="boton boton-contorno" (click)="dialogoAbierto.set(false)">Cerrar</button>
   </ng-container>
 </app-dialogo>
 

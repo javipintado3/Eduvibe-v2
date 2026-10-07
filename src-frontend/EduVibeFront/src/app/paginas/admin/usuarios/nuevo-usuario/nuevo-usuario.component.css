@@ -1,0 +1,24 @@
+/* Paso 2: misma anchura y márgenes que <app-pagina-formulario> */
+.pagina { width: 100%; max-width: 720px; margin: 0 auto; padding: 0 20px 24px; }
+.cabecera { margin: 24px 0; }
+.cabecera h1 { margin: 14px 0 4px; }
+
+.acciones { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+
+.enlace {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--fondo);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-sm);
+  padding: 9px 11px;
+}
+
+.enlace code {
+  flex: 1;
+  min-width: 0;
+  font-size: .78rem;
+  color: var(--tinta-70);
+  overflow-wrap: anywhere;
+}
