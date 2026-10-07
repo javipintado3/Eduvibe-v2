@@ -2,3 +2,8 @@
 # no se publica en el repo público.
 AGENTS.md
 CLAUDE.md
+
+# Variables de entorno reales (secretos). Solo se sube .env.example
+.env
+.env.*
+!.env.example
