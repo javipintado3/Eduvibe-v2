@@ -37,7 +37,6 @@ export const routes: Routes = [
   },
   {
     path: 'restablecer/:token',
-    canActivate: [invitadoGuard],
     title: 'Nueva contraseña · Eduvibe',
     loadComponent: () => import('./paginas/restablecer-contrasena/restablecer-contrasena.component')
       .then(m => m.RestablecerContrasenaComponent),

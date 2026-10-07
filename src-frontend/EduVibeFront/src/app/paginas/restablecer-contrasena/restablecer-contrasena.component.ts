@@ -1,7 +1,7 @@
 import { Component, Input, inject, signal } from '@angular/core';
 import { NgIf } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../core/services/auth.service';
 import { AvisoComponent } from '../../shared/aviso/aviso.component';
@@ -29,7 +29,6 @@ export class RestablecerContrasenaComponent {
 
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
-  private readonly router = inject(Router);
 
   /** Llega de la ruta gracias a withComponentInputBinding(). */
   @Input() token = '';
@@ -63,7 +62,8 @@ export class RestablecerContrasenaComponent {
     this.error.set(null);
 
     this.auth.restablecerContrasena(this.token, this.formulario.getRawValue().password).subscribe({
-      next: () => this.router.navigateByUrl('/login'),
+      // logout() limpia también una sesión abierta: si no, el guard de /login lo echaría a /clases
+      next: () => this.auth.logout(),
       error: (err) => {
         this.enviando.set(false);
         this.error.set(AvisoComponent.mensajeDe(err));
