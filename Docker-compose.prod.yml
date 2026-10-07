@@ -1,0 +1,21 @@
+# Ajustes de producción, que se aplican SOBRE Docker-compose.yml:
+#
+#   docker compose --env-file .env.production \
+#     -f Docker-compose.yml -f Docker-compose.prod.yml up -d --build
+#
+# - Perfil "prod": el backend se niega a arrancar sin JWT_SECRET.
+# - Sin datos de demostración: FLYWAY_LOCATIONS viene de .env.production
+#   (solo classpath:db/migration), así que no se crea ninguna cuenta demo1234.
+# - El primer administrador se crea con ADMIN_EMAIL / ADMIN_PASSWORD si la base está vacía.
+# - Postgres deja de publicarse en el host: solo la API lo alcanza, por la red interna.
+services:
+  db:
+    ports: !reset []
+
+  eduvibe_api:
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_NAME: ${ADMIN_NAME:-Administrador}
+      ORGANIZATION_NAME: ${ORGANIZATION_NAME:-EduVibe}

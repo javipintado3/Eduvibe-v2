@@ -10,6 +10,8 @@ import javax.crypto.SecretKey;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Service;
 
 import com.eduvibe.config.AppProperties;
@@ -44,9 +46,15 @@ public class JwtService {
     private final SecretKey clave;
     private final Duration validez;
 
-    public JwtService(AppProperties propiedades) {
+    public JwtService(AppProperties propiedades, Environment entorno) {
         String secreto = propiedades.jwt().secret();
         if (secreto == null || secreto.isBlank()) {
+            // En producción una clave aleatoria cerraría todas las sesiones en cada
+            // reinicio (y no valdría con más de una instancia): mejor no arrancar.
+            if (entorno.acceptsProfiles(Profiles.of("prod"))) {
+                throw new IllegalStateException(
+                        "JWT_SECRET es obligatorio con el perfil 'prod'. Genera uno con: openssl rand -base64 48");
+            }
             this.clave = Jwts.SIG.HS256.key().build();
             LOG.warn("No hay JWT_SECRET configurado: se ha generado una clave aleatoria. "
                     + "Los tokens dejarán de ser válidos al reiniciar la aplicación.");

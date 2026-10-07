@@ -167,6 +167,19 @@ Everything is driven by environment variables, with defaults suitable for local 
 | `LOGIN_MAX_FAILED_ATTEMPTS` / `LOGIN_LOCKOUT_MINUTES` | `5` / `15` | Login rate limiting |
 | `UPLOADS_DIR` | `uploads` | Upload directory (a volume in Docker) |
 | `FLYWAY_LOCATIONS` | `classpath:db/migration,classpath:db/demo` | Drop `db/demo` to skip demo data |
+| `SPRING_PROFILES_ACTIVE` | *(none)* | With `prod`, the API refuses to start without `JWT_SECRET` |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | empty | First admin, created only when the database has no users (min. 12 characters) |
+| `ADMIN_NAME` / `ORGANIZATION_NAME` | `Administrador` / `EduVibe` | Name of that admin and of the initial organization |
+
+## Production deployment
+
+```bash
+cp .env.example .env.production      # fill in the secrets; this file is git-ignored
+docker compose --env-file .env.production \
+  -f Docker-compose.yml -f Docker-compose.prod.yml up -d --build
+```
+
+`Docker-compose.prod.yml` activates the `prod` profile (mandatory `JWT_SECRET`), skips the demo data so no known credentials exist, creates the first admin from `ADMIN_EMAIL` / `ADMIN_PASSWORD` on an empty database, and stops publishing PostgreSQL on the host. After the first start, change the admin password from the profile page and remove `ADMIN_PASSWORD` from the env file.
 
 ## Repository structure
 

@@ -1,12 +1,14 @@
 package com.eduvibe.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.env.MockEnvironment;
 
 import com.eduvibe.config.AppProperties;
 import com.eduvibe.model.Organization;
@@ -23,7 +25,7 @@ class JwtServiceTest {
         AppProperties propiedades = new AppProperties(null,
                 new AppProperties.Jwt("un-secreto-de-pruebas-de-al-menos-32-bytes!!", 8),
                 null, null, null, null);
-        servicio = new JwtService(propiedades);
+        servicio = new JwtService(propiedades, new MockEnvironment());
 
         Organization centro = new Organization("Centro", null);
         centro.setId(UUID.randomUUID());
@@ -52,6 +54,28 @@ class JwtServiceTest {
         AuthenticatedUser segundo = servicio.leer(servicio.emitirPara(usuario));
 
         assertThat(primero.sesion().id()).isNotEqualTo(segundo.sesion().id());
+    }
+
+    @Test
+    @DisplayName("con el perfil prod no arranca si falta JWT_SECRET")
+    void prodExigeSecreto() {
+        AppProperties sinSecreto = new AppProperties(null, new AppProperties.Jwt("", 8), null, null, null, null);
+        MockEnvironment prod = new MockEnvironment();
+        prod.setActiveProfiles("prod");
+
+        assertThatThrownBy(() -> new JwtService(sinSecreto, prod))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("JWT_SECRET");
+    }
+
+    @Test
+    @DisplayName("sin perfil prod, un secreto vacío genera una clave aleatoria y arranca")
+    void desarrolloAceptaSinSecreto() {
+        AppProperties sinSecreto = new AppProperties(null, new AppProperties.Jwt("", 8), null, null, null, null);
+
+        JwtService local = new JwtService(sinSecreto, new MockEnvironment());
+
+        assertThat(local.leer(local.emitirPara(usuario))).isNotNull();
     }
 
     @Test
