@@ -1,10 +1,11 @@
 <div class="fila-entre mb-2" *ngIf="puedoEditar">
   <p class="pequeno apagado mb-0">Las tareas se agrupan por {{ etiquetaUnidadMinuscula }}.</p>
-  <button type="button" class="boton boton-primario boton-pequeno" (click)="abrirDialogo()">
+  <a class="boton boton-primario boton-pequeno" [routerLink]="['/clases', claseId, 'tareas', 'nueva']"
+     [queryParams]="temaFiltro ? { tema: temaFiltro } : null">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
          stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
     Nueva tarea
-  </button>
+  </a>
 </div>
 
 <app-aviso class="mb-2" tipo="error" [mensaje]="error()"></app-aviso>
@@ -55,77 +56,3 @@
   </app-tabla-datos>
 </ng-container>
 
-<!-- Alta de tarea -->
-<app-dialogo [abierto]="dialogoAbierto()" titulo="Nueva tarea"
-             [cierraAlPulsarFuera]="false" (cerrar)="dialogoAbierto.set(false)">
-
-  <app-aviso class="mb-2" tipo="error" [mensaje]="errorFormulario()"></app-aviso>
-
-  <form [formGroup]="formulario" (ngSubmit)="crear()" novalidate id="form-tarea">
-
-    <div class="campo">
-      <label class="etiqueta" for="titulo-tarea">Título</label>
-      <input id="titulo-tarea" class="entrada" formControlName="title" placeholder="Sistemas de ecuaciones">
-    </div>
-
-    <div class="campo">
-      <label class="etiqueta" for="enunciado">Enunciado</label>
-      <textarea id="enunciado" class="area" formControlName="description"
-                placeholder="Qué hay que hacer y cómo se entrega."></textarea>
-    </div>
-
-    <div class="dos-columnas">
-      <div class="campo">
-        <label class="etiqueta" for="fecha">Fecha límite</label>
-        <input id="fecha" type="datetime-local" class="entrada" formControlName="dueDate">
-        <span class="ayuda-campo">Opcional</span>
-      </div>
-
-      <div class="campo">
-        <label class="etiqueta" for="puntos">Puntos</label>
-        <input id="puntos" type="number" min="1" max="1000" class="entrada" formControlName="points">
-      </div>
-    </div>
-
-    <div class="campo">
-      <label class="etiqueta" for="penalizacion">Penalización por entrega tardía</label>
-      <div class="fila espaciado-sm">
-        <input id="penalizacion" type="number" min="0" max="100" class="entrada"
-               formControlName="latePenaltyPercent" style="max-width:6rem">
-        <span class="pequeno apagado">% de descuento si llega fuera de plazo</span>
-      </div>
-      <span class="ayuda-campo">0 = sin penalización</span>
-    </div>
-
-    <div class="campo">
-      <label class="etiqueta" for="peso">Peso en la media de la clase</label>
-      <div class="fila espaciado-sm">
-        <input id="peso" type="number" min="0.01" step="0.5" class="entrada"
-               formControlName="weight" style="max-width:6rem">
-        <span class="pequeno apagado">1 = peso normal; 2 = cuenta el doble</span>
-      </div>
-    </div>
-
-    <div class="campo">
-      <label class="fila espaciado-sm" style="font-weight:normal;cursor:pointer">
-        <input type="checkbox" formControlName="groupAssignment">
-        Entrega grupal (se entrega y se corrige una vez por subgrupo)
-      </label>
-    </div>
-
-    <div class="campo mb-0" *ngIf="temas.length">
-      <label class="etiqueta" for="tema">{{ etiquetaUnidad }}</label>
-      <select id="tema" class="selector" formControlName="topicId">
-        <option value="">{{ etiquetaSinUnidad }}</option>
-        <option *ngFor="let tema of temas" [value]="tema.id">{{ tema.title }}</option>
-      </select>
-    </div>
-  </form>
-
-  <ng-container acciones>
-    <button type="button" class="boton boton-contorno" (click)="dialogoAbierto.set(false)">Cancelar</button>
-    <button type="submit" form="form-tarea" class="boton boton-primario" [disabled]="creando()">
-      {{ creando() ? 'Creando…' : 'Crear tarea' }}
-    </button>
-  </ng-container>
-</app-dialogo>

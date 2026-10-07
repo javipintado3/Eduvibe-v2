@@ -63,6 +63,19 @@ export const routes: Routes = [
           .then(m => m.ListaClasesComponent),
       },
       {
+        path: 'clases/nueva',
+        canActivate: [adminGuard],
+        title: 'Nueva clase · Eduvibe',
+        loadComponent: () => import('./paginas/clases/nueva-clase/nueva-clase.component')
+          .then(m => m.NuevaClaseComponent),
+      },
+      {
+        path: 'clases/:id/tareas/nueva',
+        title: 'Nueva tarea · Eduvibe',
+        loadComponent: () => import('./paginas/clases/nueva-tarea/nueva-tarea.component')
+          .then(m => m.NuevaTareaComponent),
+      },
+      {
         path: 'clases/:id',
         title: 'Clase · Eduvibe',
         loadComponent: () => import('./paginas/clases/detalle-clase/detalle-clase.component')

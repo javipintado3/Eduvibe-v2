@@ -1,0 +1,52 @@
+<app-pagina-formulario
+  titulo="Nueva clase"
+  descripcion="Crea el grupo y elige cómo se organiza su contenido. Después podrás añadir profesorado y alumnado."
+  formId="form-clase"
+  rutaVolver="/clases"
+  textoGuardar="Crear clase"
+  textoGuardando="Creando…"
+  [guardando]="guardando()"
+  [error]="error()">
+
+  <form [formGroup]="formulario" (ngSubmit)="guardar()" novalidate id="form-clase">
+
+    <app-seccion-formulario titulo="Datos básicos">
+      <app-campo etiqueta="Grupo" para="nombre-clase" [requerido]="true" [error]="errorDe('name')"
+                 ayuda="El curso y la letra, como lo llamáis en el centro.">
+        <input id="nombre-clase" class="entrada" formControlName="name" placeholder="1º Bachillerato A"
+               [class.invalida]="errorDe('name')" (blur)="recortar('name')">
+      </app-campo>
+
+      <app-campo etiqueta="Asignatura" para="asignatura">
+        <input id="asignatura" class="entrada" formControlName="subject" placeholder="Matemáticas"
+               (blur)="recortar('subject')">
+      </app-campo>
+    </app-seccion-formulario>
+
+    <app-seccion-formulario titulo="Apariencia">
+      <app-campo etiqueta="Color" ayuda="Identifica la asignatura en todas las pantallas.">
+        <div class="colores">
+          <button type="button" class="color" *ngFor="let c of paleta"
+                  [style.background]="c.valor"
+                  [class.elegido]="formulario.controls.color.value === c.valor"
+                  [attr.aria-label]="c.nombre"
+                  (click)="formulario.controls.color.setValue(c.valor)"></button>
+        </div>
+      </app-campo>
+
+      <app-campo etiqueta="Portada" ayuda="Si la dejas vacía se compone una portada con el color de la clase.">
+        <app-subida-archivo formControlName="imageUrl" tipo="imagen" placeholder="https://… o sube una foto"></app-subida-archivo>
+      </app-campo>
+    </app-seccion-formulario>
+
+    <app-seccion-formulario titulo="Organización del contenido">
+      <app-campo etiqueta="Estructura" para="modo-vista"
+                 ayuda="Unidades: pensado para primaria/secundaria. Módulos: todo el contenido de cada bloque junto, estilo universidad. Se puede cambiar después.">
+        <select id="modo-vista" class="selector" formControlName="viewMode">
+          <option value="structured">Unidades — actividades y materiales separados</option>
+          <option value="flexible">Módulos — todo mezclado</option>
+        </select>
+      </app-campo>
+    </app-seccion-formulario>
+  </form>
+</app-pagina-formulario>

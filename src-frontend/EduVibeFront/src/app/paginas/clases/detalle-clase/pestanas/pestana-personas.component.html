@@ -110,9 +110,6 @@
         [descripcion]="puedoEditar
           ? 'Crea el primero para poder poner tareas grupales.'
           : 'Cuando el profesorado cree subgrupos, aparecerán aquí.'">
-        <button type="button" class="boton boton-suave mt-2" *ngIf="puedoEditar" (click)="abrirCrearSubgrupo()">
-          Crear el primer subgrupo
-        </button>
       </app-estado-vacio>
     </div>
   </section>

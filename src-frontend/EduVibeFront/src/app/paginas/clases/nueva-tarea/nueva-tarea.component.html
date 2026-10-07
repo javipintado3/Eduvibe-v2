@@ -1,0 +1,71 @@
+<div class="contenedor-estrecho" *ngIf="cargando() || errorCarga()">
+  <app-cargando *ngIf="cargando()"></app-cargando>
+  <app-aviso class="mt-3" tipo="error" [mensaje]="errorCarga()"></app-aviso>
+</div>
+
+<app-pagina-formulario *ngIf="clase() as detalle"
+  titulo="Nueva tarea"
+  [descripcion]="'En la clase ' + detalle.name"
+  formId="form-tarea"
+  [rutaVolver]="['/clases', claseId]"
+  textoGuardar="Crear tarea"
+  textoGuardando="Creando…"
+  [guardando]="guardando()"
+  [error]="error()">
+
+  <form [formGroup]="formulario" (ngSubmit)="guardar()" novalidate id="form-tarea">
+
+    <app-seccion-formulario titulo="Enunciado">
+      <app-campo etiqueta="Título" para="titulo-tarea" [requerido]="true" [error]="errorDe('title')">
+        <input id="titulo-tarea" class="entrada" formControlName="title" placeholder="Sistemas de ecuaciones"
+               [class.invalida]="errorDe('title')" (blur)="recortarTitulo()">
+      </app-campo>
+
+      <app-campo etiqueta="Descripción" para="enunciado">
+        <textarea id="enunciado" class="area" formControlName="description"
+                  placeholder="Qué hay que hacer y cómo se entrega."></textarea>
+      </app-campo>
+
+      <app-campo *ngIf="detalle.temas.length" [etiqueta]="etiquetaUnidad" para="tema">
+        <select id="tema" class="selector" formControlName="topicId">
+          <option value="">{{ etiquetaSinUnidad }}</option>
+          <option *ngFor="let tema of detalle.temas" [value]="tema.id">{{ tema.title }}</option>
+        </select>
+      </app-campo>
+    </app-seccion-formulario>
+
+    <app-seccion-formulario titulo="Plazo y evaluación">
+      <app-campo etiqueta="Fecha límite" para="fecha" ayuda="Opcional. Sin fecha, la tarea no vence.">
+        <input id="fecha" type="datetime-local" class="entrada" formControlName="dueDate">
+      </app-campo>
+
+      <app-campo etiqueta="Puntos" para="puntos" [requerido]="true" [error]="errorDe('points')"
+                 ayuda="Nota máxima de la tarea.">
+        <input id="puntos" type="number" min="1" max="1000" class="entrada" formControlName="points"
+               [class.invalida]="errorDe('points')">
+      </app-campo>
+
+      <app-campo etiqueta="Peso en la media de la clase" para="peso" [requerido]="true" [error]="errorDe('weight')"
+                 ayuda="1 = peso normal; 2 = cuenta el doble.">
+        <input id="peso" type="number" min="0.01" step="0.5" class="entrada" formControlName="weight"
+               [class.invalida]="errorDe('weight')">
+      </app-campo>
+
+      <app-campo etiqueta="Penalización por entrega tardía (%)" para="penalizacion"
+                 [error]="errorDe('latePenaltyPercent')"
+                 ayuda="Porcentaje que se descuenta si llega fuera de plazo. 0 = sin penalización.">
+        <input id="penalizacion" type="number" min="0" max="100" class="entrada"
+               formControlName="latePenaltyPercent" [class.invalida]="errorDe('latePenaltyPercent')">
+      </app-campo>
+    </app-seccion-formulario>
+
+    <app-seccion-formulario titulo="Entrega">
+      <app-campo etiqueta="Modalidad" ayuda="Con entrega grupal, se entrega y se corrige una vez por subgrupo.">
+        <label class="fila espaciado-sm" style="font-weight:normal;cursor:pointer">
+          <input type="checkbox" formControlName="groupAssignment">
+          Entrega grupal
+        </label>
+      </app-campo>
+    </app-seccion-formulario>
+  </form>
+</app-pagina-formulario>

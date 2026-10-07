@@ -10,13 +10,14 @@
       </p>
     </div>
 
-    <button type="button" class="boton boton-primario" *ngIf="auth.esAdmin()" (click)="abrirDialogo()">
+    <a routerLink="/clases/nueva" class="boton boton-primario" *ngIf="auth.esAdmin()">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
            stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
       Nueva clase
-    </button>
+    </a>
   </div>
 
+  <app-aviso class="mb-2" tipo="exito" [mensaje]="aviso()"></app-aviso>
   <app-aviso class="mb-2" tipo="error" [mensaje]="error()"></app-aviso>
 
   <!-- El spinner solo la primera vez: en las cargas siguientes (buscar, cambiar de página) se sigue viendo lo anterior,
@@ -102,70 +103,9 @@
     <ng-template #sinClases>
       <div class="tarjeta">
         <app-estado-vacio [titulo]="tituloVacio" [descripcion]="descripcionVacia">
-          <button type="button" class="boton boton-suave mt-2" *ngIf="auth.esAdmin()" (click)="abrirDialogo()">
-            Crear la primera clase
-          </button>
         </app-estado-vacio>
       </div>
     </ng-template>
   </ng-container>
 </div>
 
-<!-- Alta de clase -->
-<app-dialogo [abierto]="dialogoAbierto()" titulo="Nueva clase" (cerrar)="dialogoAbierto.set(false)">
-
-  <app-aviso class="mb-2" tipo="error" [mensaje]="errorFormulario()"></app-aviso>
-
-  <form [formGroup]="formulario" (ngSubmit)="crear()" novalidate id="form-clase">
-
-    <div class="campo">
-      <label class="etiqueta" for="nombre-clase">Grupo</label>
-      <input id="nombre-clase" class="entrada" formControlName="name" placeholder="1º Bachillerato A">
-      <span class="ayuda-campo">El curso y la letra, como lo llamáis en el centro.</span>
-    </div>
-
-    <div class="campo">
-      <label class="etiqueta" for="asignatura">Asignatura</label>
-      <input id="asignatura" class="entrada" formControlName="subject" placeholder="Matemáticas">
-    </div>
-
-    <div class="campo mb-0">
-      <label class="etiqueta">Color</label>
-      <div class="colores">
-        <button type="button" class="color" *ngFor="let c of paleta"
-                [style.background]="c.valor"
-                [class.elegido]="formulario.controls.color.value === c.valor"
-                [attr.aria-label]="c.nombre"
-                (click)="formulario.controls.color.setValue(c.valor)"></button>
-      </div>
-      <span class="ayuda-campo">Identifica la asignatura en todas las pantallas.</span>
-    </div>
-
-    <div class="campo mt-2">
-      <label class="etiqueta">Portada</label>
-      <app-subida-archivo formControlName="imageUrl" tipo="imagen" placeholder="https://… o sube una foto"></app-subida-archivo>
-      <span class="ayuda-campo">
-        Si la dejas vacía se compone una portada con el color de la clase.
-      </span>
-    </div>
-
-    <div class="campo mb-0">
-      <label class="etiqueta" for="modo-vista">Organización del contenido</label>
-      <select id="modo-vista" class="selector" formControlName="viewMode">
-        <option value="structured">Unidades — actividades y materiales separados</option>
-        <option value="flexible">Módulos — todo mezclado</option>
-      </select>
-      <span class="ayuda-campo">
-        Unidades: pensado para primaria/secundaria. Módulos: todo el contenido de cada bloque
-        junto, estilo universidad. Se puede cambiar después.
-      </span>
-    </div>
-  </form>
-
-  <ng-container acciones>
-    <button type="button" class="boton boton-contorno" (click)="dialogoAbierto.set(false)">Cancelar</button>
-    <button type="submit" form="form-clase" class="boton boton-primario" [disabled]="creando()">
-      {{ creando() ? 'Creando…' : 'Crear clase' }}
-    </button>
-  </ng-container>
-</app-dialogo>

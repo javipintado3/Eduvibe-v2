@@ -1,13 +1,12 @@
 import { Component, Input, OnChanges, OnInit, computed, inject, signal } from '@angular/core';
 import { NgFor, NgIf } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+
 import { RouterLink } from '@angular/router';
 
 import { ClasesService } from '../../../../core/services/clases.service';
 import { Tarea, Tema } from '../../../../core/models';
 import { AvisoComponent } from '../../../../shared/aviso/aviso.component';
 import { CargandoComponent } from '../../../../shared/cargando/cargando.component';
-import { DialogoComponent } from '../../../../shared/dialogo/dialogo.component';
 import { EstadoVacioComponent } from '../../../../shared/estado-vacio/estado-vacio.component';
 import { PastillaEstadoComponent } from '../../../../shared/pastilla-estado/pastilla-estado.component';
 import { FechaPipe, PlazoPipe } from '../../../../shared/pipes/fecha.pipe';
@@ -35,9 +34,9 @@ interface FilaTarea extends Tarea {
   selector: 'app-pestana-trabajo',
   standalone: true,
   imports: [
-    NgIf, NgFor, RouterLink, ReactiveFormsModule,
+    NgIf, NgFor, RouterLink,
     CargandoComponent, EstadoVacioComponent, PastillaEstadoComponent,
-    DialogoComponent, AvisoComponent, FechaPipe, PlazoPipe,
+    AvisoComponent, FechaPipe, PlazoPipe,
     TablaDatosComponent, CeldaTablaDirective,
   ],
   templateUrl: './pestana-trabajo.component.html',
@@ -46,7 +45,6 @@ interface FilaTarea extends Tarea {
 export class PestanaTrabajoComponent implements OnInit, OnChanges {
 
   private readonly clasesService = inject(ClasesService);
-  private readonly fb = inject(FormBuilder);
 
   @Input({ required: true }) claseId!: string;
   @Input() puedoEditar = false;
@@ -136,21 +134,6 @@ export class PestanaTrabajoComponent implements OnInit, OnChanges {
   readonly cargando = signal(true);
   readonly error = signal<string | null>(null);
 
-  readonly dialogoAbierto = signal(false);
-  readonly creando = signal(false);
-  readonly errorFormulario = signal<string | null>(null);
-
-  readonly formulario = this.fb.nonNullable.group({
-    title: ['', [Validators.required]],
-    description: [''],
-    dueDate: [''],
-    points: [100, [Validators.required, Validators.min(1)]],
-    latePenaltyPercent: [0, [Validators.min(0), Validators.max(100)]],
-    weight: [1, [Validators.required, Validators.min(0.01)]],
-    groupAssignment: [false],
-    topicId: [''],
-  });
-
   ngOnInit(): void {
     this.cargar();
   }
@@ -184,50 +167,4 @@ export class PestanaTrabajoComponent implements OnInit, OnChanges {
     return tarea.miEstado ?? 'sin-empezar';
   }
 
-  abrirDialogo(): void {
-    this.formulario.reset({
-      title: '', description: '', dueDate: '', points: 100, latePenaltyPercent: 0, weight: 1,
-      groupAssignment: false, topicId: this.temaFiltro ?? '',
-    });
-    this.errorFormulario.set(null);
-    this.dialogoAbierto.set(true);
-  }
-
-  crear(): void {
-    this.formulario.markAllAsTouched();
-
-    if (this.formulario.invalid || this.creando()) {
-      return;
-    }
-
-    this.creando.set(true);
-    this.errorFormulario.set(null);
-
-    const {
-      title, description, dueDate, points, latePenaltyPercent, weight, groupAssignment, topicId,
-    } = this.formulario.getRawValue();
-
-    this.clasesService.crearTarea(this.claseId, {
-      title,
-      description: description || undefined,
-      // El input datetime-local da "2026-10-02T18:30"; la API espera un
-      // instante en UTC, y eso es justo lo que hace toISOString()
-      dueDate: dueDate ? new Date(dueDate).toISOString() : null,
-      points,
-      latePenaltyPercent,
-      weight,
-      groupAssignment,
-      topicId: topicId || null,
-    }).subscribe({
-      next: () => {
-        this.creando.set(false);
-        this.dialogoAbierto.set(false);
-        this.cargar();
-      },
-      error: (err) => {
-        this.creando.set(false);
-        this.errorFormulario.set(AvisoComponent.mensajeDe(err));
-      },
-    });
-  }
 }

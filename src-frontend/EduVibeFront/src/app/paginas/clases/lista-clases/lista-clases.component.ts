@@ -1,21 +1,17 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { NgFor, NgIf } from '@angular/common';
-import { Router } from '@angular/router';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
 import { AuthService } from '../../../core/services/auth.service';
 import { ClasesService } from '../../../core/services/clases.service';
 import { ConfirmacionService } from '../../../core/services/confirmacion.service';
-import { Clase, ModoVistaClase, Pagina } from '../../../core/models';
+import { Clase, Pagina } from '../../../core/models';
 import { AvisoComponent } from '../../../shared/aviso/aviso.component';
 import { CargandoComponent } from '../../../shared/cargando/cargando.component';
-import { DialogoComponent } from '../../../shared/dialogo/dialogo.component';
 import { EstadoVacioComponent } from '../../../shared/estado-vacio/estado-vacio.component';
 import { PaginadorComponent } from '../../../shared/paginador/paginador.component';
-import { PALETA_CLASE } from '../../../shared/paleta-clase';
 import { PlazoPipe } from '../../../shared/pipes/fecha.pipe';
-import { SubidaArchivoComponent } from '../../../shared/subida-archivo/subida-archivo.component';
 import { CeldaTablaDirective } from '../../../shared/tabla-datos/celda-tabla.directive';
 import { TablaDatosComponent } from '../../../shared/tabla-datos/tabla-datos.component';
 import { ColumnaTabla, FiltroTabla } from '../../../shared/tabla-datos/tabla-datos.tipos';
@@ -36,9 +32,9 @@ import { TarjetaClaseComponent } from '../../../shared/tarjeta-clase/tarjeta-cla
   selector: 'app-lista-clases',
   standalone: true,
   imports: [
-    NgIf, NgFor, ReactiveFormsModule,
+    NgIf, NgFor, RouterLink,
     TarjetaClaseComponent, EstadoVacioComponent, CargandoComponent, TablaDatosComponent, CeldaTablaDirective,
-    DialogoComponent, AvisoComponent, SubidaArchivoComponent, PlazoPipe, PaginadorComponent,
+    AvisoComponent, PlazoPipe, PaginadorComponent,
   ],
   templateUrl: './lista-clases.component.html',
   styleUrl: './lista-clases.component.css',
@@ -47,20 +43,17 @@ export class ListaClasesComponent implements OnInit {
 
   private readonly clasesService = inject(ClasesService);
   private readonly confirmacion = inject(ConfirmacionService);
-  private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
   readonly auth = inject(AuthService);
 
-  readonly paleta = PALETA_CLASE;
 
   readonly pagina = signal<Pagina<Clase> | null>(null);
   readonly clases = computed(() => this.pagina()?.contenido ?? []);
   readonly cargando = signal(true);
   readonly error = signal<string | null>(null);
 
-  readonly dialogoAbierto = signal(false);
-  readonly creando = signal(false);
-  readonly errorFormulario = signal<string | null>(null);
+  /** Confirmación que deja la página de alta al volver aquí (ver NuevaClaseComponent). */
+  readonly aviso = signal<string | null>(history.state?.aviso ?? null);
 
   // --- gestión (vista de administración) ---
   readonly busqueda = signal('');
@@ -107,15 +100,9 @@ export class ListaClasesComponent implements OnInit {
     this.seleccionados.set(new Set());
   }
 
-  readonly formulario = this.fb.nonNullable.group({
-    name: ['', [Validators.required]],
-    subject: [''],
-    color: [PALETA_CLASE[0].valor],
-    imageUrl: [''],
-    viewMode: this.fb.nonNullable.control<ModoVistaClase>('structured'),
-  });
-
   ngOnInit(): void {
+    // El aviso viaja en el historial: se borra para que no reaparezca al recargar
+    history.replaceState({ ...history.state, aviso: null }, '');
     this.cargar(0);
   }
 
@@ -137,43 +124,6 @@ export class ListaClasesComponent implements OnInit {
       error: (err) => {
         this.error.set(AvisoComponent.mensajeDe(err, 'No se han podido cargar las clases'));
         this.cargando.set(false);
-      },
-    });
-  }
-
-  abrirDialogo(): void {
-    this.formulario.reset({ name: '', subject: '', color: PALETA_CLASE[0].valor, imageUrl: '', viewMode: 'structured' });
-    this.errorFormulario.set(null);
-    this.dialogoAbierto.set(true);
-  }
-
-  crear(): void {
-    this.formulario.markAllAsTouched();
-
-    if (this.formulario.invalid || this.creando()) {
-      return;
-    }
-
-    this.creando.set(true);
-    this.errorFormulario.set(null);
-
-    const { name, subject, color, imageUrl, viewMode } = this.formulario.getRawValue();
-
-    this.clasesService.crear({
-      name,
-      subject: subject || undefined,
-      color,
-      imageUrl: imageUrl.trim() || undefined,
-      viewMode,
-    }).subscribe({
-      next: () => {
-        this.creando.set(false);
-        this.dialogoAbierto.set(false);
-        this.cargar(0);
-      },
-      error: (err) => {
-        this.creando.set(false);
-        this.errorFormulario.set(AvisoComponent.mensajeDe(err));
       },
     });
   }

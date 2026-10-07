@@ -1,0 +1,19 @@
+.colores { display: flex; gap: 9px; flex-wrap: wrap; }
+
+.color {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  box-shadow: 0 0 0 1px var(--borde);
+  cursor: pointer;
+  padding: 0;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+
+.color:hover { transform: scale(1.08); }
+
+.color.elegido {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px var(--tinta);
+}
