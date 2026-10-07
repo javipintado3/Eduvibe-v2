@@ -1,0 +1,3 @@
+
+/* Los componentes de cada sección son inline por defecto: sin esto el margen superior (mt-*) no se aplica y las tablas quedan pegadas */
+app-pestana-trabajo, app-pestana-examenes, app-pestana-materiales, app-pestana-foro { display: block; }

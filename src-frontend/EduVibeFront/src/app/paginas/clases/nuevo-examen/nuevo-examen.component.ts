@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { NgFor, NgIf } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AbstractControl, FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -7,6 +7,8 @@ import { ClasesService } from '../../../core/services/clases.service';
 import { DetalleClase, PreguntaBanco } from '../../../core/models';
 import { AvisoComponent } from '../../../shared/aviso/aviso.component';
 import { CargandoComponent } from '../../../shared/cargando/cargando.component';
+import { PaginadorComponent } from '../../../shared/paginador/paginador.component';
+import { totalDePaginas, trozo } from '../../../core/utils/paginacion';
 import { CampoFormularioComponent } from '../../../shared/formulario/campo-formulario.component';
 import { PaginaFormularioComponent } from '../../../shared/formulario/pagina-formulario.component';
 import { SeccionFormularioComponent } from '../../../shared/formulario/seccion-formulario.component';
@@ -32,7 +34,7 @@ type Campo = 'title' | 'durationMinutes';
   imports: [
     NgIf, NgFor, ReactiveFormsModule,
     PaginaFormularioComponent, SeccionFormularioComponent, CampoFormularioComponent,
-    AvisoComponent, CargandoComponent,
+    AvisoComponent, CargandoComponent, PaginadorComponent,
   ],
   templateUrl: './nuevo-examen.component.html',
   styleUrl: './nuevo-examen.component.css',
@@ -55,6 +57,10 @@ export class NuevoExamenComponent implements OnInit {
 
   // --- banco de preguntas ---
   readonly banco = signal<PreguntaBanco[]>([]);
+  /** Página del banco que se está viendo (desde 0). Las marcadas se conservan al cambiar de página. */
+  readonly paginaBanco = signal(0);
+  readonly bancoVisible = computed(() => trozo(this.banco(), this.paginaBanco()));
+  readonly totalPaginasBanco = computed(() => totalDePaginas(this.banco().length));
   /** questionId -> puntos que tendrá en este examen. Solo están aquí las marcadas. */
   readonly seleccionBanco = signal<Map<string, number>>(new Map());
 

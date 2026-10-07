@@ -50,8 +50,8 @@ import { AvisoComponent } from '../aviso/aviso.component';
     :host { display: block; }
 
     .pagina { width: 100%; max-width: 720px; margin: 0 auto; padding: 0 20px 24px; }
-    .cabecera { margin: 24px 0; }
-    .cabecera h1 { margin: 14px 0 4px; }
+    .cabecera { margin: 4px 0 20px; }
+    .cabecera h1 { margin: 12px 0 4px; }
 
     /* Fija abajo; el fondo tapa lo que pasa por detrás al hacer scroll */
     .barra {

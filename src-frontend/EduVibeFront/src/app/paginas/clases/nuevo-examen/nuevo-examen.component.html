@@ -48,7 +48,7 @@
     <app-seccion-formulario *ngIf="banco().length" titulo="Banco de preguntas">
       <p class="pequeno apagado mb-2">Preguntas ya usadas en otros exámenes de esta clase. Se copian, así que retocarlas aquí no afecta al examen original.</p>
 
-      <div class="pregunta-banco" *ngFor="let pregunta of banco()">
+      <div class="pregunta-banco" *ngFor="let pregunta of bancoVisible()">
         <label class="fila espaciado-sm">
           <input type="checkbox" [checked]="estaEnBanco(pregunta.id)"
                  (change)="alternarDelBanco(pregunta, $any($event.target).checked)">
@@ -61,6 +61,9 @@
                  (input)="actualizarPuntosDelBanco(pregunta.id, +$any($event.target).value)">
         </label>
       </div>
+      <app-paginador [pagina]="paginaBanco()" [totalPaginas]="totalPaginasBanco()"
+        [totalElementos]="banco().length" etiqueta="pregunta(s)"
+        (cambio)="paginaBanco.set($event)"></app-paginador>
     </app-seccion-formulario>
 
     <app-seccion-formulario titulo="Preguntas nuevas">
