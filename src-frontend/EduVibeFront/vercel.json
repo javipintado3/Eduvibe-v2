@@ -1,0 +1,9 @@
+{
+  "buildCommand": "npm run build:vercel",
+  "outputDirectory": "dist/edu-vibe-front/browser",
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://eduvibe-api.onrender.com/api/:path*" },
+    { "source": "/uploads/:path*", "destination": "https://eduvibe-api.onrender.com/uploads/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

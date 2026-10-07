@@ -1,0 +1,51 @@
+# Blueprint de Render para la API de EduVibe (plan gratuito).
+#
+# Render lee este archivo al crear un "Blueprint" desde el repositorio. Las variables
+# con `sync: false` no llevan valor aquí: Render las pide al crear el servicio, así
+# ningún secreto pasa por el repositorio.
+#
+# Guía completa, paso a paso: docs/DESPLIEGUE-RENDER.md
+services:
+  - type: web
+    name: eduvibe-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./src-api/EduvibeBackend/Dockerfile
+    dockerContext: ./src-api/EduvibeBackend
+    healthCheckPath: /api/health
+    envVars:
+      # Con el perfil prod la API se niega a arrancar sin JWT_SECRET
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: JWT_SECRET
+        generateValue: true
+
+      # Render envía el tráfico al puerto de la variable PORT: el mismo que escucha la API
+      - key: PORT
+        value: "9090"
+
+      # El plan gratuito tiene 512 MB en total: se limita la memoria de Java para que quepa
+      - key: JAVA_TOOL_OPTIONS
+        value: -Xmx320m -Xss512k -XX:MaxMetaspaceSize=128m -XX:+UseSerialGC
+
+      # Base de datos (Neon): URL JDBC con SSL, usuario y contraseña
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: DATABASE_USERNAME
+        sync: false
+      - key: DATABASE_PASSWORD
+        sync: false
+
+      # Dirección pública de la web en Vercel (sin barra final): CORS y enlaces
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+
+      # Demo pública: con los datos de ejemplo (cuentas @eduvibe.demo, contraseña demo1234)
+      - key: FLYWAY_LOCATIONS
+        value: classpath:db/migration,classpath:db/demo
+
+      # El disco del plan gratuito no es permanente: los archivos subidos se pierden al reiniciar
+      - key: UPLOADS_DIR
+        value: /tmp/uploads
