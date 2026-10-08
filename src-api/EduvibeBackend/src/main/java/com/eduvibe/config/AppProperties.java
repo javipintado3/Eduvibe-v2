@@ -17,6 +17,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param invitation plazo de las invitaciones de alta
  * @param login      límite de intentos de inicio de sesión
  * @param passwordReset plazo de los enlaces de "olvidé mi contraseña"
+ * @param registration solicitudes de registro públicas: plazos y límites anti-abuso
  */
 @ConfigurationProperties(prefix = "app")
 public record AppProperties(
@@ -25,7 +26,8 @@ public record AppProperties(
         String frontendUrl,
         Invitation invitation,
         Login login,
-        PasswordReset passwordReset) {
+        PasswordReset passwordReset,
+        Registration registration) {
 
     public record Cors(List<String> allowedOrigins) {
     }
@@ -49,5 +51,20 @@ public record AppProperties(
 
     /** @param expirationMinutes minutos que vale un enlace de "olvidé mi contraseña" */
     public record PasswordReset(long expirationMinutes) {
+    }
+
+    /**
+     * @param verificationExpirationHours horas que vale el enlace para confirmar el correo
+     * @param maxPerIpPerHour             solicitudes que puede hacer una misma IP en una hora
+     * @param maxPerHour                  tope de solicitudes de toda la plataforma en una hora;
+     *                                    freno de último recurso contra una inundación repartida
+     *                                    entre muchas IP
+     * @param trustProxy                  si la API está detrás de un proxy propio (nginx) y la IP
+     *                                    real del cliente viene en X-Forwarded-For. Con false esa
+     *                                    cabecera se ignora, porque cualquiera podría falsearla
+     *                                    para esquivar el límite por IP
+     */
+    public record Registration(long verificationExpirationHours, int maxPerIpPerHour, int maxPerHour,
+                               boolean trustProxy) {
     }
 }

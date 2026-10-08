@@ -73,6 +73,72 @@ public class MailService {
     }
 
     /**
+     * Enlace para confirmar que el correo de una solicitud de registro es de
+     * quien la hizo. En segundo plano por la misma razón que el restablecimiento:
+     * que la respuesta tarde igual haya o no que enviar nada.
+     */
+    @Async
+    public void enviarVerificacionDeRegistro(String nombre, String email, String enlace) {
+        if (remitente == null || remitente.isBlank()) {
+            LOG.info("Correo no configurado. Enlace para confirmar la solicitud de registro de {}: {}",
+                    email, enlace);
+            return;
+        }
+
+        try {
+            SimpleMailMessage mensaje = new SimpleMailMessage();
+            mensaje.setFrom(remitente);
+            mensaje.setTo(email);
+            mensaje.setSubject("Confirma tu correo en Eduvibe");
+            mensaje.setText("""
+                    Hola %s:
+
+                    Has pedido una cuenta en Eduvibe. Para confirmar que este correo es
+                    tuyo, entra en este enlace:
+
+                    %s
+
+                    Después, la administración de tu centro revisará la solicitud y, si la
+                    acepta, recibirás otro correo para elegir tu contraseña.
+
+                    Si no lo has pedido tú, ignora este correo: no se creará ninguna cuenta.
+                    """.formatted(nombre, enlace));
+
+            mailSender.send(mensaje);
+
+        } catch (Exception e) {
+            LOG.warn("No se ha podido enviar la confirmación de registro a {}: {}", email, e.getMessage());
+        }
+    }
+
+    /** Aviso de que la administración ha rechazado la solicitud. */
+    @Async
+    public void enviarSolicitudRechazada(String nombre, String email) {
+        if (remitente == null || remitente.isBlank()) {
+            LOG.info("Correo no configurado. Solicitud de registro de {} rechazada", email);
+            return;
+        }
+
+        try {
+            SimpleMailMessage mensaje = new SimpleMailMessage();
+            mensaje.setFrom(remitente);
+            mensaje.setTo(email);
+            mensaje.setSubject("Tu solicitud en Eduvibe");
+            mensaje.setText("""
+                    Hola %s:
+
+                    La administración de tu centro no ha aceptado tu solicitud de cuenta en
+                    Eduvibe. Si crees que es un error, ponte en contacto con tu centro.
+                    """.formatted(nombre));
+
+            mailSender.send(mensaje);
+
+        } catch (Exception e) {
+            LOG.warn("No se ha podido avisar del rechazo a {}: {}", email, e.getMessage());
+        }
+    }
+
+    /**
      * @return true si el correo ha salido; false si no hay remitente
      *         configurado o el envío ha fallado.
      */

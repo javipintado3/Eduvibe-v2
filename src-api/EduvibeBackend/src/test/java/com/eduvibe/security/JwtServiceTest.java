@@ -24,7 +24,7 @@ class JwtServiceTest {
     void preparar() {
         AppProperties propiedades = new AppProperties(null,
                 new AppProperties.Jwt("un-secreto-de-pruebas-de-al-menos-32-bytes!!", 8),
-                null, null, null, null);
+                null, null, null, null, null);
         servicio = new JwtService(propiedades, new MockEnvironment());
 
         Organization centro = new Organization("Centro", null);
@@ -59,7 +59,7 @@ class JwtServiceTest {
     @Test
     @DisplayName("con el perfil prod no arranca si falta JWT_SECRET")
     void prodExigeSecreto() {
-        AppProperties sinSecreto = new AppProperties(null, new AppProperties.Jwt("", 8), null, null, null, null);
+        AppProperties sinSecreto = new AppProperties(null, new AppProperties.Jwt("", 8), null, null, null, null, null);
         MockEnvironment prod = new MockEnvironment();
         prod.setActiveProfiles("prod");
 
@@ -71,7 +71,7 @@ class JwtServiceTest {
     @Test
     @DisplayName("sin perfil prod, un secreto vacío genera una clave aleatoria y arranca")
     void desarrolloAceptaSinSecreto() {
-        AppProperties sinSecreto = new AppProperties(null, new AppProperties.Jwt("", 8), null, null, null, null);
+        AppProperties sinSecreto = new AppProperties(null, new AppProperties.Jwt("", 8), null, null, null, null, null);
 
         JwtService local = new JwtService(sinSecreto, new MockEnvironment());
 

@@ -41,6 +41,7 @@ public class Notification {
     public static final String NOTA_PUBLICADA = "grade_published";
     public static final String AVISO_NUEVO = "announcement_created";
     public static final String EXAMEN_NUEVO = "exam_created";
+    public static final String REGISTRO_SOLICITADO = "registration_requested";
 
     @Id
     @GeneratedValue

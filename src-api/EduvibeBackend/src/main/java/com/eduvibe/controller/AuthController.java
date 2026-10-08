@@ -16,15 +16,19 @@ import com.eduvibe.dto.auth.ChangePasswordRequest;
 import com.eduvibe.dto.auth.ForgotPasswordRequest;
 import com.eduvibe.dto.auth.InvitationInfoResponse;
 import com.eduvibe.dto.auth.LoginRequest;
+import com.eduvibe.dto.auth.RegisterRequest;
 import com.eduvibe.dto.auth.TwoFactorCodeRequest;
 import com.eduvibe.dto.auth.TwoFactorDisableRequest;
 import com.eduvibe.dto.auth.TwoFactorEnabledResponse;
 import com.eduvibe.dto.auth.TwoFactorSetupResponse;
 import com.eduvibe.dto.auth.ResetPasswordRequest;
 import com.eduvibe.dto.user.UserResponse;
+import com.eduvibe.config.AppProperties;
+import com.eduvibe.util.ClientIp;
 import com.eduvibe.service.AuthService;
 import com.eduvibe.service.InvitationService;
 import com.eduvibe.service.PasswordResetService;
+import com.eduvibe.service.RegistrationService;
 import com.eduvibe.service.SesionService;
 import com.eduvibe.service.TwoFactorService;
 
@@ -34,8 +38,10 @@ import lombok.RequiredArgsConstructor;
 /**
  * Acceso a la plataforma.
  *
- * No hay endpoint de registro: las cuentas las crea un administrador
- * ({@link UserController}) y se activan aceptando una invitación.
+ * Las cuentas las crea un administrador ({@link UserController}) y se activan
+ * aceptando una invitación. Quien no tiene invitación puede pedir una cuenta
+ * ({@code /register}), pero eso solo crea una solicitud: no hay cuenta hasta
+ * que un administrador la aprueba ({@link RegistrationRequestController}).
  *
  * El controlador se limita a recibir, delegar y devolver. Toda la lógica está
  * en los servicios, y los errores los traduce el manejador global, así que aquí
@@ -51,6 +57,8 @@ public class AuthController {
     private final PasswordResetService passwordResetService;
     private final TwoFactorService twoFactorService;
     private final SesionService sesionService;
+    private final RegistrationService registrationService;
+    private final AppProperties propiedades;
 
     /** Inicio de sesión con email y contraseña. */
     @PostMapping("/login")
@@ -84,6 +92,31 @@ public class AuthController {
             @Valid @RequestBody AcceptInvitationRequest peticion) {
 
         return ResponseEntity.ok(authService.aceptarInvitacion(token, peticion));
+    }
+
+    /**
+     * Pide una cuenta. Responde siempre igual, exista o no ya una cuenta con ese
+     * email o corresponda su dominio a algún centro: distinguirlo permitiría
+     * averiguar quién está dado de alta. La solicitud no llega a la
+     * administración hasta que la persona confirma su correo.
+     */
+    @PostMapping("/register")
+    public ResponseEntity<Void> solicitarRegistro(@Valid @RequestBody RegisterRequest peticion,
+                                                  HttpServletRequest http) {
+        registrationService.solicitar(peticion,
+                ClientIp.de(http, propiedades.registration().trustProxy()));
+        return ResponseEntity.accepted().build();
+    }
+
+    /**
+     * Confirma el correo de una solicitud con el enlace recibido. Es un POST y
+     * no un GET para que un antivirus o la vista previa del cliente de correo,
+     * que abren los enlaces por su cuenta, no puedan consumirlo.
+     */
+    @PostMapping("/register/verify/{token}")
+    public ResponseEntity<Void> verificarRegistro(@PathVariable String token) {
+        registrationService.verificar(token);
+        return ResponseEntity.noContent().build();
     }
 
     /**

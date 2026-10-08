@@ -1,5 +1,6 @@
 package com.eduvibe.repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -33,6 +34,9 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
 
     /** Para el resumen de perfil de administración: usuarios por rol. */
     long countByOrganizationIdAndRole(UUID organizationId, UserRole role);
+
+    /** Las personas con ese rol y estado en el centro; p. ej. para avisar a quien administra. */
+    List<User> findByOrganizationIdAndRoleAndStatus(UUID organizationId, UserRole role, UserStatus status);
 
     /** Cuentas todavía sin aceptar su invitación. */
     long countByOrganizationIdAndStatus(UUID organizationId, UserStatus status);

@@ -86,7 +86,7 @@ public class UserService {
      * mismas reglas (email único, dominio permitido, rol válido) tienen que
      * cumplirse en los dos sitios, y solo viven aquí una vez.
      */
-    private User crearCuenta(Organization organizacion, String name, String email, String role) {
+    User crearCuenta(Organization organizacion, String name, String email, String role) {
         String emailNormalizado = User.normalizarEmail(email);
 
         if (userRepository.existsByEmail(emailNormalizado)) {

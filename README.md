@@ -21,7 +21,8 @@ EduVibe is a second iteration of my final degree project (TFG). The goal is to b
 ## Features
 
 ### Accounts and access
-- **Invitation-only onboarding.** There is no public sign-up. An admin creates the user and a single-use invitation token is emailed; the user sets their own password on acceptance. Passwords are never sent by email.
+- **Invitation-based onboarding.** An admin creates the user and a single-use invitation token is emailed; the user sets their own password on acceptance. Passwords are never sent by email.
+- **Registration requests with admin approval.** Anyone with an email from the organization's allowed domain can request an account, but a request is not an account: the person must first confirm their email through a single-use link, and only then does it reach an admin, who accepts it (choosing the role) or rejects it. Requesters never pick their own role or password. The form answers identically whether or not the email exists, is rate-limited per IP and globally, and has a honeypot field against bots. Organizations without an allowed domain do not accept requests.
 - **Bulk user creation** from CSV, plus an admin panel with paginated, filterable user management.
 - **Three roles** (admin, teacher, student). Authorization depends on the user's real relationship with each class (enrolled, owner, etc.), not on role alone, so a teacher cannot touch another teacher's class.
 - **Self-service password recovery** through a single-use, expiring link.
@@ -163,6 +164,9 @@ Everything is driven by environment variables, with defaults suitable for local 
 | `FRONTEND_URL` | `http://localhost:4200` | Base URL used in emailed links |
 | `MAIL_HOST` / `MAIL_USERNAME` / `MAIL_PASSWORD` | `smtp.gmail.com` / empty / empty | SMTP for invitations and password recovery |
 | `INVITATION_EXPIRATION_HOURS` | `48` | Invitation validity |
+| `REGISTRATION_VERIFICATION_EXPIRATION_HOURS` | `24` | Validity of the email-confirmation link for registration requests |
+| `REGISTRATION_MAX_PER_IP_PER_HOUR` / `REGISTRATION_MAX_PER_HOUR` | `5` / `100` | Registration requests allowed per IP, and platform-wide, per hour |
+| `TRUSTED_PROXY` | `false` (`true` in Docker Compose) | Read the client IP from `X-Forwarded-For`. Only enable behind your own proxy: otherwise the header can be forged to dodge the per-IP limit |
 | `PASSWORD_RESET_EXPIRATION_MINUTES` | `60` | Reset-link validity |
 | `LOGIN_MAX_FAILED_ATTEMPTS` / `LOGIN_LOCKOUT_MINUTES` | `5` / `15` | Login rate limiting |
 | `UPLOADS_DIR` | `uploads` | Upload directory (a volume in Docker) |

@@ -91,6 +91,11 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.GET, "/api/auth/invitations/*").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/auth/invitations/*/accept").permitAll()
 
+                    // Pedir una cuenta y confirmar el correo. No crea ninguna cuenta:
+                    // solo una solicitud que un administrador tiene que aprobar
+                    .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/auth/register/verify/*").permitAll()
+
                     // Recuperar la contraseña de una cuenta existente
                     .requestMatchers(HttpMethod.POST, "/api/auth/forgot-password").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/auth/reset-password/*").permitAll()
@@ -105,6 +110,7 @@ public class SecurityConfig {
                     // La gestión de usuarios es cosa de la administración
                     .requestMatchers("/api/users/**").hasRole("ADMIN")
                     .requestMatchers("/api/organization/**").hasRole("ADMIN")
+                    .requestMatchers("/api/registration-requests/**").hasRole("ADMIN")
 
                     // Crear una clase también. El resto de operaciones sobre
                     // clases dependen de la relación con esa clase concreta y

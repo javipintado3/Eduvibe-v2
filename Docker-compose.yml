@@ -42,6 +42,10 @@ services:
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
       UPLOADS_DIR: /data/uploads
+      # El front (nginx) va delante de la API y le pasa la IP real en X-Forwarded-For;
+      # el límite de solicitudes de registro por IP la necesita. Con false, todos los
+      # clientes parecerían la misma IP (la de nginx).
+      TRUSTED_PROXY: ${TRUSTED_PROXY:-true}
     volumes:
       - uploads_data:/data/uploads
     depends_on:

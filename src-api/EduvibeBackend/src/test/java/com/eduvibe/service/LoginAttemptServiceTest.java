@@ -33,7 +33,7 @@ class LoginAttemptServiceTest {
     @BeforeEach
     void crearServicio() {
         AppProperties propiedades = new AppProperties(null, null, null, null,
-                new AppProperties.Login(5, 15), null);
+                new AppProperties.Login(5, 15), null, null);
         servicio = new LoginAttemptService(repository, propiedades);
     }
 
