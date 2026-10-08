@@ -10,6 +10,8 @@ services:
     name: eduvibe-api
     runtime: docker
     plan: free
+    # Cerca de la base de datos (Neon, AWS Frankfurt): sin esto Render usa Oregón y cada consulta cruza el Atlántico
+    region: frankfurt
     dockerfilePath: ./src-api/EduvibeBackend/Dockerfile
     dockerContext: ./src-api/EduvibeBackend
     healthCheckPath: /api/health

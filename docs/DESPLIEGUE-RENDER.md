@@ -14,7 +14,7 @@ La web llama siempre a `/api` en su propio dominio, y Vercel lo reenvía a Rende
 
 ## 1. Base de datos en Neon
 
-1. Crea un proyecto en Neon (región cercana a la de Render).
+1. Crea un proyecto en Neon. Elige la región **AWS Europe (Frankfurt)**: es donde `render.yaml` crea la API, y cuanto más cerca estén la API y la base de datos, más rápida va la aplicación.
 2. En el panel, abre **Connection details** y apunta el host, la base de datos, el usuario y la contraseña.
 3. Con eso monta la URL JDBC (la usarás en Render):
 
