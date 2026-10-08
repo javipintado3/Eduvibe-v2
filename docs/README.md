@@ -7,7 +7,6 @@
 | Documento | Qué contiene |
 |---|---|
 | [Memoria del proyecto (PDF)](2023-2024-iesAlixar-daw2-JavierPintadoNavarro-EduVibe.pdf) | Memoria del proyecto de fin de ciclo (IES Alixar, DAW2, curso 2023-2024) |
-| [Plataforma Educativa Interactiva EduVibe (PDF)](Plataforma%20Educativa%20Interactiva%20EduVibe.pdf) | Documento adicional del proyecto |
 | [Guía de despliegue gratuito](DESPLIEGUE-RENDER.md) | Paso a paso para publicar EduVibe con Neon (base de datos), Render (API) y Vercel (web) |
 | [`screenshots/`](screenshots) | Las capturas que usa el README principal |
 
