@@ -17,5 +17,8 @@ export function rutaDeNotificacion(notificacion: Notificacion): string | null {
   if (notificacion.type === 'exam_created' && payload['examId']) {
     return `/examenes/${payload['examId']}`;
   }
+  if (notificacion.type === 'registration_requested') {
+    return '/admin/solicitudes';
+  }
   return null;
 }

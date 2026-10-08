@@ -85,6 +85,20 @@ export class AuthService {
       .pipe(tap(respuesta => this.guardarSesion(respuesta)));
   }
 
+  /**
+   * Pide una cuenta. Responde igual exista o no ya una cuenta con ese email, o
+   * su dominio corresponda a algún centro. `website` es el campo cebo contra
+   * bots: el formulario lo deja siempre vacío.
+   */
+  solicitarRegistro(name: string, email: string, message: string, website = ''): Observable<void> {
+    return this.http.post<void>(`${this.api}/auth/register`, { name, email, message, website });
+  }
+
+  /** Confirma que el correo de una solicitud es de quien la hizo, con el enlace recibido. */
+  verificarRegistro(token: string): Observable<void> {
+    return this.http.post<void>(`${this.api}/auth/register/verify/${token}`, {});
+  }
+
   /** Pide un enlace para elegir otra contraseña. Responde igual exista o no el email. */
   olvideMiContrasena(email: string): Observable<void> {
     return this.http.post<void>(`${this.api}/auth/forgot-password`, { email });

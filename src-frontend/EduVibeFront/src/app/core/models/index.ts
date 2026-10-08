@@ -8,6 +8,8 @@
 
 export type Rol = 'admin' | 'teacher' | 'student' | 'guardian';
 export type EstadoCuenta = 'pending' | 'active' | 'disabled';
+/** Situación de una solicitud de registro: sin confirmar el correo, esperando al administrador, o ya resuelta. */
+export type EstadoSolicitud = 'unverified' | 'pending' | 'approved' | 'rejected';
 export type RolEnClase = 'teacher' | 'student';
 export type EstadoEntrega = 'draft' | 'submitted' | 'graded';
 
@@ -58,6 +60,19 @@ export interface DatosInvitacion {
 export interface UsuarioCreado {
   user: Usuario;
   invitation: Invitacion;
+}
+
+/** Alguien que ha pedido una cuenta y espera la decisión de la administración. */
+export interface SolicitudRegistro {
+  id: string;
+  name: string;
+  email: string;
+  /** Texto libre de quien solicita; null si no escribió nada. */
+  message: string | null;
+  status: EstadoSolicitud;
+  verifiedAt: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
 }
 
 export interface Pagina<T> {

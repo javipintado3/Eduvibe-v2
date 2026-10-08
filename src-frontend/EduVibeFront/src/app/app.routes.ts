@@ -8,7 +8,7 @@ import { adminGuard, alumnoGuard, invitadoGuard, profesorGuard, sesionGuard } fr
  *
  * Dos zonas bien separadas:
  *
- *  - Fuera del layout: login e invitación. No llevan barra de navegación,
+ *  - Fuera del layout: login, registro e invitación. No llevan barra de navegación,
  *    porque quien las ve todavía no tiene sesión y no habría nada que navegar.
  *
  *  - Dentro de LayoutPrincipalComponent: el resto. El guard de sesión se
@@ -27,6 +27,19 @@ export const routes: Routes = [
     title: 'Entrar · Eduvibe',
     loadComponent: () => import('./paginas/login/login.component')
       .then(m => m.LoginComponent),
+  },
+  {
+    path: 'registro',
+    canActivate: [invitadoGuard],
+    title: 'Solicitar cuenta · Eduvibe',
+    loadComponent: () => import('./paginas/registro/registro.component')
+      .then(m => m.RegistroComponent),
+  },
+  {
+    path: 'verificar-registro/:token',
+    title: 'Confirmar correo · Eduvibe',
+    loadComponent: () => import('./paginas/verificar-registro/verificar-registro.component')
+      .then(m => m.VerificarRegistroComponent),
   },
   {
     path: 'olvide-contrasena',
@@ -143,6 +156,13 @@ export const routes: Routes = [
         title: 'Usuarios · Eduvibe',
         loadComponent: () => import('./paginas/admin/usuarios/usuarios.component')
           .then(m => m.UsuariosComponent),
+      },
+      {
+        path: 'admin/solicitudes',
+        canActivate: [adminGuard],
+        title: 'Solicitudes de registro · Eduvibe',
+        loadComponent: () => import('./paginas/admin/solicitudes/solicitudes.component')
+          .then(m => m.SolicitudesComponent),
       },
       {
         path: 'admin/usuarios/nuevo',

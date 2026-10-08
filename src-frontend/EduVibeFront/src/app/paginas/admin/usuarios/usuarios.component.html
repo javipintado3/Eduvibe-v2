@@ -9,6 +9,7 @@
     </div>
 
     <div class="fila espaciado-sm envolver">
+      <a class="boton boton-contorno" routerLink="/admin/solicitudes">Solicitudes de registro</a>
       <button type="button" class="boton boton-contorno" [disabled]="exportando()" (click)="exportar()">
         {{ exportando() ? 'Exportando…' : 'Exportar CSV' }}
       </button>

@@ -1,0 +1,40 @@
+.correo {
+  max-width: 230px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* El selector de rol convive con dos botones en una celda: no puede ocupar todo el ancho */
+.selector-pequeno {
+  width: auto;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  font-size: .85rem;
+}
+
+.enlace {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--fondo);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-sm);
+  padding: 9px 11px;
+}
+
+.enlace code {
+  flex: 1;
+  min-width: 0;
+  font-size: .78rem;
+  color: var(--tinta-70);
+  overflow-wrap: anywhere;
+}
+
+/* Respeta los saltos de línea que escribió la persona y no deja que un texto largo descuadre la tabla */
+.mensaje {
+  max-width: 340px;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  font-size: .9rem;
+}

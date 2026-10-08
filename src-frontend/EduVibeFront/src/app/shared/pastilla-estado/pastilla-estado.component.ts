@@ -1,8 +1,8 @@
 import { Component, Input, computed, signal } from '@angular/core';
 
-import { EstadoCuenta, EstadoEntrega, EstadoIntentoExamen, Rol, TipoEventoAgenda, TipoMaterial } from '../../core/models';
+import { EstadoCuenta, EstadoSolicitud, EstadoEntrega, EstadoIntentoExamen, Rol, TipoEventoAgenda, TipoMaterial } from '../../core/models';
 
-type Clave = EstadoCuenta | EstadoEntrega | EstadoIntentoExamen | Rol | 'sin-empezar' | 'tarde' | TipoMaterial
+type Clave = EstadoCuenta | EstadoSolicitud | EstadoEntrega | EstadoIntentoExamen | Rol | 'sin-empezar' | 'tarde' | TipoMaterial
   | TipoEventoAgenda | 'assignment_due';
 
 interface Aspecto {
@@ -30,6 +30,11 @@ export class PastillaEstadoComponent {
     pending:  { texto: 'Pendiente',    clase: 'pastilla-ambar' },
     active:   { texto: 'Activa',       clase: 'pastilla-verde' },
     disabled: { texto: 'Desactivada',  clase: 'pastilla-gris' },
+
+    // Solicitudes de registro (pending es el mismo de las cuentas)
+    unverified: { texto: 'Sin confirmar', clase: 'pastilla-gris' },
+    approved:   { texto: 'Aceptada',      clase: 'pastilla-verde' },
+    rejected:   { texto: 'Rechazada',     clase: 'pastilla-roja' },
 
     // Roles
     admin:    { texto: 'Administración', clase: 'pastilla-azul' },

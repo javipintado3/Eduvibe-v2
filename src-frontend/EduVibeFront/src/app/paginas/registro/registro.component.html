@@ -1,0 +1,89 @@
+<div class="pagina">
+  <div class="caja">
+
+    <div class="centrado mb-3">
+      <app-logo [size]="36"></app-logo>
+    </div>
+
+    <div class="tarjeta">
+      <div class="tarjeta-cuerpo">
+
+        <!-- Solicitud enviada -->
+        <ng-container *ngIf="enviado(); else formularioRegistro">
+          <h2 class="mb-1">Revisa tu correo</h2>
+          <p class="apagado">
+            Si el correo pertenece a un centro de Eduvibe, te hemos enviado un enlace para
+            confirmarlo. Después, la administración del centro revisará tu solicitud y, si la
+            acepta, recibirás otro correo para elegir tu contraseña.
+          </p>
+          <p class="pequeno apagado mb-3">
+            El enlace caduca en 24 horas. ¿No te llega? Mira en la carpeta de spam o espera unos
+            minutos antes de volver a pedirlo.
+          </p>
+          <a routerLink="/login" class="boton boton-secundario boton-bloque">Volver a entrar</a>
+        </ng-container>
+
+        <!-- Formulario -->
+        <ng-template #formularioRegistro>
+          <h2 class="mb-1">Solicita tu cuenta</h2>
+          <p class="apagado mb-3">
+            Usa el correo de tu centro. La administración revisará tu solicitud antes de darte acceso.
+          </p>
+
+          <app-aviso class="mb-2" tipo="error" [mensaje]="error()"></app-aviso>
+
+          <form [formGroup]="formulario" (ngSubmit)="enviar()" novalidate>
+
+            <div class="campo">
+              <label class="etiqueta" for="nombre">Nombre y apellidos</label>
+              <input id="nombre" type="text" class="entrada" formControlName="name"
+                     [class.invalida]="campoInvalido('name')"
+                     autocomplete="name" maxlength="120" placeholder="Ana García">
+              <span class="error-campo" *ngIf="campoInvalido('name')">
+                Escribe tu nombre
+              </span>
+            </div>
+
+            <div class="campo">
+              <label class="etiqueta" for="email">Email del centro</label>
+              <input id="email" type="email" class="entrada" formControlName="email"
+                     [class.invalida]="campoInvalido('email')"
+                     autocomplete="email" placeholder="nombre@centro.es">
+              <span class="error-campo" *ngIf="campoInvalido('email')">
+                Escribe un email válido
+              </span>
+            </div>
+
+            <div class="campo">
+              <label class="etiqueta" for="mensaje">
+                Mensaje para la administración <span class="apagado">(opcional)</span>
+              </label>
+              <textarea id="mensaje" class="area" formControlName="message" rows="3"
+                        [class.invalida]="campoInvalido('message')"
+                        [attr.maxlength]="maxMensaje"
+                        placeholder="Por ejemplo: soy alumna de 2.º B, o profesor de Matemáticas"></textarea>
+              <span class="pequeno apagado">
+                {{ formulario.controls.message.value.length }}/{{ maxMensaje }}
+              </span>
+            </div>
+
+            <!-- Cebo contra bots: fuera de pantalla, sin foco y oculto a lectores de pantalla -->
+            <div class="cebo" aria-hidden="true">
+              <label for="website">No rellenar</label>
+              <input id="website" type="text" formControlName="website" tabindex="-1" autocomplete="off">
+            </div>
+
+            <button type="submit" class="boton boton-primario boton-bloque mt-1" [disabled]="enviando()">
+              {{ enviando() ? 'Enviando…' : 'Solicitar cuenta' }}
+            </button>
+          </form>
+
+          <p class="centrado mt-2 mb-0">
+            <a routerLink="/login" class="pequeno">Ya tengo cuenta</a>
+          </p>
+        </ng-template>
+
+      </div>
+    </div>
+  </div>
+</div>

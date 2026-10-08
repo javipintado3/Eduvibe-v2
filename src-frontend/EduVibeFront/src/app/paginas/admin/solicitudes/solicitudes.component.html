@@ -1,0 +1,115 @@
+<div class="contenedor">
+
+  <div class="fila-entre envolver mb-3">
+    <div>
+      <h1>Solicitudes de registro</h1>
+      <p class="apagado mb-0">
+        Personas que han pedido una cuenta con el correo de tu centro. Solo llegan aquí cuando han
+        confirmado que el correo es suyo.
+      </p>
+    </div>
+
+    <a class="boton boton-contorno" routerLink="/admin/usuarios">Volver a usuarios</a>
+  </div>
+
+  <app-aviso class="mb-2" tipo="error" [mensaje]="error()"></app-aviso>
+  <app-aviso class="mb-2" tipo="exito" [mensaje]="exito()"></app-aviso>
+
+  <app-tabla-datos
+    [columnas]="columnas"
+    [filas]="pagina()?.contenido ?? []"
+    [cargando]="cargando()"
+    [filtros]="filtros()"
+    (limpiarFiltros)="limpiarFiltros()"
+    [pagina]="pagina()?.pagina ?? 0"
+    [totalPaginas]="pagina()?.totalPaginas ?? 1"
+    [totalElementos]="pagina()?.totalElementos ?? null"
+    etiqueta="solicitud(es)"
+    tituloVacio="No hay solicitudes"
+    descripcionVacia="Cuando alguien pida una cuenta y confirme su correo, aparecerá aquí."
+    (paginaCambia)="cargar($event)">
+
+    <ng-template appCeldaTabla="name" let-solicitud>
+      <div class="fila espaciado-sm">
+        <app-avatar [nombre]="solicitud.name" [pequeno]="true"></app-avatar>
+        <div style="min-width:0">
+          <p class="fuerte mb-0">{{ solicitud.name }}</p>
+          <p class="pequeno apagado mb-0 correo">{{ solicitud.email }}</p>
+        </div>
+      </div>
+    </ng-template>
+
+    <!-- Texto libre de quien solicita: se interpola (Angular lo escapa), nunca se pinta como HTML -->
+    <ng-template appCeldaTabla="message" let-solicitud>
+      <p class="mensaje mb-0" *ngIf="solicitud.message; else sinMensaje">{{ solicitud.message }}</p>
+      <ng-template #sinMensaje><span class="pequeno apagado">Sin mensaje</span></ng-template>
+    </ng-template>
+
+    <ng-template appCeldaTabla="status" let-solicitud>
+      <app-pastilla-estado [valor]="solicitud.status"></app-pastilla-estado>
+    </ng-template>
+
+    <ng-template appCeldaTabla="createdAt" let-solicitud>
+      <span class="pequeno apagado">{{ solicitud.createdAt | fecha : false }}</span>
+    </ng-template>
+
+    <!-- Solo las pendientes se pueden resolver: las demás ya lo están o aún no han confirmado el correo -->
+    <ng-template appCeldaTabla="acciones" let-solicitud>
+      <div class="fila espaciado-sm" *ngIf="solicitud.status === 'pending'">
+        <select class="selector selector-pequeno" [attr.aria-label]="'Rol de ' + solicitud.name"
+                [value]="rolDe(solicitud)" [disabled]="resolviendo() === solicitud.id"
+                (change)="elegirRol(solicitud, $any($event.target).value)">
+          <option value="student">Alumnado</option>
+          <option value="teacher">Profesorado</option>
+          <option value="guardian">Tutor legal</option>
+          <option value="admin">Administración</option>
+        </select>
+        <button type="button" class="boton boton-primario boton-pequeno"
+                [disabled]="resolviendo() !== null" (click)="aprobar(solicitud)">
+          Aceptar
+        </button>
+        <button type="button" class="boton boton-contorno boton-pequeno"
+                [disabled]="resolviendo() !== null" (click)="rechazar(solicitud)">
+          Rechazar
+        </button>
+      </div>
+    </ng-template>
+  </app-tabla-datos>
+</div>
+
+<!-- Invitación emitida al aceptar -->
+<app-dialogo [abierto]="dialogoAbierto()" titulo="Solicitud aceptada"
+             [cierraAlPulsarFuera]="false"
+             (cerrar)="dialogoAbierto.set(false)">
+
+  <ng-container *ngIf="invitacionEmitida() as emitida">
+    <p class="mb-2">
+      La cuenta de <strong>{{ emitida.nombre }}</strong> ya está creada. Para activarla tiene que
+      abrir este enlace y elegir su contraseña.
+    </p>
+
+    <div class="aviso aviso-atencion mb-2" *ngIf="!emitida.invitacion.emailEnviado">
+      <span>No hay servidor de correo configurado, así que el enlace no se ha enviado. Cópialo y hazlo llegar tú.</span>
+    </div>
+
+    <div class="aviso aviso-exito mb-2" *ngIf="emitida.invitacion.emailEnviado">
+      <span>Se ha enviado por correo. Aquí lo tienes también por si acaso.</span>
+    </div>
+
+    <div class="enlace">
+      <code>{{ emitida.invitacion.link }}</code>
+      <button type="button" class="boton boton-contorno boton-pequeno"
+              (click)="copiarEnlace(emitida.invitacion.link)">
+        {{ enlaceCopiado() ? 'Copiado' : 'Copiar' }}
+      </button>
+    </div>
+
+    <p class="pequeno apagado mt-2 mb-0">
+      Sirve una sola vez y caduca el {{ emitida.invitacion.expiresAt | fecha }}.
+    </p>
+  </ng-container>
+
+  <ng-container acciones>
+    <button type="button" class="boton boton-contorno" (click)="dialogoAbierto.set(false)">Cerrar</button>
+  </ng-container>
+</app-dialogo>
