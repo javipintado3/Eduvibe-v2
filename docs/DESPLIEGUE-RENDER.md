@@ -39,9 +39,9 @@ La web llama siempre a `/api` en su propio dominio, y Vercel lo reenvía a Rende
 
    `JWT_SECRET` se genera sola.
 3. Crea el servicio. La primera construcción tarda unos minutos (compila el proyecto con Maven).
-4. Cuando termine, la dirección será `https://eduvibe-api.onrender.com`. Comprueba que `https://eduvibe-api.onrender.com/api/health` responde.
+4. Cuando termine, Render te da la dirección de tu API, por ejemplo `https://eduvibe-api-x1y2.onrender.com`. Apúntala y comprueba que `<tu dirección>/api/health` responde.
 
-> Si el nombre `eduvibe-api` ya está cogido, Render añade un sufijo a la dirección. En ese caso, cambia las dos direcciones de `src-frontend/EduVibeFront/vercel.json` por la tuya antes del paso 3.
+> **Antes del paso 3**, sustituye las dos apariciones de `https://REEMPLAZAR-CON-TU-API.onrender.com` en `src-frontend/EduVibeFront/vercel.json` por la dirección de tu API. Está así a propósito: si apuntara a una dirección fija, otra persona que tenga un servicio con ese nombre en Render recibiría los inicios de sesión de tu web. El nombre `eduvibe-api` puede estar ya cogido por otra cuenta, y entonces Render añade un sufijo.
 
 ## 3. Web en Vercel
 
