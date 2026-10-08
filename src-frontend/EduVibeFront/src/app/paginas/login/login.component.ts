@@ -18,13 +18,13 @@ interface CuentaDemo {
 /**
  * Pantalla de acceso.
  *
- * No hay enlace de "crear cuenta": las altas las hace un administrador y se
- * activan con una invitación.
+ * Las altas las hace un administrador y se activan con una invitación; quien no
+ * la tiene puede solicitar una cuenta, que un administrador aprobará.
  *
- * Sí hay, en cambio, credenciales de demostración a la vista. Es deliberado:
- * sin registro público, quien abra la aplicación desde un portafolio no
- * tendría forma de entrar, y una demo en la que no se puede entrar no
- * demuestra nada.
+ * Hay además credenciales de demostración a la vista. Es deliberado: quien
+ * abra la aplicación desde un portafolio no tendría forma de entrar sin ellas
+ * (la solicitud necesita que un administrador la apruebe), y una demo en la
+ * que no se puede entrar no demuestra nada.
  */
 @Component({
   selector: 'app-login',
@@ -49,6 +49,9 @@ export class LoginComponent {
 
   /** El servidor ha dicho que falta el código de verificación en dos pasos. */
   readonly pedirCodigo = signal(false);
+
+  /** Muestra la contraseña en claro mientras se escribe, para poder comprobar que no hay erratas. */
+  readonly verPassword = signal(false);
 
   readonly enviando = signal(false);
   readonly error = signal<string | null>(null);
