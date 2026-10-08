@@ -2,6 +2,7 @@
 
 **A full-stack learning management platform** that sits between Google Classroom (simplicity) and Moodle (structure): classes, assignments, timed exams, rubric grading, group submissions and discussion forums, built on a layered Spring Boot API and an Angular SPA, with all permissions resolved server-side.
 
+![Version](https://img.shields.io/badge/version-1.0.0-059669)
 ![Java](https://img.shields.io/badge/Java-17-orange)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2-brightgreen)
 ![Angular](https://img.shields.io/badge/Angular-17-red)

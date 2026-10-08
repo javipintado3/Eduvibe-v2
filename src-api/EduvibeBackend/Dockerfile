@@ -25,7 +25,8 @@ RUN mkdir -p /mediafiles
 EXPOSE 9090
 
 # Copiar el archivo JAR construido de la etapa de construcción
-COPY --from=builder /usr/src/app/target/eduvibe-api-0.0.1-SNAPSHOT.jar /app/app.jar
+# El comodín evita tocar el Dockerfile en cada versión (solo hay un .jar ejecutable en target)
+COPY --from=builder /usr/src/app/target/eduvibe-api-*.jar /app/app.jar
 
 # Establecer directorio de trabajo
 

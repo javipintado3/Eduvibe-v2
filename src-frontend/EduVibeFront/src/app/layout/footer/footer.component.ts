@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 
+import { VERSION_APP } from '../../core/version';
 import { LogoComponent } from '../../shared/logo/logo.component';
 
 @Component({
@@ -11,7 +12,7 @@ import { LogoComponent } from '../../shared/logo/logo.component';
       <div class="contenedor fila-entre envolver espaciado">
         <app-logo [size]="22"></app-logo>
         <p class="pequeno apagado mb-0">
-          Plataforma educativa · {{ anio }}
+          Plataforma educativa · {{ anio }} · v{{ version }}
         </p>
       </div>
     </footer>
@@ -27,4 +28,5 @@ import { LogoComponent } from '../../shared/logo/logo.component';
 })
 export class FooterComponent {
   readonly anio = new Date().getFullYear();
+  readonly version = VERSION_APP;
 }
