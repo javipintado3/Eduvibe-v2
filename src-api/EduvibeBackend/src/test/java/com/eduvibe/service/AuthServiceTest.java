@@ -30,12 +30,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import com.eduvibe.dto.auth.AuthResponse;
 import com.eduvibe.dto.auth.ChangePasswordRequest;
 import com.eduvibe.dto.auth.LoginRequest;
+import com.eduvibe.exception.AccountDisabledException;
 import com.eduvibe.exception.BadRequestException;
 import com.eduvibe.exception.TooManyRequestsException;
 import com.eduvibe.exception.TwoFactorRequiredException;
 import com.eduvibe.model.Organization;
 import com.eduvibe.model.User;
 import com.eduvibe.model.enums.UserRole;
+import com.eduvibe.model.enums.UserStatus;
 import com.eduvibe.repository.UserRepository;
 import com.eduvibe.security.AuthenticatedUser;
 import com.eduvibe.security.JwtService;
@@ -131,6 +133,35 @@ class AuthServiceTest {
             assertThatThrownBy(() -> authService.login(new LoginRequest("pendiente@centro.es", "loQueSea"), IP))
                     .isInstanceOf(BadCredentialsException.class)
                     .hasMessage(MENSAJE_CREDENCIALES_INVALIDAS);
+        }
+
+        @Test
+        @DisplayName("con cuenta desactivada y la contraseña correcta avisa de que está desactivada, sin contarlo como fallo")
+        void cuentaDesactivadaConContrasenaCorrecta() {
+            User usuario = usuarioActivo("ana@centro.es", "$2a$10$hash");
+            usuario.setStatus(UserStatus.DISABLED);
+            when(userRepository.findByEmail("ana@centro.es")).thenReturn(Optional.of(usuario));
+            when(passwordEncoder.matches("correcta", "$2a$10$hash")).thenReturn(true);
+
+            assertThatThrownBy(() -> authService.login(new LoginRequest("ana@centro.es", "correcta"), IP))
+                    .isInstanceOf(AccountDisabledException.class)
+                    .hasMessageContaining("desactivada");
+
+            verify(loginAttemptService, never()).registrarFallo(anyString(), anyString());
+        }
+
+        @Test
+        @DisplayName("con cuenta desactivada y contraseña incorrecta da el error genérico: no delata que la cuenta existe")
+        void cuentaDesactivadaConContrasenaIncorrecta() {
+            User usuario = usuarioActivo("ana@centro.es", "$2a$10$hash");
+            usuario.setStatus(UserStatus.DISABLED);
+            when(userRepository.findByEmail("ana@centro.es")).thenReturn(Optional.of(usuario));
+            when(passwordEncoder.matches("mala", "$2a$10$hash")).thenReturn(false);
+
+            assertThatThrownBy(() -> authService.login(new LoginRequest("ana@centro.es", "mala"), IP))
+                    .isInstanceOf(BadCredentialsException.class)
+                    .hasMessage(MENSAJE_CREDENCIALES_INVALIDAS);
+            verify(loginAttemptService).registrarFallo("ana@centro.es", IP);
         }
 
         @Test

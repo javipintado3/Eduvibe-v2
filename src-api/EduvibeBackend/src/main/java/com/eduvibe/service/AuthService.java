@@ -15,11 +15,13 @@ import com.eduvibe.dto.auth.AuthResponse;
 import com.eduvibe.dto.auth.ChangePasswordRequest;
 import com.eduvibe.dto.auth.LoginRequest;
 import com.eduvibe.dto.user.UserResponse;
+import com.eduvibe.exception.AccountDisabledException;
 import com.eduvibe.exception.BadRequestException;
 import com.eduvibe.exception.NotFoundException;
 import com.eduvibe.exception.TooManyRequestsException;
 import com.eduvibe.exception.TwoFactorRequiredException;
 import com.eduvibe.model.User;
+import com.eduvibe.model.enums.UserStatus;
 import com.eduvibe.repository.UserRepository;
 import com.eduvibe.security.AuthenticatedUser;
 import com.eduvibe.security.JwtService;
@@ -77,8 +79,16 @@ public class AuthService {
         String hash = usuario.map(User::getPasswordHash).orElse(HASH_FICTICIO);
         boolean contrasenaCorrecta = passwordEncoder.matches(peticion.password(), hash);
 
-        // Email inexistente, cuenta pendiente o desactivada, y contraseña
-        // incorrecta se tratan igual a propósito: el mismo mensaje de error y,
+        // Contraseña acertada en una cuenta desactivada: se le dice, porque quien
+        // la sabe ya es dueño de la cuenta y "usuario o contraseña incorrectos"
+        // solo lo confundiría. No cuenta como fallo (no es un intento de adivinar).
+        // Una cuenta dada de baja por RGPD no llega aquí: pierde la contraseña.
+        if (usuario.isPresent() && contrasenaCorrecta && usuario.get().getStatus() == UserStatus.DISABLED) {
+            throw new AccountDisabledException();
+        }
+
+        // Email inexistente, cuenta pendiente y contraseña incorrecta (también en
+        // una cuenta desactivada) se tratan igual a propósito: el mismo mensaje y,
         // gracias a la comprobación de arriba, el mismo tiempo de respuesta.
         boolean credencialesValidas = usuario.isPresent()
                 && usuario.get().puedeIniciarSesion()
