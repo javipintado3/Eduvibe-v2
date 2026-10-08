@@ -10,9 +10,13 @@
 
 ## Screenshots
 
-| Login | My classes | Class work |
+| Login | Request an account | Registration requests (admin) |
 |---|---|---|
-| ![Login](docs/screenshots/login.jpg) | ![My classes](docs/screenshots/mis-clases.jpg) | ![Class work](docs/screenshots/trabajo-de-clase.jpg) |
+| ![Login](docs/screenshots/login.jpg) | ![Request an account](docs/screenshots/solicitar-cuenta.png) | ![Registration requests](docs/screenshots/solicitudes-registro.png) |
+
+| My classes | Class work |
+|---|---|
+| ![My classes](docs/screenshots/mis-clases.jpg) | ![Class work](docs/screenshots/trabajo-de-clase.jpg) |
 
 ## Overview
 
@@ -46,7 +50,7 @@ EduVibe is a second iteration of my final degree project (TFG). The goal is to b
 
 ### Communication
 - Per-class discussion forum open to everyone enrolled, with message moderation.
-- In-app notifications (new assignment, grade published, new announcement).
+- In-app notifications (new assignment, grade published, new announcement, and new registration requests for admins).
 - Monthly calendar with assignment due dates integrated.
 
 ### Security and privacy
@@ -79,17 +83,18 @@ dto/          Input/output contracts, separate from entities
 model/        JPA entities and enums
 security/     JWT filter and service, 401/403 handlers
 config/       Security, CORS and typed configuration properties
-util/         TOTP (RFC 6238), single-use token generation, CSV parsing
+util/         TOTP (RFC 6238), single-use token generation, CSV parsing, client IP
 ```
 
 Design decisions worth knowing about:
 
 - **Centralized authorization.** `ClassAccessService` is the single place that answers "who can see or edit what" for a class; endpoints are additionally protected by role rules in `SecurityConfig`.
 - **Stateless JWT with server-side revocation.** Each token carries an id; revoked ids are stored until they expire, and users carry a `token_version` that is bumped to invalidate every session at once. Expired revocations are purged periodically.
-- **Hashed single-use tokens.** Invitation and password-reset tokens have 256 bits of entropy; only their SHA-256 hash is stored, so a database leak does not expose pending links. Passwords use BCrypt.
+- **Registration requests are not accounts.** A public request creates a row in its own table, never a user: nothing can sign in until an admin approves it, and an unconfirmed email never reaches the admin. The organization is deduced from the email's domain, the requester picks neither role nor password, and the endpoint answers identically whether or not the email, the domain or an account exists, so it cannot be used to discover who is registered. Abuse limits are enforced per IP and platform-wide, and `X-Forwarded-For` is only trusted when a proxy is explicitly declared (`TRUSTED_PROXY`), because otherwise the header can be forged to dodge the limit.
+- **Hashed single-use tokens.** Invitation, password-reset and email-confirmation tokens have 256 bits of entropy; only their SHA-256 hash is stored, so a database leak does not expose pending links. Passwords use BCrypt.
 - **TOTP implemented in-house** (HMAC-SHA1 per RFC 4226/6238) and verified against the RFC test vectors. Recovery codes use an alphabet without ambiguous characters and are stored hashed.
 - **Safe uploads.** Files are stored under a generated UUID name (never the client's), checked against an extension allow-list per upload type, with resolved paths normalized against the upload root and a 15 MB size limit.
-- **Schema under version control.** Flyway migrations (V1–V18) with `ddl-auto=validate`; Hibernate never alters the schema. `open-in-view` is disabled.
+- **Schema under version control.** Flyway migrations (V1–V20) with `ddl-auto=validate`; Hibernate never alters the schema. `open-in-view` is disabled.
 - **Constructor injection** throughout (no field `@Autowired`), UUID primary keys, and server-side pagination (default 10, max 50).
 - **Demo data** is a repeatable Flyway migration (`db/demo`) selected via configuration, not hardcoded in application code.
 
@@ -109,7 +114,7 @@ Design decisions worth knowing about:
 | Backend | Java 17, Spring Boot 3.2 (Web, Security, Data JPA, Validation, Mail), JJWT, Lombok |
 | Frontend | Angular 17, TypeScript 5.4, RxJS 7.8 |
 | Database | PostgreSQL 16, Flyway |
-| Testing | JUnit 5, Mockito, Spring Security Test (131 backend test cases) |
+| Testing | JUnit 5, Mockito, Spring Security Test (159 backend test cases) |
 | Infrastructure | Docker Compose (API + frontend + Postgres), nginx, named volumes for data and uploads |
 
 ## Getting started
@@ -162,7 +167,8 @@ Everything is driven by environment variables, with defaults suitable for local 
 | `JWT_EXPIRATION_HOURS` | `8` | Token lifetime |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:4200,http://localhost` | Comma-separated allowed origins |
 | `FRONTEND_URL` | `http://localhost:4200` | Base URL used in emailed links |
-| `MAIL_HOST` / `MAIL_USERNAME` / `MAIL_PASSWORD` | `smtp.gmail.com` / empty / empty | SMTP for invitations and password recovery |
+| `MAIL_HOST` / `MAIL_PORT` / `MAIL_USERNAME` / `MAIL_PASSWORD` | `smtp.gmail.com` / `587` / empty / empty | SMTP for invitations, registration and password recovery |
+| `MAIL_FROM` | `MAIL_USERNAME` | Sender address, for providers whose SMTP user is not an email address |
 | `INVITATION_EXPIRATION_HOURS` | `48` | Invitation validity |
 | `REGISTRATION_VERIFICATION_EXPIRATION_HOURS` | `24` | Validity of the email-confirmation link for registration requests |
 | `REGISTRATION_MAX_PER_IP_PER_HOUR` / `REGISTRATION_MAX_PER_HOUR` | `5` / `100` | Registration requests allowed per IP, and platform-wide, per hour |
@@ -185,13 +191,18 @@ docker compose --env-file .env.production \
 
 `Docker-compose.prod.yml` activates the `prod` profile (mandatory `JWT_SECRET`), skips the demo data so no known credentials exist, creates the first admin from `ADMIN_EMAIL` / `ADMIN_PASSWORD` on an empty database, and stops publishing PostgreSQL on the host. After the first start, change the admin password from the profile page and remove `ADMIN_PASSWORD` from the env file.
 
+## Free deployment
+
+The project also deploys on free tiers: **Neon** (PostgreSQL), **Render** (the API, from `render.yaml`) and **Vercel** (the Angular app, which forwards `/api` to the API). Step-by-step guide in [docs/DESPLIEGUE-RENDER.md](docs/DESPLIEGUE-RENDER.md). Every push to `main` redeploys; Flyway applies new migrations on startup. The free API sleeps after inactivity and its disk is not persistent, so it suits a public demo, not production.
+
 ## Repository structure
 
 ```
 src-api/EduvibeBackend/     REST API (Spring Boot)
 src-frontend/EduVibeFront/  SPA (Angular)
-docs/                       Project report and screenshots
+docs/                       Project report, deployment guide and screenshots
 Docker-compose.yml
+render.yaml                 Render blueprint for the free deployment
 eduvibe-spec.md             Product specification and roadmap
 ```
 
