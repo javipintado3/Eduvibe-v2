@@ -45,7 +45,8 @@ import com.eduvibe.security.JwtService;
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
 
-    private static final String MENSAJE_CREDENCIALES_INVALIDAS = "Usuario y/o contraseña incorrectos";
+    private static final String MENSAJE_CREDENCIALES_INVALIDAS =
+            "Usuario y/o contraseña incorrectos. Si aún no has activado tu cuenta, abre el enlace de invitación que recibiste por correo.";
     private static final String IP = "127.0.0.1";
 
     @Mock

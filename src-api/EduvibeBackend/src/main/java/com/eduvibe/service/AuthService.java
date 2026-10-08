@@ -39,8 +39,13 @@ public class AuthService {
      * Mismo mensaje para email inexistente, contraseña incorrecta y cuenta no
      * activa. Diferenciarlos permitiría averiguar qué direcciones están dadas
      * de alta en la plataforma probando una a una.
+     *
+     * La pista sobre la invitación va en el mensaje de todos: una cuenta pendiente
+     * no tiene contraseña con la que comprobar nada, así que avisarle solo a ella
+     * delataría qué correos tienen una invitación sin aceptar.
      */
-    private static final String CREDENCIALES_INVALIDAS = "Usuario y/o contraseña incorrectos";
+    private static final String CREDENCIALES_INVALIDAS =
+            "Usuario y/o contraseña incorrectos. Si aún no has activado tu cuenta, abre el enlace de invitación que recibiste por correo.";
 
     /**
      * Hash bcrypt válido de una contraseña que no existe.
