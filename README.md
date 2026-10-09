@@ -178,6 +178,7 @@ Everything is driven by environment variables, with defaults suitable for local 
 | `LOGIN_MAX_FAILED_ATTEMPTS` / `LOGIN_LOCKOUT_MINUTES` | `5` / `15` | Login rate limiting |
 | `UPLOADS_DIR` | `uploads` | Upload directory (a volume in Docker) |
 | `FLYWAY_LOCATIONS` | `classpath:db/migration,classpath:db/demo` | Drop `db/demo` to skip demo data |
+| `DEMO_READ_ONLY_EMAIL_DOMAIN` | empty | Accounts with this email domain (e.g. `eduvibe.demo`) can only read: the API rejects their writes with a 403. For public demos whose credentials are published; empty means off |
 | `SPRING_PROFILES_ACTIVE` | *(none)* | With `prod`, the API refuses to start without `JWT_SECRET` |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | empty | First admin, created only when the database has no users (min. 12 characters) |
 | `ADMIN_NAME` / `ORGANIZATION_NAME` | `Administrador` / `EduVibe` | Name of that admin and of the initial organization |

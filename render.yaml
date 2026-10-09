@@ -48,6 +48,11 @@ services:
       - key: FLYWAY_LOCATIONS
         value: classpath:db/migration,classpath:db/demo
 
+      # Las credenciales de la demo son públicas: sus cuentas solo pueden consultar, no
+      # escribir, para que nadie deje mensajes ofensivos que vea el siguiente visitante
+      - key: DEMO_READ_ONLY_EMAIL_DOMAIN
+        value: eduvibe.demo
+
       # El disco del plan gratuito no es permanente: los archivos subidos se pierden al reiniciar
       - key: UPLOADS_DIR
         value: /tmp/uploads

@@ -54,7 +54,7 @@ class PasswordResetServiceTest {
     @BeforeEach
     void crearServicio() {
         AppProperties propiedades = new AppProperties(null, null, "http://localhost:4200", null,
-                null, new AppProperties.PasswordReset(60), null);
+                null, new AppProperties.PasswordReset(60), null, null);
         servicio = new PasswordResetService(
                 passwordResetRepository, userRepository, passwordEncoder, mailService, propiedades);
     }

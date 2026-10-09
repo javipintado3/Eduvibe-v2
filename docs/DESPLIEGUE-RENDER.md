@@ -62,14 +62,14 @@ Guarda: Render reinicia la API.
 
 1. Abre la dirección de Vercel. Si la API estaba dormida, la primera carga tarda cerca de un minuto.
 2. En la pantalla de entrada, usa los botones de **Demostración** (todas las cuentas usan la contraseña `demo1234`).
-3. Prueba a crear una clase y una tarea.
+3. Recorre clases, tareas, notas y foro. Las cuentas demo son de **solo lectura** (ver abajo): si intentas crear algo, la API responde con un aviso y no guarda nada.
 
 ## Limitaciones del plan gratuito
 
 - **La API se duerme** tras un rato sin visitas, y despertarla tarda alrededor de un minuto. Un monitor gratuito (por ejemplo UptimeRobot) que visite `https://<tu-vercel>/api/health` cada pocos minutos lo evita.
 - **Los archivos subidos no son permanentes**: el disco se vacía al reiniciar. Los datos de ejemplo no dependen de él.
 - **Memoria justa** (unos 512 MB): por eso `render.yaml` limita la memoria de Java. Si la API se reinicia sola, mira los registros de Render.
-- **Es una demo pública**: cualquiera puede entrar con las cuentas demo y modificar datos. No pongas nada personal, ni conectes el correo real.
+- **Es una demo pública**: cualquiera puede entrar con las cuentas demo, porque su contraseña está publicada. Por eso `render.yaml` define `DEMO_READ_ONLY_EMAIL_DOMAIN=eduvibe.demo`: esas cuentas solo pueden consultar y la API rechaza cualquier escritura (también cambiar su contraseña), de modo que nadie puede dejar mensajes ofensivos que vea el siguiente visitante. No pongas nada personal, ni conectes el correo real.
 
 ## Correo
 
