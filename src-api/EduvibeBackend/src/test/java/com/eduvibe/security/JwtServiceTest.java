@@ -23,7 +23,7 @@ class JwtServiceTest {
     @BeforeEach
     void preparar() {
         AppProperties propiedades = new AppProperties(null,
-                new AppProperties.Jwt("un-secreto-de-pruebas-de-al-menos-32-bytes!!", 8),
+                new AppProperties.Jwt("un-secreto-de-pruebas-de-al-menos-32-bytes!!", 8, 0),
                 null, null, null, null, null);
         servicio = new JwtService(propiedades, new MockEnvironment());
 
@@ -48,6 +48,19 @@ class JwtServiceTest {
     }
 
     @Test
+    @DisplayName("si se configuran minutos, mandan sobre las horas")
+    void validezEnMinutos() {
+        JwtService conMinutos = new JwtService(new AppProperties(null,
+                new AppProperties.Jwt("un-secreto-de-pruebas-de-al-menos-32-bytes!!", 8, 30),
+                null, null, null, null, null), new MockEnvironment());
+
+        java.time.Instant caducidad = conMinutos.leer(conMinutos.emitirPara(usuario)).sesion().expiresAt();
+
+        assertThat(caducidad).isBefore(java.time.Instant.now().plus(java.time.Duration.ofMinutes(31)));
+        assertThat(caducidad).isAfter(java.time.Instant.now().plus(java.time.Duration.ofMinutes(29)));
+    }
+
+    @Test
     @DisplayName("dos tokens del mismo usuario tienen ids distintos, para poder revocar uno sin el otro")
     void idsDistintos() {
         AuthenticatedUser primero = servicio.leer(servicio.emitirPara(usuario));
@@ -59,7 +72,7 @@ class JwtServiceTest {
     @Test
     @DisplayName("con el perfil prod no arranca si falta JWT_SECRET")
     void prodExigeSecreto() {
-        AppProperties sinSecreto = new AppProperties(null, new AppProperties.Jwt("", 8), null, null, null, null, null);
+        AppProperties sinSecreto = new AppProperties(null, new AppProperties.Jwt("", 8, 0), null, null, null, null, null);
         MockEnvironment prod = new MockEnvironment();
         prod.setActiveProfiles("prod");
 
@@ -71,7 +84,7 @@ class JwtServiceTest {
     @Test
     @DisplayName("sin perfil prod, un secreto vacío genera una clave aleatoria y arranca")
     void desarrolloAceptaSinSecreto() {
-        AppProperties sinSecreto = new AppProperties(null, new AppProperties.Jwt("", 8), null, null, null, null, null);
+        AppProperties sinSecreto = new AppProperties(null, new AppProperties.Jwt("", 8, 0), null, null, null, null, null);
 
         JwtService local = new JwtService(sinSecreto, new MockEnvironment());
 
