@@ -61,6 +61,7 @@ public class UserService {
     private final InvitationService invitationService;
     private final AuthService authService;
     private final DatosPersonalesService datosPersonalesService;
+    private final DemoCuentasProtegidas demoCuentasProtegidas;
 
     /**
      * Da de alta una cuenta en estado pendiente y emite su invitación.
@@ -152,6 +153,7 @@ public class UserService {
     @Transactional
     public UserResponse actualizar(UUID id, UpdateUserRequest peticion) {
         User usuario = buscarEnMiOrganizacion(id);
+        demoCuentasProtegidas.exigirNoProtegida(usuario);
         String emailNormalizado = User.normalizarEmail(peticion.email());
 
         if (userRepository.existsByEmailAndIdNot(emailNormalizado, id)) {
@@ -198,6 +200,7 @@ public class UserService {
         }
 
         User usuario = buscarEnMiOrganizacion(id);
+        demoCuentasProtegidas.exigirNoProtegida(usuario);
         UserStatus estado = UserStatus.desdeValor(nuevoEstado);
 
         if (estado == UserStatus.ACTIVE && usuario.getPasswordHash() == null) {
@@ -229,6 +232,7 @@ public class UserService {
         }
 
         User usuario = buscarEnMiOrganizacion(id);
+        demoCuentasProtegidas.exigirNoProtegida(usuario);
 
         if (usuario.estaEliminado()) {
             throw NotFoundException.de("Usuario", id);

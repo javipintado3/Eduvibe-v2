@@ -53,9 +53,18 @@ services:
         value: "30"
 
       # Las credenciales de la demo son públicas y sus cuentas pueden escribir: cada madrugada
-      # (4:00, hora de Madrid) se borran los datos y se vuelve a cargar la semilla
+      # (4:00, hora de Madrid) se borran los datos y se vuelve a cargar la semilla. Como la API
+      # gratuita se duerme y una API dormida no ejecuta el cron, además se reinicia al arrancar
+      # si lleva más de 6 horas sin hacerlo
       - key: DEMO_RESET_CRON
         value: "0 0 4 * * *"
+      - key: DEMO_RESET_AFTER_HOURS
+        value: "6"
+
+      # Las tres cuentas de acceso rápido no pueden cambiar su contraseña, activar el 2FA,
+      # borrarse ni ser editadas, desactivadas o eliminadas: así nadie las deja inservibles
+      - key: DEMO_PROTECTED_EMAILS
+        value: admin@eduvibe.demo,ivan.cordero@eduvibe.demo,abril.medina@eduvibe.demo
 
       # El disco del plan gratuito no es permanente: los archivos subidos se pierden al reiniciar
       - key: UPLOADS_DIR

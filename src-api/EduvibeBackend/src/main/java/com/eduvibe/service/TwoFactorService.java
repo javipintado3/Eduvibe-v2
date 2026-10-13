@@ -53,12 +53,14 @@ public class TwoFactorService {
     private final UserRepository userRepository;
     private final TotpRecoveryCodeRepository recoveryCodeRepository;
     private final PasswordEncoder passwordEncoder;
+    private final DemoCuentasProtegidas demoCuentasProtegidas;
     private final LoginAttemptService loginAttemptService;
 
     /** Primer paso: genera el secreto y devuelve lo necesario para pintar el QR. */
     @Transactional
     public TwoFactorSetupResponse iniciarConfiguracion(UUID usuarioId) {
         User usuario = cargar(usuarioId);
+        demoCuentasProtegidas.exigirNoProtegida(usuario);
         if (usuario.isTotpEnabled()) {
             throw new ConflictException("La verificación en dos pasos ya está activada");
         }
@@ -77,6 +79,7 @@ public class TwoFactorService {
     @Transactional
     public List<String> activar(UUID usuarioId, String codigo) {
         User usuario = cargar(usuarioId);
+        demoCuentasProtegidas.exigirNoProtegida(usuario);
         if (usuario.isTotpEnabled()) {
             throw new ConflictException("La verificación en dos pasos ya está activada");
         }

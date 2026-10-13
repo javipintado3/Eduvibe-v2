@@ -63,6 +63,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final DemoCuentasProtegidas demoCuentasProtegidas;
     private final JwtService jwtService;
     private final InvitationService invitationService;
     private final LoginAttemptService loginAttemptService;
@@ -143,6 +144,7 @@ public class AuthService {
         AuthenticatedUser autenticado = identidadActual();
         User usuario = userRepository.findById(autenticado.id())
                 .orElseThrow(() -> NotFoundException.de("Usuario", autenticado.id()));
+        demoCuentasProtegidas.exigirNoProtegida(usuario);
 
         if (loginAttemptService.estaBloqueado(usuario.getEmail())) {
             throw new TooManyRequestsException("Demasiados intentos fallidos. Vuelve a intentarlo en "

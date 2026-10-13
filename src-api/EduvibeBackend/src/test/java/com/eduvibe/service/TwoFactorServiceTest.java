@@ -61,7 +61,7 @@ class TwoFactorServiceTest {
 
     @BeforeEach
     void preparar() {
-        servicio = new TwoFactorService(userRepository, recoveryCodeRepository, passwordEncoder, loginAttemptService);
+        servicio = new TwoFactorService(userRepository, recoveryCodeRepository, passwordEncoder, new DemoCuentasProtegidas(""), loginAttemptService);
         usuario = new User(new Organization("Centro", null), "ana@centro.es", "Ana", UserRole.TEACHER);
         usuario.activarCon("$2a$10$hash");
     }

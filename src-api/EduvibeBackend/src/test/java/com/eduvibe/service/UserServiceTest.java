@@ -17,9 +17,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.eduvibe.dto.user.UpdateUserRequest;
 import com.eduvibe.exception.BadRequestException;
+import com.eduvibe.exception.CuentaDeDemoProtegidaException;
 import com.eduvibe.exception.NotFoundException;
 import com.eduvibe.model.Organization;
 import com.eduvibe.model.User;
@@ -39,6 +42,7 @@ class UserServiceTest {
     @Mock private InvitationService invitationService;
     @Mock private AuthService authService;
     @Mock private DatosPersonalesService datosPersonalesService;
+    @Spy private DemoCuentasProtegidas demoCuentasProtegidas = new DemoCuentasProtegidas("compartida@centro.es");
 
     @InjectMocks
     private UserService servicio;
@@ -137,6 +141,53 @@ class UserServiceTest {
 
             assertThat(alumna.estaEliminado()).isTrue();
             verify(datosPersonalesService, never()).eliminarUsuario(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("Cuentas compartidas de la demo")
+    class CuentasCompartidas {
+
+        private User compartida() {
+            User usuario = new User(centro, "compartida@centro.es", "Demo", UserRole.TEACHER);
+            usuario.setId(UUID.randomUUID());
+            usuario.setStatus(UserStatus.ACTIVE);
+            when(userRepository.findById(usuario.getId())).thenReturn(Optional.of(usuario));
+            return usuario;
+        }
+
+        @Test
+        @DisplayName("no se puede eliminar")
+        void noSeElimina() {
+            User demo = compartida();
+
+            assertThatThrownBy(() -> servicio.eliminar(demo.getId()))
+                    .isInstanceOf(CuentaDeDemoProtegidaException.class);
+
+            verify(datosPersonalesService, never()).eliminarUsuario(any());
+        }
+
+        @Test
+        @DisplayName("no se puede desactivar")
+        void noSeDesactiva() {
+            User demo = compartida();
+
+            assertThatThrownBy(() -> servicio.cambiarEstado(demo.getId(), "disabled"))
+                    .isInstanceOf(CuentaDeDemoProtegidaException.class);
+
+            assertThat(demo.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        }
+
+        @Test
+        @DisplayName("no se puede editar, ni su email ni su rol")
+        void noSeEdita() {
+            User demo = compartida();
+
+            assertThatThrownBy(() -> servicio.actualizar(demo.getId(),
+                    new UpdateUserRequest("Otro nombre", "otro@centro.es", "student")))
+                    .isInstanceOf(CuentaDeDemoProtegidaException.class);
+
+            assertThat(demo.getEmail()).isEqualTo("compartida@centro.es");
         }
     }
 }

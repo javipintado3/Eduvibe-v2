@@ -71,7 +71,7 @@ class AuthServiceTest {
 
     @BeforeEach
     void crearServicio() {
-        authService = new AuthService(userRepository, passwordEncoder, jwtService, invitationService, loginAttemptService, twoFactorService);
+        authService = new AuthService(userRepository, passwordEncoder, new DemoCuentasProtegidas(""), jwtService, invitationService, loginAttemptService, twoFactorService);
     }
 
     private User usuarioActivo(String email, String passwordHash) {

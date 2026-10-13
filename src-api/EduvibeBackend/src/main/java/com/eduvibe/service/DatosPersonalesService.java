@@ -82,6 +82,7 @@ public class DatosPersonalesService {
     private final RevokedTokenRepository revokedTokenRepository;
     private final GdprRequestRepository gdprRequestRepository;
     private final PasswordEncoder passwordEncoder;
+    private final DemoCuentasProtegidas demoCuentasProtegidas;
     private final LoginAttemptService loginAttemptService;
     private final TwoFactorService twoFactorService;
     private final FileStorageService fileStorageService;
@@ -171,6 +172,7 @@ public class DatosPersonalesService {
     @Transactional
     public void borrarCuenta(UUID usuarioId, String password, String codigo, String ip) {
         User usuario = cargar(usuarioId);
+        demoCuentasProtegidas.exigirNoProtegida(usuario);
 
         if (usuario.getStatus() != UserStatus.ACTIVE) {
             throw new BadRequestException("La cuenta no está activa");

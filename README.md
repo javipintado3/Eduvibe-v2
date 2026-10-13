@@ -180,6 +180,8 @@ Everything is driven by environment variables, with defaults suitable for local 
 | `UPLOADS_DIR` | `uploads` | Upload directory (a volume in Docker) |
 | `FLYWAY_LOCATIONS` | `classpath:db/migration,classpath:db/demo` | Drop `db/demo` to skip demo data |
 | `DEMO_RESET_CRON` | empty | Cron expression (with seconds, e.g. `0 0 4 * * *` = every day at 4:00) that wipes the whole database and reloads the demo seed. **Demo databases only**: it refuses to run unless the demo seed (`db/demo`) is in `FLYWAY_LOCATIONS`. Timezone from `DEMO_RESET_ZONE` (default `Europe/Madrid`); empty means off |
+| `DEMO_RESET_AFTER_HOURS` | `12` | Also resets the demo on startup when the last reset was more than this many hours ago. Needed on free hosting, where the API sleeps and a sleeping API does not run the cron. `0` turns it off. Same safety lock as `DEMO_RESET_CRON` |
+| `DEMO_PROTECTED_EMAILS` | empty | Comma-separated shared demo accounts that cannot change their password, enable 2FA, delete themselves, or be edited, disabled or deleted by someone else (403). Everything else still works. Empty means nobody is protected |
 | `SPRING_PROFILES_ACTIVE` | *(none)* | With `prod`, the API refuses to start without `JWT_SECRET` |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | empty | First admin, created only when the database has no users (min. 12 characters) |
 | `ADMIN_NAME` / `ORGANIZATION_NAME` | `Administrador` / `EduVibe` | Name of that admin and of the initial organization |

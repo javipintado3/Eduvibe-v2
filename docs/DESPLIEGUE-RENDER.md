@@ -60,13 +60,13 @@ Guarda: Render reinicia la API.
 
 ## 5. Comprobar
 
-1. Abre la dirección de Vercel. Si la API estaba dormida, la primera carga tarda cerca de un minuto.
+1. Abre la dirección de Vercel. Si la API estaba dormida, la primera carga puede tardar de uno a tres minutos: mientras tanto sale una pantalla de espera con capturas de la aplicación.
 2. En la pantalla de entrada, usa los botones de **Demostración** (todas las cuentas usan la contraseña `demo1234`).
 3. Prueba a crear una clase y una tarea.
 
 ## Limitaciones del plan gratuito
 
-- **La API se duerme** tras un rato sin visitas, y despertarla tarda alrededor de un minuto. Un monitor gratuito (por ejemplo UptimeRobot) que visite `https://<tu-vercel>/api/health` cada pocos minutos lo evita.
+- **La API se duerme** tras unos 15 minutos sin visitas, y despertarla tarda de uno a tres minutos. Un monitor (por ejemplo UptimeRobot) que visite `https://<tu-vercel>/api/health` cada pocos minutos lo evitaría, pero mantener la API siempre despierta gasta unas 744 de las 750 horas gratuitas del mes y se reparten entre todos los servicios gratuitos de la cuenta: si hay más de uno, Render los suspende. Por eso no se usa.
 - **Los archivos subidos no son permanentes**: el disco se vacía al reiniciar. Los datos de ejemplo no dependen de él.
 - **Memoria justa** (unos 512 MB): por eso `render.yaml` limita la memoria de Java. Si la API se reinicia sola, mira los registros de Render.
 - **Es una demo pública**: cualquiera puede entrar con las cuentas demo y modificar datos. No pongas nada personal, ni conectes el correo real.
@@ -74,3 +74,11 @@ Guarda: Render reinicia la API.
 ## Correo
 
 Sin `MAIL_USERNAME` y `MAIL_PASSWORD` la API no envía correos, y al crear un usuario muestra el enlace de invitación para copiarlo a mano. Para una demo pública es lo más seguro.
+
+## Cómo se mantiene limpia la demo
+
+Cualquiera puede entrar con las cuentas demo y escribir, así que la demo se protege sola (todo se configura en `render.yaml`):
+
+- **Se reinicia sola.** `DEMO_RESET_CRON` borra todos los datos y vuelve a cargar los de ejemplo cada madrugada (4:00, hora de Madrid). Como una API dormida no ejecuta tareas programadas, `DEMO_RESET_AFTER_HOURS` añade un reinicio al despertar si el último fue hace más de esas horas: quien despierta la API siempre ve la demo limpia. Ambos están apagados si no se configuran, y se niegan a ejecutarse si la base de datos no tiene los datos de ejemplo.
+- **Las cuentas de acceso rápido no se pueden estropear.** `DEMO_PROTECTED_EMAILS` impide cambiar su contraseña, activar el 2FA, borrarlas o que otra cuenta las edite, desactive o elimine. El resto de acciones (publicar, calificar, crear usuarios...) funcionan con normalidad.
+- **Las sesiones duran 30 minutos** (`JWT_EXPIRATION_MINUTES`), para que una cuenta olvidada no quede abierta.
