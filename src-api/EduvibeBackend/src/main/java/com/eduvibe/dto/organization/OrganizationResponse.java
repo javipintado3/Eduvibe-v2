@@ -10,7 +10,7 @@ import com.eduvibe.model.Organization;
  */
 public record OrganizationResponse(UUID id, String name, String allowedDomain) {
 
-    public static OrganizationResponse de(Organization organizacion) {
-        return new OrganizationResponse(organizacion.getId(), organizacion.getName(), organizacion.getAllowedDomain());
+    public static OrganizationResponse of(Organization organization) {
+        return new OrganizationResponse(organization.getId(), organization.getName(), organization.getAllowedDomain());
     }
 }

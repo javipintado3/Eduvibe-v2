@@ -25,7 +25,7 @@ public record PageResponse<T>(
      * consultas para toda la página a la vez, no una por elemento) y solo falta
      * envolverlo con los datos de paginación.
      */
-    public static <T> PageResponse<T> de(Page<?> page, List<T> contenido) {
+    public static <T> PageResponse<T> of(Page<?> page, List<T> contenido) {
         return new PageResponse<>(
                 contenido,
                 page.getNumber(),
@@ -35,9 +35,9 @@ public record PageResponse<T>(
                 page.isLast());
     }
 
-    public static <E, T> PageResponse<T> de(Page<E> page, Function<E, T> mapeador) {
+    public static <E, T> PageResponse<T> of(Page<E> page, Function<E, T> mapper) {
         return new PageResponse<>(
-                page.getContent().stream().map(mapeador).toList(),
+                page.getContent().stream().map(mapper).toList(),
                 page.getNumber(),
                 page.getSize(),
                 page.getTotalElements(),

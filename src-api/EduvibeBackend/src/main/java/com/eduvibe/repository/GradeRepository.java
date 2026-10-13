@@ -16,9 +16,9 @@ public interface GradeRepository extends JpaRepository<Grade, UUID> {
 
     /** Las notas de varias entregas a la vez, para no consultar una por una. */
     @Query("SELECT g FROM Grade g WHERE g.submission.id IN :submissionIds")
-    List<Grade> findDeEntregas(@Param("submissionIds") List<UUID> submissionIds);
+    List<Grade> findForSubmissions(@Param("submissionIds") List<UUID> submissionIds);
 
     /** Nota media del alumno en todo lo que tiene calificado, para su resumen de perfil. */
     @Query("SELECT AVG(g.score) FROM Grade g WHERE g.submission.student.id = :studentId")
-    Double notaMediaDe(@Param("studentId") UUID studentId);
+    Double averageGradeOf(@Param("studentId") UUID studentId);
 }

@@ -22,27 +22,27 @@ public record NotificationResponse(
         boolean leida,
         Instant createdAt) {
 
-    public static NotificationResponse de(Notification aviso) {
+    public static NotificationResponse of(Notification announcement) {
         return new NotificationResponse(
-                aviso.getId(),
-                aviso.getType(),
-                redactar(aviso),
-                aviso.getPayload(),
-                aviso.estaLeida(),
-                aviso.getCreatedAt());
+                announcement.getId(),
+                announcement.getType(),
+                write(announcement),
+                announcement.getPayload(),
+                announcement.isRead(),
+                announcement.getCreatedAt());
     }
 
-    private static String redactar(Notification aviso) {
-        Map<String, Object> datos = aviso.getPayload() == null ? Map.of() : aviso.getPayload();
-        String clase = String.valueOf(datos.getOrDefault("className", "tu clase"));
-        String titulo = String.valueOf(datos.getOrDefault("title", ""));
+    private static String write(Notification announcement) {
+        Map<String, Object> data = announcement.getPayload() == null ? Map.of() : announcement.getPayload();
+        String schoolClass = String.valueOf(data.getOrDefault("className", "tu clase"));
+        String title = String.valueOf(data.getOrDefault("title", ""));
 
-        return switch (aviso.getType()) {
-            case Notification.TAREA_NUEVA -> "Nueva tarea en " + clase + ": " + titulo;
-            case Notification.NOTA_PUBLICADA -> "Ya tienes nota en " + titulo + " (" + clase + ")";
-            case Notification.AVISO_NUEVO -> "Nuevo aviso en " + clase;
-            case Notification.EXAMEN_NUEVO -> "Nuevo examen en " + clase + ": " + titulo;
-            case Notification.REGISTRO_SOLICITADO -> "Nueva solicitud de registro: " + titulo;
+        return switch (announcement.getType()) {
+            case Notification.NEW_ASSIGNMENT -> "Nueva tarea en " + schoolClass + ": " + title;
+            case Notification.PUBLISHED_GRADE -> "Ya tienes nota en " + title + " (" + schoolClass + ")";
+            case Notification.NEW_ANNOUNCEMENT -> "Nuevo aviso en " + schoolClass;
+            case Notification.NEW_EXAM -> "Nuevo examen en " + schoolClass + ": " + title;
+            case Notification.REGISTRATION_REQUESTED -> "Nueva solicitud de registro: " + title;
             default -> "Tienes una novedad";
         };
     }

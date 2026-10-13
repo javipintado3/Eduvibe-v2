@@ -61,11 +61,11 @@ public class PasswordReset {
     }
 
     /** Un enlace sirve una sola vez y solo dentro de su plazo. */
-    public boolean esUtilizable() {
+    public boolean isUsable() {
         return usedAt == null && Instant.now().isBefore(expiresAt);
     }
 
-    public void marcarComoUsado() {
+    public void markAsUsed() {
         this.usedAt = Instant.now();
     }
 }

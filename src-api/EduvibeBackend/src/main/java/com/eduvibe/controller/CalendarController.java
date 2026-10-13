@@ -44,20 +44,20 @@ public class CalendarController {
     }
 
     @PostMapping
-    public ResponseEntity<CalendarEntryResponse> crear(@Valid @RequestBody SaveCalendarEventRequest peticion) {
-        CalendarEntryResponse creado = calendarService.crear(peticion);
+    public ResponseEntity<CalendarEntryResponse> create(@Valid @RequestBody SaveCalendarEventRequest request) {
+        CalendarEntryResponse creado = calendarService.create(request);
         return ResponseEntity.created(URI.create("/api/calendar/" + creado.referencia())).body(creado);
     }
 
     @PutMapping("/{eventId}")
-    public ResponseEntity<CalendarEntryResponse> actualizar(@PathVariable UUID eventId,
-                                                             @Valid @RequestBody SaveCalendarEventRequest peticion) {
-        return ResponseEntity.ok(calendarService.actualizar(eventId, peticion));
+    public ResponseEntity<CalendarEntryResponse> update(@PathVariable UUID eventId,
+                                                             @Valid @RequestBody SaveCalendarEventRequest request) {
+        return ResponseEntity.ok(calendarService.update(eventId, request));
     }
 
     @DeleteMapping("/{eventId}")
-    public ResponseEntity<Void> eliminar(@PathVariable UUID eventId) {
-        calendarService.eliminar(eventId);
+    public ResponseEntity<Void> delete(@PathVariable UUID eventId) {
+        calendarService.delete(eventId);
         return ResponseEntity.noContent().build();
     }
 }

@@ -6,7 +6,7 @@ package com.eduvibe.model.enums;
  * Sirve para elegir el icono con el que se muestra en la lista: reconocer de
  * un vistazo si algo es un PDF o un vídeo ahorra tener que abrirlo.
  */
-public enum ResourceType implements EnumConValor {
+public enum ResourceType implements EnumWithValue {
 
     PDF("pdf"),
     LINK("link"),
@@ -14,18 +14,18 @@ public enum ResourceType implements EnumConValor {
     DOC("doc"),
     OTHER("other");
 
-    private final String valor;
+    private final String value;
 
-    ResourceType(String valor) {
-        this.valor = valor;
+    ResourceType(String value) {
+        this.value = value;
     }
 
     @Override
-    public String getValor() {
-        return valor;
+    public String getValue() {
+        return value;
     }
 
-    public static ResourceType desdeValor(String valor) {
-        return EnumConValor.desde(ResourceType.class, valor);
+    public static ResourceType fromValue(String value) {
+        return EnumWithValue.from(ResourceType.class, value);
     }
 }

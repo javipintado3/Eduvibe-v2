@@ -11,7 +11,7 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.eduvibe.service.SesionService;
+import com.eduvibe.service.SessionService;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -32,43 +32,43 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final String CABECERA = "Authorization";
-    private static final String PREFIJO = "Bearer ";
+    private static final String HEADER = "Authorization";
+    private static final String PREFIX = "Bearer ";
 
     private final JwtService jwtService;
-    private final SesionService sesionService;
+    private final SessionService sessionService;
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain chain) throws ServletException, IOException {
 
-        String token = extraerToken(request);
+        String token = extractToken(request);
 
         if (token != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            AuthenticatedUser usuario = jwtService.leer(token);
+            AuthenticatedUser user = jwtService.read(token);
 
-            if (usuario != null && sesionService.estaVigente(usuario)) {
+            if (user != null && sessionService.isValid(user)) {
                 // Spring Security espera las autoridades de rol con el prefijo ROLE_,
                 // que es lo que después permite escribir hasRole("ADMIN").
-                var autoridades = List.of(
-                        new SimpleGrantedAuthority("ROLE_" + usuario.role().name()));
+                var authorities = List.of(
+                        new SimpleGrantedAuthority("ROLE_" + user.role().name()));
 
-                var autenticacion = new UsernamePasswordAuthenticationToken(usuario, null, autoridades);
-                autenticacion.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(autenticacion);
+                var authentication = new UsernamePasswordAuthenticationToken(user, null, authorities);
+                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         }
 
         chain.doFilter(request, response);
     }
 
-    private String extraerToken(HttpServletRequest request) {
-        String cabecera = request.getHeader(CABECERA);
-        if (cabecera == null || !cabecera.startsWith(PREFIJO)) {
+    private String extractToken(HttpServletRequest request) {
+        String header = request.getHeader(HEADER);
+        if (header == null || !header.startsWith(PREFIX)) {
             return null;
         }
-        String token = cabecera.substring(PREFIJO.length()).trim();
+        String token = header.substring(PREFIX.length()).trim();
         return token.isEmpty() ? null : token;
     }
 }

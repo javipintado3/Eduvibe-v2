@@ -108,8 +108,8 @@ public class Assignment {
      * de comparar dos fechas: guardarlo sería tener el mismo dato dos veces y
      * exponerse a que dejen de coincidir cuando se cambia la fecha límite.
      */
-    public boolean seEntregaTarde(Instant momentoDeEntrega) {
-        return dueDate != null && momentoDeEntrega != null && momentoDeEntrega.isAfter(dueDate);
+    public boolean lateSubmission(Instant submissionTime) {
+        return dueDate != null && submissionTime != null && submissionTime.isAfter(dueDate);
     }
 
     /**
@@ -119,8 +119,8 @@ public class Assignment {
      * tarea, no de la nota concreta: la nota solo sabe ejecutar el cálculo que
      * le llega ya resuelto.
      */
-    public BigDecimal aplicarPenalizacionSiProcede(BigDecimal score, boolean entregaTarde) {
-        if (!entregaTarde || latePenaltyPercent <= 0) {
+    public BigDecimal applyPenaltyIfApplies(BigDecimal score, boolean lateSubmission) {
+        if (!lateSubmission || latePenaltyPercent <= 0) {
             return score;
         }
         BigDecimal factor = BigDecimal.valueOf(100 - latePenaltyPercent)

@@ -13,7 +13,7 @@ import com.eduvibe.model.Submission;
  *                  {@code studentName} es solo uno de sus miembros, porque se
  *                  lista una fila por subgrupo y no una por alumno
  */
-public record EntregaPorCorregirResponse(
+public record SubmissionToGradeResponse(
         UUID submissionId,
         UUID assignmentId,
         String assignmentTitle,
@@ -24,16 +24,16 @@ public record EntregaPorCorregirResponse(
         Instant submittedAt,
         boolean entregadaTarde) {
 
-    public static EntregaPorCorregirResponse de(Submission entrega) {
-        return new EntregaPorCorregirResponse(
-                entrega.getId(),
-                entrega.getAssignment().getId(),
-                entrega.getAssignment().getTitle(),
-                entrega.getAssignment().getSchoolClass().getId(),
-                entrega.getAssignment().getSchoolClass().getName(),
-                entrega.getStudent().getName(),
-                entrega.getClassGroup() == null ? null : entrega.getClassGroup().getName(),
-                entrega.getSubmittedAt(),
-                entrega.entregadaTarde());
+    public static SubmissionToGradeResponse of(Submission submission) {
+        return new SubmissionToGradeResponse(
+                submission.getId(),
+                submission.getAssignment().getId(),
+                submission.getAssignment().getTitle(),
+                submission.getAssignment().getSchoolClass().getId(),
+                submission.getAssignment().getSchoolClass().getName(),
+                submission.getStudent().getName(),
+                submission.getClassGroup() == null ? null : submission.getClassGroup().getName(),
+                submission.getSubmittedAt(),
+                submission.entregadaTarde());
     }
 }

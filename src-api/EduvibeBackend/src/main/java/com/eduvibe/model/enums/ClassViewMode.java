@@ -7,23 +7,23 @@ package com.eduvibe.model.enums;
  * materiales separados (primaria/secundaria), o módulos con todo mezclado
  * (universidad). Se elige por clase, no globalmente para toda la plataforma.
  */
-public enum ClassViewMode implements EnumConValor {
+public enum ClassViewMode implements EnumWithValue {
 
     STRUCTURED("structured"),
     FLEXIBLE("flexible");
 
-    private final String valor;
+    private final String value;
 
-    ClassViewMode(String valor) {
-        this.valor = valor;
+    ClassViewMode(String value) {
+        this.value = value;
     }
 
     @Override
-    public String getValor() {
-        return valor;
+    public String getValue() {
+        return value;
     }
 
-    public static ClassViewMode desdeValor(String valor) {
-        return EnumConValor.desde(ClassViewMode.class, valor);
+    public static ClassViewMode fromValue(String value) {
+        return EnumWithValue.from(ClassViewMode.class, value);
     }
 }

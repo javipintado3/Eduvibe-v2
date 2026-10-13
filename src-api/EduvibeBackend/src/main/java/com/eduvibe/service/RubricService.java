@@ -23,7 +23,7 @@ import lombok.RequiredArgsConstructor;
 /**
  * Rúbrica de una tarea: sus criterios y la puntuación máxima de cada uno.
  *
- * Se guarda siempre entera (ver {@link #guardar}): no hay un PATCH criterio a
+ * Se guarda siempre entera (ver {@link #save}): no hay un PATCH criterio a
  * criterio, igual que un examen no se edita pregunta a pregunta desde fuera.
  * Cambiar los criterios de una tarea que ya tiene entregas corregidas con la
  * rúbrica anterior es decisión de quien la edita, no algo que este servicio
@@ -36,57 +36,57 @@ public class RubricService {
     private final RubricRepository rubricRepository;
     private final RubricCriterionRepository rubricCriterionRepository;
     private final AssignmentRepository assignmentRepository;
-    private final ClassAccessService acceso;
+    private final ClassAccessService access;
 
     @Transactional(readOnly = true)
-    public RubricResponse obtenerSiExiste(UUID assignmentId) {
+    public RubricResponse getIfExists(UUID assignmentId) {
         return rubricRepository.findByAssignmentId(assignmentId)
-                .map(rubrica -> RubricResponse.de(rubrica,
-                        rubricCriterionRepository.findByRubricIdOrderBySortOrderAsc(rubrica.getId())))
+                .map(rubric -> RubricResponse.of(rubric,
+                        rubricCriterionRepository.findByRubricIdOrderBySortOrderAsc(rubric.getId())))
                 .orElse(null);
     }
 
     /** Crea la rúbrica de la tarea, o sustituye por completo la que ya hubiera. */
     @Transactional
-    public RubricResponse guardar(UUID assignmentId, SaveRubricRequest peticion) {
-        Assignment tarea = assignmentRepository.findById(assignmentId)
-                .orElseThrow(() -> NotFoundException.de("Tarea", assignmentId));
+    public RubricResponse save(UUID assignmentId, SaveRubricRequest request) {
+        Assignment assignment = assignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> NotFoundException.of("Tarea", assignmentId));
 
-        acceso.exigirEditable(tarea.getSchoolClass().getId());
+        access.requireEditable(assignment.getSchoolClass().getId());
 
-        Rubric rubrica = rubricRepository.findByAssignmentId(assignmentId)
-                .orElseGet(() -> new Rubric(tarea));
-        rubricRepository.saveAndFlush(rubrica);
+        Rubric rubric = rubricRepository.findByAssignmentId(assignmentId)
+                .orElseGet(() -> new Rubric(assignment));
+        rubricRepository.saveAndFlush(rubric);
 
         // Se reemplazan todos los criterios: es más simple y seguro que calcular
         // un diff, y una rúbrica no tiene tantos criterios como para que borrar
         // y recrear sea un problema de rendimiento.
         rubricCriterionRepository.deleteAll(
-                rubricCriterionRepository.findByRubricIdOrderBySortOrderAsc(rubrica.getId()));
+                rubricCriterionRepository.findByRubricIdOrderBySortOrderAsc(rubric.getId()));
 
-        List<RubricCriterion> criterios = new ArrayList<>();
-        int orden = 0;
-        for (SaveRubricRequest.CriterionInput entrada : peticion.criteria()) {
-            criterios.add(new RubricCriterion(rubrica, entrada.description().trim(), entrada.maxPoints(), orden++));
+        List<RubricCriterion> criteria = new ArrayList<>();
+        int order = 0;
+        for (SaveRubricRequest.CriterionInput input : request.criteria()) {
+            criteria.add(new RubricCriterion(rubric, input.description().trim(), input.maxPoints(), order++));
         }
-        rubricCriterionRepository.saveAll(criterios);
+        rubricCriterionRepository.saveAll(criteria);
 
-        return RubricResponse.de(rubrica, criterios);
+        return RubricResponse.of(rubric, criteria);
     }
 
     @Transactional
-    public void eliminar(UUID assignmentId) {
-        Assignment tarea = assignmentRepository.findById(assignmentId)
-                .orElseThrow(() -> NotFoundException.de("Tarea", assignmentId));
+    public void delete(UUID assignmentId) {
+        Assignment assignment = assignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> NotFoundException.of("Tarea", assignmentId));
 
-        acceso.exigirEditable(tarea.getSchoolClass().getId());
+        access.requireEditable(assignment.getSchoolClass().getId());
 
         rubricRepository.findByAssignmentId(assignmentId).ifPresent(rubricRepository::delete);
     }
 
     /** Para el servicio de corrección: la rúbrica de la tarea si la tiene, sin exigir permisos aparte. */
     @Transactional(readOnly = true)
-    public Optional<Rubric> buscarDe(UUID assignmentId) {
+    public Optional<Rubric> findFor(UUID assignmentId) {
         return rubricRepository.findByAssignmentId(assignmentId);
     }
 }

@@ -30,48 +30,48 @@ import lombok.RequiredArgsConstructor;
  */
 @Service
 @RequiredArgsConstructor
-public class SesionService {
+public class SessionService {
 
-    private static final Logger LOG = LoggerFactory.getLogger(SesionService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SessionService.class);
 
     private final UserRepository userRepository;
     private final RevokedTokenRepository revokedTokenRepository;
 
     @Transactional(readOnly = true)
-    public boolean estaVigente(AuthenticatedUser identidad) {
-        User usuario = userRepository.findById(identidad.id()).orElse(null);
+    public boolean isValid(AuthenticatedUser identity) {
+        User user = userRepository.findById(identity.id()).orElse(null);
 
-        if (usuario == null || usuario.getStatus() != UserStatus.ACTIVE) {
+        if (user == null || user.getStatus() != UserStatus.ACTIVE) {
             return false;
         }
 
-        AuthenticatedUser.Sesion sesion = identidad.sesion();
-        if (sesion == null) {
+        AuthenticatedUser.Session session = identity.session();
+        if (session == null) {
             return true;
         }
 
-        boolean revocado = sesion.id() != null && revokedTokenRepository.existsById(sesion.id());
-        return !revocado && sesion.version() == usuario.getTokenVersion();
+        boolean revoked = session.id() != null && revokedTokenRepository.existsById(session.id());
+        return !revoked && session.version() == user.getTokenVersion();
     }
 
     /** Cierra la sesión del token con el que se hace la petición, sin tocar las de otros dispositivos. */
     @Transactional
-    public void cerrar(AuthenticatedUser identidad) {
-        AuthenticatedUser.Sesion sesion = identidad.sesion();
+    public void close(AuthenticatedUser identity) {
+        AuthenticatedUser.Session session = identity.session();
 
         // Un token anterior a la revocación no tiene id y no se puede apuntar;
         // caducará solo. Es el único caso, y desaparece en cuanto caducan.
-        if (sesion == null || sesion.id() == null || revokedTokenRepository.existsById(sesion.id())) {
+        if (session == null || session.id() == null || revokedTokenRepository.existsById(session.id())) {
             return;
         }
-        revokedTokenRepository.save(new RevokedToken(sesion.id(), identidad.id(), sesion.expiresAt()));
+        revokedTokenRepository.save(new RevokedToken(session.id(), identity.id(), session.expiresAt()));
     }
 
     /** Cada noche se purgan los tokens revocados que ya habrían caducado. */
     @Scheduled(cron = "0 45 3 * * *")
     @Transactional
-    public void purgarCaducados() {
-        int borrados = revokedTokenRepository.borrarCaducadosAntesDe(Instant.now());
-        LOG.info("Purgados {} tokens revocados ya caducados", borrados);
+    public void purgeExpired() {
+        int deleted = revokedTokenRepository.deleteExpiredBefore(Instant.now());
+        LOG.info("Purgados {} tokens revocados ya caducados", deleted);
     }
 }

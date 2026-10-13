@@ -38,7 +38,7 @@ public class InvitationService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final MailService mailService;
-    private final AppProperties propiedades;
+    private final AppProperties properties;
 
     /**
      * Emite una invitación para el usuario y, si se puede, la envía por correo.
@@ -47,19 +47,19 @@ public class InvitationService {
      * que reenviar no deje dos enlaces válidos a la vez.
      */
     @Transactional
-    public InvitationResponse emitirPara(User usuario) {
-        invitationRepository.invalidarPendientesDe(usuario.getId());
+    public InvitationResponse issueFor(User user) {
+        invitationRepository.invalidatePendingFor(user.getId());
 
-        String token = Tokens.generar();
-        Instant caducidad = Instant.now()
-                .plus(Duration.ofHours(propiedades.invitation().expirationHours()));
+        String token = Tokens.generate();
+        Instant expiry = Instant.now()
+                .plus(Duration.ofHours(properties.invitation().expirationHours()));
 
-        invitationRepository.save(new Invitation(usuario, Tokens.hashear(token), caducidad));
+        invitationRepository.save(new Invitation(user, Tokens.hash(token), expiry));
 
-        String enlace = construirEnlace(token);
-        boolean enviado = mailService.enviarInvitacion(usuario, enlace);
+        String link = buildLink(token);
+        boolean sent = mailService.sendInvitation(user, link);
 
-        return new InvitationResponse(enlace, caducidad, enviado);
+        return new InvitationResponse(link, expiry, sent);
     }
 
     /**
@@ -67,32 +67,32 @@ public class InvitationService {
      * cuenta corresponde antes de escribir nada.
      */
     @Transactional(readOnly = true)
-    public InvitationInfoResponse consultar(String token) {
-        Invitation invitacion = buscarUtilizable(token);
-        User usuario = invitacion.getUser();
+    public InvitationInfoResponse lookup(String token) {
+        Invitation invitation = findUsable(token);
+        User user = invitation.getUser();
 
         return new InvitationInfoResponse(
-                usuario.getName(),
-                usuario.getEmail(),
-                usuario.getOrganization().getName(),
-                invitacion.getExpiresAt());
+                user.getName(),
+                user.getEmail(),
+                user.getOrganization().getName(),
+                invitation.getExpiresAt());
     }
 
     /**
      * Consume la invitación: establece la contraseña y activa la cuenta.
      */
     @Transactional
-    public User aceptar(String token, String password) {
-        Invitation invitacion = buscarUtilizable(token);
+    public User accept(String token, String password) {
+        Invitation invitation = findUsable(token);
 
-        User usuario = invitacion.getUser();
-        usuario.activarCon(passwordEncoder.encode(password));
-        userRepository.save(usuario);
+        User user = invitation.getUser();
+        user.enableWith(passwordEncoder.encode(password));
+        userRepository.save(user);
 
-        invitacion.marcarComoUsada();
-        invitationRepository.save(invitacion);
+        invitation.markAsUsed();
+        invitationRepository.save(invitation);
 
-        return usuario;
+        return user;
     }
 
     /**
@@ -102,15 +102,15 @@ public class InvitationService {
      * de forma deliberada: distinguirlos permitiría averiguar qué tokens han
      * existido alguna vez.
      */
-    private Invitation buscarUtilizable(String token) {
-        return invitationRepository.findByTokenHash(Tokens.hashear(token))
-                .filter(Invitation::esUtilizable)
+    private Invitation findUsable(String token) {
+        return invitationRepository.findByTokenHash(Tokens.hash(token))
+                .filter(Invitation::isUsable)
                 .orElseThrow(() -> new BadRequestException(
                         "La invitación no es válida o ha caducado. Pide que te la vuelvan a enviar."));
     }
 
-    private String construirEnlace(String token) {
-        String base = propiedades.frontendUrl();
+    private String buildLink(String token) {
+        String base = properties.frontendUrl();
         if (base.endsWith("/")) {
             base = base.substring(0, base.length() - 1);
         }

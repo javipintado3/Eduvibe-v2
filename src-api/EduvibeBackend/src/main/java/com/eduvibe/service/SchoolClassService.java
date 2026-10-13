@@ -47,7 +47,7 @@ import com.eduvibe.dto.common.PageResponse;
 @RequiredArgsConstructor
 public class SchoolClassService {
 
-    private static final String ROL_ADMINISTRACION = "admin";
+    private static final String ROLE_ADMINISTRATION = "admin";
 
     private final SchoolClassRepository schoolClassRepository;
     private final EnrollmentRepository enrollmentRepository;
@@ -56,22 +56,22 @@ public class SchoolClassService {
     private final OrganizationRepository organizationRepository;
     private final SubmissionRepository submissionRepository;
     private final ExamAttemptRepository examAttemptRepository;
-    private final ClassAccessService acceso;
+    private final ClassAccessService access;
     private final AuthService authService;
 
     @Transactional
-    public ClassDetailResponse crear(CreateClassRequest peticion) {
-        AuthenticatedUser admin = authService.identidadActual();
+    public ClassDetailResponse create(CreateClassRequest request) {
+        AuthenticatedUser admin = authService.currentIdentity();
 
-        Organization organizacion = organizationRepository.findById(admin.organizationId())
-                .orElseThrow(() -> NotFoundException.de("Organización", admin.organizationId()));
+        Organization organization = organizationRepository.findById(admin.organizationId())
+                .orElseThrow(() -> NotFoundException.of("Organización", admin.organizationId()));
 
-        SchoolClass clase = new SchoolClass(organizacion, peticion.name().trim(),
-                normalizar(peticion.subject()), peticion.color(), normalizar(peticion.imageUrl()));
-        clase.setViewMode(modoDeVista(peticion.viewMode()));
-        schoolClassRepository.saveAndFlush(clase);
+        SchoolClass schoolClass = new SchoolClass(organization, request.name().trim(),
+                normalize(request.subject()), request.color(), normalize(request.imageUrl()));
+        schoolClass.setViewMode(viewMode(request.viewMode()));
+        schoolClassRepository.saveAndFlush(schoolClass);
 
-        return ClassDetailResponse.de(clase, ROL_ADMINISTRACION, true, List.of(), 0, List.of());
+        return ClassDetailResponse.of(schoolClass, ROLE_ADMINISTRATION, true, List.of(), 0, List.of());
     }
 
     /**
@@ -83,58 +83,58 @@ public class SchoolClassService {
      * Con veinte clases, la diferencia es entre tres consultas y cuarenta y una.
      */
     @Transactional(readOnly = true)
-    public PageResponse<ClassResponse> misClases(String busqueda, Pageable pageable) {
-        AuthenticatedUser usuario = authService.identidadActual();
-        String patron = Paginacion.patronDeBusqueda(busqueda);
-        Pageable pagina = Paginacion.sinOrden(pageable);
+    public PageResponse<ClassResponse> mySchoolClasses(String search, Pageable pageable) {
+        AuthenticatedUser user = authService.currentIdentity();
+        String pattern = Pagination.searchPattern(search);
+        Pageable pagina = Pagination.unsorted(pageable);
 
-        Page<SchoolClass> resultado = usuario.esAdmin()
-                ? schoolClassRepository.buscarDeCentro(usuario.organizationId(), patron, pagina)
-                : schoolClassRepository.buscarDeUsuario(usuario.id(), patron, pagina);
-        List<SchoolClass> clases = resultado.getContent();
+        Page<SchoolClass> result = user.isAdmin()
+                ? schoolClassRepository.findForOrganization(user.organizationId(), pattern, pagina)
+                : schoolClassRepository.findForUser(user.id(), pattern, pagina);
+        List<SchoolClass> schoolClasses = result.getContent();
 
-        if (clases.isEmpty()) {
-            return PageResponse.de(resultado, List.<ClassResponse>of());
+        if (schoolClasses.isEmpty()) {
+            return PageResponse.of(result, List.<ClassResponse>of());
         }
 
-        List<UUID> ids = clases.stream().map(SchoolClass::getId).toList();
+        List<UUID> ids = schoolClasses.stream().map(SchoolClass::getId).toList();
 
         // Consulta 1: la próxima entrega de cada clase
-        Map<UUID, Instant> proximas = new HashMap<>();
-        for (var fila : schoolClassRepository.findProximasEntregas(ids)) {
-            proximas.put(fila.getClassId(), fila.getProximaEntrega());
+        Map<UUID, Instant> next = new HashMap<>();
+        for (var fila : schoolClassRepository.findNextSubmissions(ids)) {
+            next.put(fila.getClassId(), fila.getNextDueDate());
         }
 
         // Consulta 2: todas las matriculaciones de esas clases, de las que salen
         // tanto el profesorado como el alumnado de cada una y el papel de quien consulta
-        Map<UUID, List<String>> profesoradoPorClase = new HashMap<>();
-        Map<UUID, Integer> alumnadoPorClase = new HashMap<>();
-        Map<UUID, String> miRolPorClase = new HashMap<>();
+        Map<UUID, List<String>> teachersBySchoolClass = new HashMap<>();
+        Map<UUID, Integer> studentsBySchoolClass = new HashMap<>();
+        Map<UUID, String> myRoleBySchoolClass = new HashMap<>();
 
-        for (Enrollment matricula : enrollmentRepository.findBySchoolClassIdIn(ids)) {
-            UUID claseId = matricula.getSchoolClass().getId();
+        for (Enrollment enrollment : enrollmentRepository.findBySchoolClassIdIn(ids)) {
+            UUID schoolClassId = enrollment.getSchoolClass().getId();
 
-            if (matricula.esProfesor()) {
-                profesoradoPorClase
-                        .computeIfAbsent(claseId, k -> new ArrayList<>())
-                        .add(matricula.getUser().getName());
+            if (enrollment.isTeacher()) {
+                teachersBySchoolClass
+                        .computeIfAbsent(schoolClassId, k -> new ArrayList<>())
+                        .add(enrollment.getUser().getName());
             } else {
-                alumnadoPorClase.merge(claseId, 1, Integer::sum);
+                studentsBySchoolClass.merge(schoolClassId, 1, Integer::sum);
             }
-            if (matricula.getUser().getId().equals(usuario.id())) {
-                miRolPorClase.put(claseId, matricula.getRoleInClass().getValor());
+            if (enrollment.getUser().getId().equals(user.id())) {
+                myRoleBySchoolClass.put(schoolClassId, enrollment.getRoleInClass().getValue());
             }
         }
 
-        String rolSiNoEstaMatriculado = usuario.esAdmin() ? ROL_ADMINISTRACION : null;
+        String roleIfNotEnrolled = user.isAdmin() ? ROLE_ADMINISTRATION : null;
 
-        return PageResponse.de(resultado, clases.stream()
-                .map(clase -> ClassResponse.de(
-                        clase,
-                        miRolPorClase.getOrDefault(clase.getId(), rolSiNoEstaMatriculado),
-                        proximas.get(clase.getId()),
-                        profesoradoPorClase.getOrDefault(clase.getId(), List.of()),
-                        alumnadoPorClase.getOrDefault(clase.getId(), 0)))
+        return PageResponse.of(result, schoolClasses.stream()
+                .map(schoolClass -> ClassResponse.of(
+                        schoolClass,
+                        myRoleBySchoolClass.getOrDefault(schoolClass.getId(), roleIfNotEnrolled),
+                        next.get(schoolClass.getId()),
+                        teachersBySchoolClass.getOrDefault(schoolClass.getId(), List.of()),
+                        studentsBySchoolClass.getOrDefault(schoolClass.getId(), 0)))
                 .toList());
     }
 
@@ -148,8 +148,8 @@ public class SchoolClassService {
      * (archivar queda fuera del alcance actual).
      */
     @Transactional
-    public void eliminar(UUID classId) {
-        SchoolClass clase = acceso.exigirSerAdmin(classId);
+    public void delete(UUID classId) {
+        SchoolClass schoolClass = access.requireAdmin(classId);
 
         if (submissionRepository.existsByAssignmentSchoolClassId(classId)
                 || examAttemptRepository.existsByExamSchoolClassId(classId)) {
@@ -157,50 +157,50 @@ public class SchoolClassService {
                     "No se puede borrar: ya hay entregas o exámenes hechos en esta clase");
         }
 
-        schoolClassRepository.delete(clase);
+        schoolClassRepository.delete(schoolClass);
     }
 
     @Transactional(readOnly = true)
-    public ClassDetailResponse detalle(UUID classId) {
-        SchoolClass clase = acceso.exigirVisible(classId);
-        AuthenticatedUser usuario = authService.identidadActual();
+    public ClassDetailResponse detail(UUID classId) {
+        SchoolClass schoolClass = access.requireVisible(classId);
+        AuthenticatedUser user = authService.currentIdentity();
 
-        List<MemberResponse> profesorado = enrollmentRepository
+        List<MemberResponse> teachers = enrollmentRepository
                 .findBySchoolClassIdAndRoleInClassOrderByUserNameAsc(classId, EnrollmentRole.TEACHER)
-                .stream().map(MemberResponse::de).toList();
+                .stream().map(MemberResponse::of).toList();
 
         long alumnado = enrollmentRepository.countBySchoolClassIdAndRoleInClass(classId, EnrollmentRole.STUDENT);
 
         List<TopicResponse> temas = topicRepository
                 .findBySchoolClassIdOrderBySortOrderAscTitleAsc(classId)
-                .stream().map(TopicResponse::de).toList();
+                .stream().map(TopicResponse::of).toList();
 
-        return ClassDetailResponse.de(clase, miRolEn(classId, usuario),
-                acceso.puedeCalificarEn(classId), profesorado, alumnado, temas);
+        return ClassDetailResponse.of(schoolClass, myRoleIn(classId, user),
+                access.canGradeIn(classId), teachers, alumnado, temas);
     }
 
     @Transactional
-    public ClassDetailResponse actualizar(UUID classId, CreateClassRequest peticion) {
-        SchoolClass clase = acceso.exigirEditable(classId);
+    public ClassDetailResponse update(UUID classId, CreateClassRequest request) {
+        SchoolClass schoolClass = access.requireEditable(classId);
 
-        clase.setName(peticion.name().trim());
-        clase.setSubject(normalizar(peticion.subject()));
-        clase.setColor(peticion.color());
-        clase.setImageUrl(normalizar(peticion.imageUrl()));
-        if (peticion.viewMode() != null) {
-            clase.setViewMode(ClassViewMode.desdeValor(peticion.viewMode()));
+        schoolClass.setName(request.name().trim());
+        schoolClass.setSubject(normalize(request.subject()));
+        schoolClass.setColor(request.color());
+        schoolClass.setImageUrl(normalize(request.imageUrl()));
+        if (request.viewMode() != null) {
+            schoolClass.setViewMode(ClassViewMode.fromValue(request.viewMode()));
         }
-        schoolClassRepository.save(clase);
+        schoolClassRepository.save(schoolClass);
 
-        return detalle(classId);
+        return detail(classId);
     }
 
     @Transactional(readOnly = true)
-    public List<MemberResponse> miembros(UUID classId) {
-        acceso.exigirVisible(classId);
+    public List<MemberResponse> members(UUID classId) {
+        access.requireVisible(classId);
 
         return enrollmentRepository.findBySchoolClassIdOrderByRoleInClassAscUserNameAsc(classId)
-                .stream().map(MemberResponse::de).toList();
+                .stream().map(MemberResponse::of).toList();
     }
 
     /**
@@ -209,99 +209,99 @@ public class SchoolClassService {
      * Solo la administración matricula, y solo a personas de su propio centro.
      */
     @Transactional
-    public MemberResponse matricular(UUID classId, EnrollRequest peticion) {
-        AuthenticatedUser admin = authService.identidadActual();
-        SchoolClass clase = acceso.exigirEditable(classId);
+    public MemberResponse enroll(UUID classId, EnrollRequest request) {
+        AuthenticatedUser admin = authService.currentIdentity();
+        SchoolClass schoolClass = access.requireEditable(classId);
 
-        User usuario = userRepository.findById(peticion.userId())
+        User user = userRepository.findById(request.userId())
                 .filter(u -> u.getOrganization().getId().equals(admin.organizationId()))
-                .orElseThrow(() -> NotFoundException.de("Usuario", peticion.userId()));
+                .orElseThrow(() -> NotFoundException.of("Usuario", request.userId()));
 
-        if (enrollmentRepository.existsBySchoolClassIdAndUserId(classId, usuario.getId())) {
-            throw new ConflictException(usuario.getName() + " ya está en esta clase");
+        if (enrollmentRepository.existsBySchoolClassIdAndUserId(classId, user.getId())) {
+            throw new ConflictException(user.getName() + " ya está en esta clase");
         }
 
-        Enrollment matricula = new Enrollment(clase, usuario,
-                EnrollmentRole.desdeValor(peticion.roleInClass()));
-        enrollmentRepository.saveAndFlush(matricula);
+        Enrollment enrollment = new Enrollment(schoolClass, user,
+                EnrollmentRole.fromValue(request.roleInClass()));
+        enrollmentRepository.saveAndFlush(enrollment);
 
-        return MemberResponse.de(matricula);
+        return MemberResponse.of(enrollment);
     }
 
     @Transactional
-    public void desmatricular(UUID classId, UUID userId) {
-        acceso.exigirEditable(classId);
+    public void unenroll(UUID classId, UUID userId) {
+        access.requireEditable(classId);
 
-        Enrollment matricula = enrollmentRepository.findBySchoolClassIdAndUserId(classId, userId)
+        Enrollment enrollment = enrollmentRepository.findBySchoolClassIdAndUserId(classId, userId)
                 .orElseThrow(() -> new NotFoundException("Esa persona no está matriculada en la clase"));
 
         // Quitar al último profesor dejaría la clase sin nadie que pueda
         // gestionarla, salvo la administración
-        if (matricula.esProfesor()
+        if (enrollment.isTeacher()
                 && enrollmentRepository.countBySchoolClassIdAndRoleInClass(classId, EnrollmentRole.TEACHER) <= 1) {
             throw new ConflictException("La clase se quedaría sin profesorado");
         }
 
-        enrollmentRepository.delete(matricula);
+        enrollmentRepository.delete(enrollment);
     }
 
     @Transactional(readOnly = true)
     public List<TopicResponse> temas(UUID classId) {
-        acceso.exigirVisible(classId);
+        access.requireVisible(classId);
 
         return topicRepository.findBySchoolClassIdOrderBySortOrderAscTitleAsc(classId)
-                .stream().map(TopicResponse::de).toList();
+                .stream().map(TopicResponse::of).toList();
     }
 
     @Transactional
-    public TopicResponse crearTema(UUID classId, CreateTopicRequest peticion) {
-        SchoolClass clase = acceso.exigirEditable(classId);
+    public TopicResponse createTopic(UUID classId, CreateTopicRequest request) {
+        SchoolClass schoolClass = access.requireEditable(classId);
 
-        int orden = peticion.sortOrder() != null
-                ? peticion.sortOrder()
+        int order = request.sortOrder() != null
+                ? request.sortOrder()
                 : topicRepository.findBySchoolClassIdOrderBySortOrderAscTitleAsc(classId).size() + 1;
 
-        Topic tema = new Topic(clase, peticion.title().trim(), orden);
-        topicRepository.saveAndFlush(tema);
+        Topic topic = new Topic(schoolClass, request.title().trim(), order);
+        topicRepository.saveAndFlush(topic);
 
-        return TopicResponse.de(tema);
+        return TopicResponse.of(topic);
     }
 
     /** Solo renombra: el orden se conserva salvo que la petición traiga uno nuevo explícito. */
     @Transactional
-    public TopicResponse actualizarTema(UUID classId, UUID topicId, CreateTopicRequest peticion) {
-        acceso.exigirEditable(classId);
+    public TopicResponse updateTopic(UUID classId, UUID topicId, CreateTopicRequest request) {
+        access.requireEditable(classId);
 
-        Topic tema = topicRepository.findByIdAndSchoolClassId(topicId, classId)
-                .orElseThrow(() -> NotFoundException.de("Tema", topicId));
+        Topic topic = topicRepository.findByIdAndSchoolClassId(topicId, classId)
+                .orElseThrow(() -> NotFoundException.of("Tema", topicId));
 
-        tema.setTitle(peticion.title().trim());
-        if (peticion.sortOrder() != null) {
-            tema.setSortOrder(peticion.sortOrder());
+        topic.setTitle(request.title().trim());
+        if (request.sortOrder() != null) {
+            topic.setSortOrder(request.sortOrder());
         }
-        topicRepository.save(tema);
+        topicRepository.save(topic);
 
-        return TopicResponse.de(tema);
+        return TopicResponse.of(topic);
     }
 
     /** Papel de la persona en la clase, o "admin" si solo la ve por ser administración. */
-    private String miRolEn(UUID classId, AuthenticatedUser usuario) {
-        return enrollmentRepository.findBySchoolClassIdAndUserId(classId, usuario.id())
-                .map(e -> e.getRoleInClass().getValor())
-                .orElse(usuario.esAdmin() ? ROL_ADMINISTRACION : null);
+    private String myRoleIn(UUID classId, AuthenticatedUser user) {
+        return enrollmentRepository.findBySchoolClassIdAndUserId(classId, user.id())
+                .map(e -> e.getRoleInClass().getValue())
+                .orElse(user.isAdmin() ? ROLE_ADMINISTRATION : null);
     }
 
-    private List<String> nombresDelProfesorado(UUID classId) {
+    private List<String> namesOfTeachers(UUID classId) {
         return enrollmentRepository
                 .findBySchoolClassIdAndRoleInClassOrderByUserNameAsc(classId, EnrollmentRole.TEACHER)
                 .stream().map(e -> e.getUser().getName()).toList();
     }
 
-    private String normalizar(String texto) {
+    private String normalize(String texto) {
         return (texto == null || texto.isBlank()) ? null : texto.trim();
     }
 
-    private ClassViewMode modoDeVista(String viewMode) {
-        return viewMode != null ? ClassViewMode.desdeValor(viewMode) : ClassViewMode.STRUCTURED;
+    private ClassViewMode viewMode(String viewMode) {
+        return viewMode != null ? ClassViewMode.fromValue(viewMode) : ClassViewMode.STRUCTURED;
     }
 }

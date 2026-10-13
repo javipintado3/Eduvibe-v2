@@ -49,7 +49,7 @@ public class RegistrationRequest {
     @JoinColumn(name = "org_id", nullable = false)
     private Organization organization;
 
-    /** Siempre en minúsculas: ver {@link User#normalizarEmail(String)}. */
+    /** Siempre en minúsculas: ver {@link User#normalizeEmail(String)}. */
     @Column(name = "email", nullable = false, length = 255)
     private String email;
 
@@ -94,7 +94,7 @@ public class RegistrationRequest {
     public RegistrationRequest(Organization organization, String email, String name, String message,
                                String ipAddress) {
         this.organization = organization;
-        this.email = User.normalizarEmail(email);
+        this.email = User.normalizeEmail(email);
         this.name = name;
         this.message = message;
         this.ipAddress = ipAddress;
@@ -102,44 +102,44 @@ public class RegistrationRequest {
     }
 
     /** Guarda el token (su hash) con el que la persona confirmará su correo. */
-    public void emitirVerificacion(String tokenHash, Instant caducidad) {
+    public void issueVerification(String tokenHash, Instant expiry) {
         this.tokenHash = tokenHash;
-        this.tokenExpiresAt = caducidad;
+        this.tokenExpiresAt = expiry;
     }
 
-    public boolean estaSinVerificar() {
+    public boolean isUnverified() {
         return status == RegistrationStatus.UNVERIFIED;
     }
 
-    public boolean estaPendiente() {
+    public boolean isPending() {
         return status == RegistrationStatus.PENDING;
     }
 
     /** El enlace sirve una sola vez, mientras la solicitud no esté verificada y dentro de su plazo. */
-    public boolean puedeVerificarse() {
-        return estaSinVerificar() && tokenHash != null && tokenExpiresAt != null
+    public boolean canBeVerified() {
+        return isUnverified() && tokenHash != null && tokenExpiresAt != null
                 && Instant.now().isBefore(tokenExpiresAt);
     }
 
     /** Correo confirmado: pasa a la cola del administrador y el token deja de valer. */
-    public void marcarComoVerificada() {
+    public void markAsVerified() {
         this.status = RegistrationStatus.PENDING;
         this.verifiedAt = Instant.now();
         this.tokenHash = null;
         this.tokenExpiresAt = null;
     }
 
-    public void aprobar(User administrador) {
-        resolver(RegistrationStatus.APPROVED, administrador);
+    public void approve(User administrator) {
+        resolve(RegistrationStatus.APPROVED, administrator);
     }
 
-    public void rechazar(User administrador) {
-        resolver(RegistrationStatus.REJECTED, administrador);
+    public void reject(User administrator) {
+        resolve(RegistrationStatus.REJECTED, administrator);
     }
 
-    private void resolver(RegistrationStatus resultado, User administrador) {
-        this.status = resultado;
+    private void resolve(RegistrationStatus result, User administrator) {
+        this.status = result;
         this.reviewedAt = Instant.now();
-        this.reviewedBy = administrador;
+        this.reviewedBy = administrator;
     }
 }

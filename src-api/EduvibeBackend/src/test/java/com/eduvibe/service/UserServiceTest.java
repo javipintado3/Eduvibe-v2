@@ -22,7 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.eduvibe.dto.user.UpdateUserRequest;
 import com.eduvibe.exception.BadRequestException;
-import com.eduvibe.exception.CuentaDeDemoProtegidaException;
+import com.eduvibe.exception.ProtectedDemoAccountException;
 import com.eduvibe.exception.NotFoundException;
 import com.eduvibe.model.Organization;
 import com.eduvibe.model.User;
@@ -41,139 +41,139 @@ class UserServiceTest {
     @Mock private EnrollmentRepository enrollmentRepository;
     @Mock private InvitationService invitationService;
     @Mock private AuthService authService;
-    @Mock private DatosPersonalesService datosPersonalesService;
-    @Spy private DemoCuentasProtegidas demoCuentasProtegidas = new DemoCuentasProtegidas("compartida@centro.es");
+    @Mock private PersonalDataService personalDataService;
+    @Spy private ProtectedDemoAccounts protectedDemoAccounts = new ProtectedDemoAccounts("compartida@centro.es");
 
     @InjectMocks
-    private UserService servicio;
+    private UserService service;
 
     private final UUID idAdmin = UUID.randomUUID();
-    private Organization centro;
+    private Organization organization;
 
     @BeforeEach
     void preparar() {
-        centro = new Organization("Centro", null);
-        centro.setId(UUID.randomUUID());
-        when(authService.identidadActual()).thenReturn(
-                new AuthenticatedUser(idAdmin, "admin@centro.es", "Admin", UserRole.ADMIN, centro.getId()));
+        organization = new Organization("Centro", null);
+        organization.setId(UUID.randomUUID());
+        when(authService.currentIdentity()).thenReturn(
+                new AuthenticatedUser(idAdmin, "admin@centro.es", "Admin", UserRole.ADMIN, organization.getId()));
     }
 
-    private User cuenta(UserRole rol, UserStatus estado) {
-        User usuario = new User(centro, "ana@centro.es", "Ana", rol);
-        usuario.setId(UUID.randomUUID());
-        usuario.setStatus(estado);
-        when(userRepository.findById(usuario.getId())).thenReturn(Optional.of(usuario));
-        return usuario;
+    private User account(UserRole role, UserStatus status) {
+        User user = new User(organization, "ana@centro.es", "Ana", role);
+        user.setId(UUID.randomUUID());
+        user.setStatus(status);
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        return user;
     }
 
     @Nested
     @DisplayName("Eliminar un usuario")
-    class Eliminar {
+    class Delete {
 
         @Test
         @DisplayName("elimina a una persona de su centro")
         void elimina() {
-            User alumna = cuenta(UserRole.STUDENT, UserStatus.ACTIVE);
+            User student = account(UserRole.STUDENT, UserStatus.ACTIVE);
 
-            servicio.eliminar(alumna.getId());
+            service.delete(student.getId());
 
-            verify(datosPersonalesService).eliminarUsuario(alumna);
+            verify(personalDataService).deleteUser(student);
         }
 
         @Test
         @DisplayName("nadie puede eliminarse a sí mismo")
         void noUnoMismo() {
-            assertThatThrownBy(() -> servicio.eliminar(idAdmin))
+            assertThatThrownBy(() -> service.delete(idAdmin))
                     .isInstanceOf(BadRequestException.class);
 
-            verify(datosPersonalesService, never()).eliminarUsuario(any());
+            verify(personalDataService, never()).deleteUser(any());
         }
 
         @Test
         @DisplayName("no se puede eliminar al último administrador activo")
         void noElUltimoAdmin() {
-            User otroAdmin = cuenta(UserRole.ADMIN, UserStatus.ACTIVE);
-            when(userRepository.countByOrganizationIdAndRoleAndStatus(centro.getId(), UserRole.ADMIN, UserStatus.ACTIVE))
+            User otherAdmin = account(UserRole.ADMIN, UserStatus.ACTIVE);
+            when(userRepository.countByOrganizationIdAndRoleAndStatus(organization.getId(), UserRole.ADMIN, UserStatus.ACTIVE))
                     .thenReturn(1L);
 
-            assertThatThrownBy(() -> servicio.eliminar(otroAdmin.getId()))
+            assertThatThrownBy(() -> service.delete(otherAdmin.getId()))
                     .isInstanceOf(BadRequestException.class)
                     .hasMessageContaining("única persona administradora");
 
-            verify(datosPersonalesService, never()).eliminarUsuario(any());
+            verify(personalDataService, never()).deleteUser(any());
         }
 
         @Test
         @DisplayName("sí se puede eliminar a un administrador si queda otro activo")
         void adminSiQuedaOtro() {
-            User otroAdmin = cuenta(UserRole.ADMIN, UserStatus.ACTIVE);
-            when(userRepository.countByOrganizationIdAndRoleAndStatus(centro.getId(), UserRole.ADMIN, UserStatus.ACTIVE))
+            User otherAdmin = account(UserRole.ADMIN, UserStatus.ACTIVE);
+            when(userRepository.countByOrganizationIdAndRoleAndStatus(organization.getId(), UserRole.ADMIN, UserStatus.ACTIVE))
                     .thenReturn(2L);
 
-            servicio.eliminar(otroAdmin.getId());
+            service.delete(otherAdmin.getId());
 
-            verify(datosPersonalesService).eliminarUsuario(otroAdmin);
+            verify(personalDataService).deleteUser(otherAdmin);
         }
 
         @Test
         @DisplayName("un usuario de otro centro se trata como inexistente")
         void otroCentro() {
-            Organization otro = new Organization("Otro", null);
-            otro.setId(UUID.randomUUID());
-            User ajena = new User(otro, "eva@otro.es", "Eva", UserRole.STUDENT);
-            ajena.setId(UUID.randomUUID());
-            when(userRepository.findById(ajena.getId())).thenReturn(Optional.of(ajena));
+            Organization otherOrganization = new Organization("Otro", null);
+            otherOrganization.setId(UUID.randomUUID());
+            User foreignUser = new User(otherOrganization, "eva@otro.es", "Eva", UserRole.STUDENT);
+            foreignUser.setId(UUID.randomUUID());
+            when(userRepository.findById(foreignUser.getId())).thenReturn(Optional.of(foreignUser));
 
-            assertThatThrownBy(() -> servicio.eliminar(ajena.getId()))
+            assertThatThrownBy(() -> service.delete(foreignUser.getId()))
                     .isInstanceOf(NotFoundException.class);
 
-            verify(datosPersonalesService, never()).eliminarUsuario(any());
+            verify(personalDataService, never()).deleteUser(any());
         }
 
         @Test
         @DisplayName("no se elimina dos veces a la misma persona")
         void yaEliminada() {
-            User alumna = cuenta(UserRole.STUDENT, UserStatus.DISABLED);
-            alumna.eliminar();
+            User student = account(UserRole.STUDENT, UserStatus.DISABLED);
+            student.delete();
 
-            assertThatThrownBy(() -> servicio.eliminar(alumna.getId()))
+            assertThatThrownBy(() -> service.delete(student.getId()))
                     .isInstanceOf(NotFoundException.class);
 
-            assertThat(alumna.estaEliminado()).isTrue();
-            verify(datosPersonalesService, never()).eliminarUsuario(any());
+            assertThat(student.isDeleted()).isTrue();
+            verify(personalDataService, never()).deleteUser(any());
         }
     }
 
     @Nested
     @DisplayName("Cuentas compartidas de la demo")
-    class CuentasCompartidas {
+    class SharedAccounts {
 
-        private User compartida() {
-            User usuario = new User(centro, "compartida@centro.es", "Demo", UserRole.TEACHER);
-            usuario.setId(UUID.randomUUID());
-            usuario.setStatus(UserStatus.ACTIVE);
-            when(userRepository.findById(usuario.getId())).thenReturn(Optional.of(usuario));
-            return usuario;
+        private User shared() {
+            User user = new User(organization, "compartida@centro.es", "Demo", UserRole.TEACHER);
+            user.setId(UUID.randomUUID());
+            user.setStatus(UserStatus.ACTIVE);
+            when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+            return user;
         }
 
         @Test
         @DisplayName("no se puede eliminar")
         void noSeElimina() {
-            User demo = compartida();
+            User demo = shared();
 
-            assertThatThrownBy(() -> servicio.eliminar(demo.getId()))
-                    .isInstanceOf(CuentaDeDemoProtegidaException.class);
+            assertThatThrownBy(() -> service.delete(demo.getId()))
+                    .isInstanceOf(ProtectedDemoAccountException.class);
 
-            verify(datosPersonalesService, never()).eliminarUsuario(any());
+            verify(personalDataService, never()).deleteUser(any());
         }
 
         @Test
         @DisplayName("no se puede desactivar")
         void noSeDesactiva() {
-            User demo = compartida();
+            User demo = shared();
 
-            assertThatThrownBy(() -> servicio.cambiarEstado(demo.getId(), "disabled"))
-                    .isInstanceOf(CuentaDeDemoProtegidaException.class);
+            assertThatThrownBy(() -> service.changeStatus(demo.getId(), "disabled"))
+                    .isInstanceOf(ProtectedDemoAccountException.class);
 
             assertThat(demo.getStatus()).isEqualTo(UserStatus.ACTIVE);
         }
@@ -181,11 +181,11 @@ class UserServiceTest {
         @Test
         @DisplayName("no se puede editar, ni su email ni su rol")
         void noSeEdita() {
-            User demo = compartida();
+            User demo = shared();
 
-            assertThatThrownBy(() -> servicio.actualizar(demo.getId(),
+            assertThatThrownBy(() -> service.update(demo.getId(),
                     new UpdateUserRequest("Otro nombre", "otro@centro.es", "student")))
-                    .isInstanceOf(CuentaDeDemoProtegidaException.class);
+                    .isInstanceOf(ProtectedDemoAccountException.class);
 
             assertThat(demo.getEmail()).isEqualTo("compartida@centro.es");
         }

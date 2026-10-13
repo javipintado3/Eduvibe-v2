@@ -35,14 +35,14 @@ public class GlobalExceptionHandler {
 
     /** Errores propios de la aplicación: cada uno ya sabe su código. */
     @ExceptionHandler(ApiException.class)
-    public ResponseEntity<ErrorResponse> manejarApiException(ApiException ex, WebRequest peticion) {
-        return construir(ex.getStatus(), ex.getMessage(), peticion);
+    public ResponseEntity<ErrorResponse> handleApiException(ApiException ex, WebRequest request) {
+        return build(ex.getStatus(), ex.getMessage(), request);
     }
 
     /** Credenciales incorrectas o cuenta no habilitada. */
     @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<ErrorResponse> manejarCredenciales(BadCredentialsException ex, WebRequest peticion) {
-        return construir(HttpStatus.UNAUTHORIZED, ex.getMessage(), peticion);
+    public ResponseEntity<ErrorResponse> handleCredentials(BadCredentialsException ex, WebRequest request) {
+        return build(HttpStatus.UNAUTHORIZED, ex.getMessage(), request);
     }
 
     /**
@@ -51,18 +51,18 @@ public class GlobalExceptionHandler {
      * lanza la seguridad a nivel de método.
      */
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ErrorResponse> manejarAcceso(AccessDeniedException ex, WebRequest peticion) {
-        return construir(HttpStatus.FORBIDDEN, "No tienes permiso para realizar esta operación", peticion);
+    public ResponseEntity<ErrorResponse> handleAccess(AccessDeniedException ex, WebRequest request) {
+        return build(HttpStatus.FORBIDDEN, "No tienes permiso para realizar esta operación", request);
     }
 
     /** Fallos de validación de los DTO: se devuelve el detalle por campo. */
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> manejarValidacion(MethodArgumentNotValidException ex, WebRequest peticion) {
+    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex, WebRequest request) {
         Map<String, String> campos = new LinkedHashMap<>();
         for (FieldError error : ex.getBindingResult().getFieldErrors()) {
             campos.putIfAbsent(error.getField(), error.getDefaultMessage());
         }
-        return ResponseEntity.badRequest().body(ErrorResponse.deValidacion(ruta(peticion), campos));
+        return ResponseEntity.badRequest().body(ErrorResponse.ofValidation(path(request), campos));
     }
 
     /**
@@ -72,19 +72,19 @@ public class GlobalExceptionHandler {
      * que haría buscar el problema en el sitio equivocado.
      */
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ErrorResponse> manejarCuerpoIlegible(HttpMessageNotReadableException ex,
-                                                               WebRequest peticion) {
-        LOG.debug("Cuerpo de petición ilegible en {}: {}", ruta(peticion), ex.getMessage());
-        return construir(HttpStatus.BAD_REQUEST,
+    public ResponseEntity<ErrorResponse> handleBodyUnreadable(HttpMessageNotReadableException ex,
+                                                               WebRequest request) {
+        LOG.debug("Cuerpo de petición ilegible en {}: {}", path(request), ex.getMessage());
+        return build(HttpStatus.BAD_REQUEST,
                 "El cuerpo de la petición no se ha podido interpretar. Revisa que sea JSON válido en UTF-8.",
-                peticion);
+                request);
     }
 
     /** Ruta inexistente: 404 y no 500. */
     @ExceptionHandler(NoResourceFoundException.class)
-    public ResponseEntity<ErrorResponse> manejarRutaInexistente(NoResourceFoundException ex,
-                                                                WebRequest peticion) {
-        return construir(HttpStatus.NOT_FOUND, "No existe el recurso solicitado", peticion);
+    public ResponseEntity<ErrorResponse> handleNonexistentPath(NoResourceFoundException ex,
+                                                                WebRequest request) {
+        return build(HttpStatus.NOT_FOUND, "No existe el recurso solicitado", request);
     }
 
     /**
@@ -92,10 +92,10 @@ public class GlobalExceptionHandler {
      * que no es un UUID. También es culpa de quien llama.
      */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<ErrorResponse> manejarTipoIncorrecto(MethodArgumentTypeMismatchException ex,
-                                                               WebRequest peticion) {
-        return construir(HttpStatus.BAD_REQUEST,
-                "El valor de '" + ex.getName() + "' no tiene el formato esperado", peticion);
+    public ResponseEntity<ErrorResponse> handleIncorrectType(MethodArgumentTypeMismatchException ex,
+                                                               WebRequest request) {
+        return build(HttpStatus.BAD_REQUEST,
+                "El valor de '" + ex.getName() + "' no tiene el formato esperado", request);
     }
 
     /**
@@ -104,17 +104,17 @@ public class GlobalExceptionHandler {
      * previsto no deben salir de la aplicación.
      */
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> manejarNoPrevista(Exception ex, WebRequest peticion) {
-        LOG.error("Error no controlado en {}", ruta(peticion), ex);
-        return construir(HttpStatus.INTERNAL_SERVER_ERROR, "Ha ocurrido un error inesperado", peticion);
+    public ResponseEntity<ErrorResponse> handleUnexpected(Exception ex, WebRequest request) {
+        LOG.error("Error no controlado en {}", path(request), ex);
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, "Ha ocurrido un error inesperado", request);
     }
 
-    private ResponseEntity<ErrorResponse> construir(HttpStatus status, String mensaje, WebRequest peticion) {
+    private ResponseEntity<ErrorResponse> build(HttpStatus status, String message, WebRequest request) {
         return ResponseEntity.status(status)
-                .body(ErrorResponse.de(status.value(), status.getReasonPhrase(), mensaje, ruta(peticion)));
+                .body(ErrorResponse.of(status.value(), status.getReasonPhrase(), message, path(request)));
     }
 
-    private String ruta(WebRequest peticion) {
-        return peticion.getDescription(false).replaceFirst("^uri=", "");
+    private String path(WebRequest request) {
+        return request.getDescription(false).replaceFirst("^uri=", "");
     }
 }

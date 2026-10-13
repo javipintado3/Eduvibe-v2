@@ -17,7 +17,7 @@ public interface ForumThreadRepository extends JpaRepository<ForumThread, UUID> 
     /** Borrar la cuenta vacía el título de los hilos, que es texto libre, sin romper el hilo de los demás. */
     @Modifying
     @Query("UPDATE ForumThread t SET t.title = :texto WHERE t.author.id = :authorId")
-    int sustituirTituloDe(@Param("authorId") UUID authorId, @Param("texto") String texto);
+    int replaceTitleOf(@Param("authorId") UUID authorId, @Param("texto") String texto);
 
     List<ForumThread> findBySchoolClassId(UUID classId);
 }

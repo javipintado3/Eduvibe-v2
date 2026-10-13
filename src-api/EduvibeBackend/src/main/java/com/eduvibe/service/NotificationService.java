@@ -39,8 +39,8 @@ public class NotificationService {
 
     /** Una notificación para una sola persona (por ejemplo, la nota de su propia entrega). */
     @Transactional
-    public void emitir(User destinatario, String tipo, Map<String, Object> payload) {
-        notificationRepository.save(new Notification(destinatario, tipo, payload));
+    public void issue(User recipient, String tipo, Map<String, Object> payload) {
+        notificationRepository.save(new Notification(recipient, tipo, payload));
     }
 
     /**
@@ -49,45 +49,45 @@ public class NotificationService {
      * porque no se modifica después de crearlas.
      */
     @Transactional
-    public void emitirParaVarios(List<User> destinatarios, String tipo, Map<String, Object> payload) {
-        List<Notification> notificaciones = destinatarios.stream()
-                .map(destinatario -> new Notification(destinatario, tipo, payload))
+    public void issueForSeveral(List<User> recipients, String tipo, Map<String, Object> payload) {
+        List<Notification> notifications = recipients.stream()
+                .map(recipient -> new Notification(recipient, tipo, payload))
                 .toList();
-        notificationRepository.saveAll(notificaciones);
+        notificationRepository.saveAll(notifications);
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<NotificationResponse> misNotificaciones(boolean soloNoLeidas, Pageable pageable) {
-        UUID userId = authService.identidadActual().id();
-        Pageable sinOrden = Paginacion.sinOrden(pageable);
+    public PageResponse<NotificationResponse> myNotifications(boolean onlyUnread, Pageable pageable) {
+        UUID userId = authService.currentIdentity().id();
+        Pageable unsorted = Pagination.unsorted(pageable);
 
-        return PageResponse.de(
-                soloNoLeidas
-                        ? notificationRepository.findByUserIdAndReadAtIsNullOrderByCreatedAtDesc(userId, sinOrden)
-                        : notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, sinOrden),
-                NotificationResponse::de);
+        return PageResponse.of(
+                onlyUnread
+                        ? notificationRepository.findByUserIdAndReadAtIsNullOrderByCreatedAtDesc(userId, unsorted)
+                        : notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, unsorted),
+                NotificationResponse::of);
     }
 
     @Transactional(readOnly = true)
-    public long noLeidas() {
-        return notificationRepository.countByUserIdAndReadAtIsNull(authService.identidadActual().id());
+    public long unread() {
+        return notificationRepository.countByUserIdAndReadAtIsNull(authService.currentIdentity().id());
     }
 
     @Transactional
-    public void marcarLeida(UUID notificationId) {
-        Notification aviso = notificationRepository.findById(notificationId)
-                .orElseThrow(() -> NotFoundException.de("Notificación", notificationId));
+    public void markRead(UUID notificationId) {
+        Notification announcement = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> NotFoundException.of("Notificación", notificationId));
 
-        if (!aviso.getUser().getId().equals(authService.identidadActual().id())) {
+        if (!announcement.getUser().getId().equals(authService.currentIdentity().id())) {
             throw new AccessDeniedException("Esta notificación no es tuya");
         }
 
-        aviso.marcarComoLeida();
-        notificationRepository.save(aviso);
+        announcement.markAsRead();
+        notificationRepository.save(announcement);
     }
 
     @Transactional
-    public void marcarTodasLeidas() {
-        notificationRepository.marcarTodasLeidas(authService.identidadActual().id());
+    public void markAllRead() {
+        notificationRepository.markAllRead(authService.currentIdentity().id());
     }
 }

@@ -20,126 +20,126 @@ import javax.crypto.spec.SecretKeySpec;
  */
 public final class Totp {
 
-    private static final String ALFABETO_BASE32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+    private static final String ALPHABET_BASE32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
-    private static final SecureRandom ALEATORIO = new SecureRandom();
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     /** 160 bits, el tamaño recomendado para HMAC-SHA1. */
-    private static final int BYTES_DEL_SECRETO = 20;
+    private static final int SECRET_BYTES = 20;
 
-    private static final int PASO_SEGUNDOS = 30;
-    private static final int DIGITOS = 6;
+    private static final int STEP_SECONDS = 30;
+    private static final int DIGITS = 6;
 
     /**
      * Cuántos pasos de 30 s se aceptan a cada lado del actual. Con 1 se tolera
      * que el reloj del móvil vaya unos segundos adelantado o atrasado.
      */
-    private static final int MARGEN_DE_PASOS = 1;
+    private static final int STEP_MARGIN = 1;
 
     private Totp() {
     }
 
     /** Secreto nuevo, en Base32 (lo que las apps de autenticación esperan). */
-    public static String generarSecreto() {
-        byte[] bytes = new byte[BYTES_DEL_SECRETO];
-        ALEATORIO.nextBytes(bytes);
-        return codificarBase32(bytes);
+    public static String generateSecret() {
+        byte[] bytes = new byte[SECRET_BYTES];
+        RANDOM.nextBytes(bytes);
+        return encodeBase32(bytes);
     }
 
     /** Código que corresponde al secreto en el instante indicado. */
-    public static String codigoEn(String secretoBase32, Instant instante) {
-        return codigo(secretoBase32, instante.getEpochSecond() / PASO_SEGUNDOS);
+    public static String codeIn(String secretBase32, Instant instant) {
+        return code(secretBase32, instant.getEpochSecond() / STEP_SECONDS);
     }
 
     /** ¿Es válido el código ahora, tolerando un paso de desfase de reloj? */
-    public static boolean verificar(String secretoBase32, String codigo, Instant ahora) {
-        if (codigo == null || !codigo.matches("\\d{" + DIGITOS + "}")) {
+    public static boolean verify(String secretBase32, String code, Instant now) {
+        if (code == null || !code.matches("\\d{" + DIGITS + "}")) {
             return false;
         }
 
-        long pasoActual = ahora.getEpochSecond() / PASO_SEGUNDOS;
-        boolean valido = false;
+        long currentStep = now.getEpochSecond() / STEP_SECONDS;
+        boolean valid = false;
 
         // Se recorren siempre los tres pasos, sin cortar al acertar, para que el
         // tiempo de respuesta no dependa de cuál ha coincidido
-        for (long paso = pasoActual - MARGEN_DE_PASOS; paso <= pasoActual + MARGEN_DE_PASOS; paso++) {
-            boolean coincide = MessageDigest.isEqual(
-                    codigo(secretoBase32, paso).getBytes(StandardCharsets.UTF_8),
-                    codigo.getBytes(StandardCharsets.UTF_8));
-            valido |= coincide;
+        for (long step = currentStep - STEP_MARGIN; step <= currentStep + STEP_MARGIN; step++) {
+            boolean matches = MessageDigest.isEqual(
+                    code(secretBase32, step).getBytes(StandardCharsets.UTF_8),
+                    code.getBytes(StandardCharsets.UTF_8));
+            valid |= matches;
         }
-        return valido;
+        return valid;
     }
 
     /** Enlace que las apps de autenticación leen desde el QR. */
-    public static String uri(String emisor, String cuenta, String secretoBase32) {
-        return "otpauth://totp/" + codificarUrl(emisor) + ":" + codificarUrl(cuenta)
-                + "?secret=" + secretoBase32
-                + "&issuer=" + codificarUrl(emisor)
-                + "&algorithm=SHA1&digits=" + DIGITOS + "&period=" + PASO_SEGUNDOS;
+    public static String uri(String issuer, String account, String secretBase32) {
+        return "otpauth://totp/" + encodeUrl(issuer) + ":" + encodeUrl(account)
+                + "?secret=" + secretBase32
+                + "&issuer=" + encodeUrl(issuer)
+                + "&algorithm=SHA1&digits=" + DIGITS + "&period=" + STEP_SECONDS;
     }
 
     /** HOTP (RFC 4226) sobre el contador de pasos de tiempo. */
-    private static String codigo(String secretoBase32, long contador) {
+    private static String code(String secretBase32, long counter) {
         try {
             Mac hmac = Mac.getInstance("HmacSHA1");
-            hmac.init(new SecretKeySpec(decodificarBase32(secretoBase32), "HmacSHA1"));
-            byte[] hash = hmac.doFinal(ByteBuffer.allocate(Long.BYTES).putLong(contador).array());
+            hmac.init(new SecretKeySpec(decodeBase32(secretBase32), "HmacSHA1"));
+            byte[] hash = hmac.doFinal(ByteBuffer.allocate(Long.BYTES).putLong(counter).array());
 
-            int desplazamiento = hash[hash.length - 1] & 0x0F;
-            int binario = ((hash[desplazamiento] & 0x7F) << 24)
-                    | ((hash[desplazamiento + 1] & 0xFF) << 16)
-                    | ((hash[desplazamiento + 2] & 0xFF) << 8)
-                    | (hash[desplazamiento + 3] & 0xFF);
+            int offset = hash[hash.length - 1] & 0x0F;
+            int binary = ((hash[offset] & 0x7F) << 24)
+                    | ((hash[offset + 1] & 0xFF) << 16)
+                    | ((hash[offset + 2] & 0xFF) << 8)
+                    | (hash[offset + 3] & 0xFF);
 
-            int modulo = (int) Math.pow(10, DIGITOS);
-            return String.format("%0" + DIGITOS + "d", binario % modulo);
+            int module = (int) Math.pow(10, DIGITS);
+            return String.format("%0" + DIGITS + "d", binary % module);
         } catch (GeneralSecurityException e) {
             throw new IllegalStateException("HmacSHA1 debería estar disponible siempre", e);
         }
     }
 
-    private static String codificarUrl(String texto) {
+    private static String encodeUrl(String texto) {
         return URLEncoder.encode(texto, StandardCharsets.UTF_8).replace("+", "%20");
     }
 
-    private static String codificarBase32(byte[] datos) {
-        StringBuilder resultado = new StringBuilder();
+    private static String encodeBase32(byte[] data) {
+        StringBuilder result = new StringBuilder();
         int buffer = 0;
-        int bitsEnBuffer = 0;
+        int bitsInBuffer = 0;
 
-        for (byte dato : datos) {
-            buffer = (buffer << 8) | (dato & 0xFF);
-            bitsEnBuffer += 8;
-            while (bitsEnBuffer >= 5) {
-                resultado.append(ALFABETO_BASE32.charAt((buffer >> (bitsEnBuffer - 5)) & 0x1F));
-                bitsEnBuffer -= 5;
+        for (byte current : data) {
+            buffer = (buffer << 8) | (current & 0xFF);
+            bitsInBuffer += 8;
+            while (bitsInBuffer >= 5) {
+                result.append(ALPHABET_BASE32.charAt((buffer >> (bitsInBuffer - 5)) & 0x1F));
+                bitsInBuffer -= 5;
             }
         }
-        if (bitsEnBuffer > 0) {
-            resultado.append(ALFABETO_BASE32.charAt((buffer << (5 - bitsEnBuffer)) & 0x1F));
+        if (bitsInBuffer > 0) {
+            result.append(ALPHABET_BASE32.charAt((buffer << (5 - bitsInBuffer)) & 0x1F));
         }
-        return resultado.toString();
+        return result.toString();
     }
 
-    private static byte[] decodificarBase32(String texto) {
-        String limpio = texto.toUpperCase().replace("=", "").replace(" ", "");
-        ByteBuffer salida = ByteBuffer.allocate(limpio.length() * 5 / 8);
+    private static byte[] decodeBase32(String texto) {
+        String clean = texto.toUpperCase().replace("=", "").replace(" ", "");
+        ByteBuffer output = ByteBuffer.allocate(clean.length() * 5 / 8);
         int buffer = 0;
-        int bitsEnBuffer = 0;
+        int bitsInBuffer = 0;
 
-        for (char caracter : limpio.toCharArray()) {
-            int valor = ALFABETO_BASE32.indexOf(caracter);
-            if (valor < 0) {
-                throw new IllegalArgumentException("Carácter no válido en Base32: " + caracter);
+        for (char character : clean.toCharArray()) {
+            int value = ALPHABET_BASE32.indexOf(character);
+            if (value < 0) {
+                throw new IllegalArgumentException("Carácter no válido en Base32: " + character);
             }
-            buffer = (buffer << 5) | valor;
-            bitsEnBuffer += 5;
-            if (bitsEnBuffer >= 8) {
-                salida.put((byte) ((buffer >> (bitsEnBuffer - 8)) & 0xFF));
-                bitsEnBuffer -= 8;
+            buffer = (buffer << 5) | value;
+            bitsInBuffer += 5;
+            if (bitsInBuffer >= 8) {
+                output.put((byte) ((buffer >> (bitsInBuffer - 8)) & 0xFF));
+                bitsInBuffer -= 8;
             }
         }
-        return salida.array();
+        return output.array();
     }
 }

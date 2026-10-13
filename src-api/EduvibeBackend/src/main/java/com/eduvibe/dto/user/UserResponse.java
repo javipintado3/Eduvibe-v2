@@ -23,16 +23,16 @@ public record UserResponse(
         Instant createdAt,
         boolean totpEnabled) {
 
-    public static UserResponse de(User usuario) {
+    public static UserResponse of(User user) {
         return new UserResponse(
-                usuario.getId(),
-                usuario.getEmail(),
-                usuario.getName(),
-                usuario.getRole().getValor(),
-                usuario.getStatus().getValor(),
-                usuario.getAvatarUrl(),
-                usuario.getOrganization().getId(),
-                usuario.getCreatedAt(),
-                usuario.isTotpEnabled());
+                user.getId(),
+                user.getEmail(),
+                user.getName(),
+                user.getRole().getValue(),
+                user.getStatus().getValue(),
+                user.getAvatarUrl(),
+                user.getOrganization().getId(),
+                user.getCreatedAt(),
+                user.isTotpEnabled());
     }
 }

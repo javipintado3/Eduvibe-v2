@@ -21,7 +21,7 @@ public record SubmitRequest(
         Boolean enviar) {
 
     /** Sin indicar nada, se entiende que es un borrador. */
-    public boolean quiereEnviar() {
+    public boolean wantsToSend() {
         return Boolean.TRUE.equals(enviar);
     }
 }

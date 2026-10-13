@@ -5,11 +5,11 @@ import org.springframework.http.HttpStatus;
 /** El recurso solicitado no existe. */
 public class NotFoundException extends ApiException {
 
-    public NotFoundException(String mensaje) {
-        super(HttpStatus.NOT_FOUND, mensaje);
+    public NotFoundException(String message) {
+        super(HttpStatus.NOT_FOUND, message);
     }
 
-    public static NotFoundException de(String entidad, Object id) {
-        return new NotFoundException(entidad + " no encontrado: " + id);
+    public static NotFoundException of(String entity, Object id) {
+        return new NotFoundException(entity + " no encontrado: " + id);
     }
 }

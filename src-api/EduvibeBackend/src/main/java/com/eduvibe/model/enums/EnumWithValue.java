@@ -9,10 +9,10 @@ package com.eduvibe.model.enums;
  * esperan las restricciones CHECK de las columnas. Esta interfaz permite que
  * una sola conversión sirva para todos.
  */
-public interface EnumConValor {
+public interface EnumWithValue {
 
     /** Valor tal y como se almacena y viaja por la API. */
-    String getValor();
+    String getValue();
 
     /**
      * Busca la constante que corresponde a un valor almacenado.
@@ -20,20 +20,20 @@ public interface EnumConValor {
      * @throws IllegalArgumentException si no corresponde a ninguna, con la
      *         lista de las admitidas para que el mensaje sea útil.
      */
-    static <E extends Enum<E> & EnumConValor> E desde(Class<E> tipo, String valor) {
-        for (E constante : tipo.getEnumConstants()) {
-            if (constante.getValor().equalsIgnoreCase(valor)) {
-                return constante;
+    static <E extends Enum<E> & EnumWithValue> E from(Class<E> tipo, String value) {
+        for (E constant : tipo.getEnumConstants()) {
+            if (constant.getValue().equalsIgnoreCase(value)) {
+                return constant;
             }
         }
-        StringBuilder admitidos = new StringBuilder();
-        for (E constante : tipo.getEnumConstants()) {
-            if (admitidos.length() > 0) {
-                admitidos.append(", ");
+        StringBuilder accepted = new StringBuilder();
+        for (E constant : tipo.getEnumConstants()) {
+            if (accepted.length() > 0) {
+                accepted.append(", ");
             }
-            admitidos.append(constante.getValor());
+            accepted.append(constant.getValue());
         }
         throw new IllegalArgumentException(
-                "Valor no reconocido: '" + valor + "'. Los admitidos son: " + admitidos);
+                "Valor no reconocido: '" + value + "'. Los admitidos son: " + accepted);
     }
 }

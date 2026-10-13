@@ -10,8 +10,8 @@ import java.util.List;
  * pueda corregir solo lo que falló en vez de tener que revisar el fichero
  * entero otra vez.
  */
-public record ImportUsersResponse(int total, int creados, List<FilaImportada> filas) {
+public record ImportUsersResponse(int total, int creados, List<ImportedRow> filas) {
 
-    public record FilaImportada(int fila, String email, boolean creado, String motivo) {
+    public record ImportedRow(int fila, String email, boolean creado, String motivo) {
     }
 }

@@ -30,14 +30,14 @@ public class ClassGroupController {
     private final ClassGroupService classGroupService;
 
     @PutMapping("/{groupId}")
-    public ResponseEntity<ClassGroupResponse> actualizar(@PathVariable UUID groupId,
-                                                          @Valid @RequestBody SaveClassGroupRequest peticion) {
-        return ResponseEntity.ok(classGroupService.actualizar(groupId, peticion));
+    public ResponseEntity<ClassGroupResponse> update(@PathVariable UUID groupId,
+                                                          @Valid @RequestBody SaveClassGroupRequest request) {
+        return ResponseEntity.ok(classGroupService.update(groupId, request));
     }
 
     @DeleteMapping("/{groupId}")
-    public ResponseEntity<Void> eliminar(@PathVariable UUID groupId) {
-        classGroupService.eliminar(groupId);
+    public ResponseEntity<Void> delete(@PathVariable UUID groupId) {
+        classGroupService.delete(groupId);
         return ResponseEntity.noContent().build();
     }
 }

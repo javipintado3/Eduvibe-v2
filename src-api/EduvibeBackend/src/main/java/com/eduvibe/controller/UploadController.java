@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.eduvibe.service.FileStorageService;
-import com.eduvibe.service.TipoSubida;
+import com.eduvibe.service.UploadType;
 
 import lombok.RequiredArgsConstructor;
 
@@ -29,12 +29,12 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class UploadController {
 
-    private final FileStorageService almacenamiento;
+    private final FileStorageService storage;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Map<String, String>> subir(@RequestParam("file") MultipartFile archivo,
+    public ResponseEntity<Map<String, String>> upload(@RequestParam("file") MultipartFile file,
                                                       @RequestParam(name = "tipo", required = false) String tipo) {
-        String url = almacenamiento.guardar(archivo, TipoSubida.desdeValor(tipo));
+        String url = storage.save(file, UploadType.fromValue(tipo));
         return ResponseEntity.ok(Map.of("url", url));
     }
 }

@@ -19,7 +19,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, UUID> {
 
     boolean existsBySchoolClassIdAndUserId(UUID classId, UUID userId);
 
-    boolean existsBySchoolClassIdAndUserIdAndRoleInClass(UUID classId, UUID userId, EnrollmentRole rol);
+    boolean existsBySchoolClassIdAndUserIdAndRoleInClass(UUID classId, UUID userId, EnrollmentRole role);
 
     /**
      * Personas de una clase. Se trae el usuario en la misma consulta porque
@@ -30,12 +30,12 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, UUID> {
     List<Enrollment> findBySchoolClassIdOrderByRoleInClassAscUserNameAsc(UUID classId);
 
     @EntityGraph(attributePaths = "user")
-    List<Enrollment> findBySchoolClassIdAndRoleInClassOrderByUserNameAsc(UUID classId, EnrollmentRole rol);
+    List<Enrollment> findBySchoolClassIdAndRoleInClassOrderByUserNameAsc(UUID classId, EnrollmentRole role);
 
-    long countBySchoolClassIdAndRoleInClass(UUID classId, EnrollmentRole rol);
+    long countBySchoolClassIdAndRoleInClass(UUID classId, EnrollmentRole role);
 
     /** Para el resumen de perfil: en cuántas clases participa, como profesor o como alumno. */
-    long countByUserIdAndRoleInClass(UUID userId, EnrollmentRole rol);
+    long countByUserIdAndRoleInClass(UUID userId, EnrollmentRole role);
 
     /** Las clases de una persona, para su ficha en el panel de administración. */
     @EntityGraph(attributePaths = "schoolClass")
@@ -53,7 +53,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, UUID> {
                   WHERE profesor.user.id = :teacherId
                     AND profesor.roleInClass = com.eduvibe.model.enums.EnrollmentRole.TEACHER)
             """)
-    long countAlumnadoDeProfesor(@Param("teacherId") UUID teacherId);
+    long countStudentsForTeacher(@Param("teacherId") UUID teacherId);
 
     /**
      * Matriculaciones de varias clases en una sola consulta. Es lo que permite
@@ -65,5 +65,5 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, UUID> {
     /** Eliminar a la persona la saca de todas las clases y grupos. */
     @Modifying
     @Query("DELETE FROM Enrollment e WHERE e.user.id = :userId")
-    int borrarDe(@Param("userId") UUID userId);
+    int deleteByUser(@Param("userId") UUID userId);
 }

@@ -40,36 +40,36 @@ import lombok.RequiredArgsConstructor;
 public class TwoFactorService {
 
     /** Nombre que la app de autenticación muestra junto a la cuenta. */
-    private static final String EMISOR = "EduVibe";
+    private static final String ISSUER = "EduVibe";
 
-    private static final int CODIGOS_DE_RECUPERACION = 8;
-    private static final int LONGITUD_DEL_CODIGO = 10;
+    private static final int RECOVERY_CODES = 8;
+    private static final int CODE_LENGTH = 10;
 
     /** Sin 0/o ni 1/l/i, que se confunden al copiarlos a mano. */
-    private static final String ALFABETO_RECUPERACION = "abcdefghjkmnpqrstuvwxyz23456789";
+    private static final String ALPHABET_RECOVERY = "abcdefghjkmnpqrstuvwxyz23456789";
 
-    private static final SecureRandom ALEATORIO = new SecureRandom();
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final UserRepository userRepository;
     private final TotpRecoveryCodeRepository recoveryCodeRepository;
     private final PasswordEncoder passwordEncoder;
-    private final DemoCuentasProtegidas demoCuentasProtegidas;
+    private final ProtectedDemoAccounts protectedDemoAccounts;
     private final LoginAttemptService loginAttemptService;
 
     /** Primer paso: genera el secreto y devuelve lo necesario para pintar el QR. */
     @Transactional
-    public TwoFactorSetupResponse iniciarConfiguracion(UUID usuarioId) {
-        User usuario = cargar(usuarioId);
-        demoCuentasProtegidas.exigirNoProtegida(usuario);
-        if (usuario.isTotpEnabled()) {
+    public TwoFactorSetupResponse startConfiguration(UUID userId) {
+        User user = load(userId);
+        protectedDemoAccounts.requireNotProtected(user);
+        if (user.isTotpEnabled()) {
             throw new ConflictException("La verificación en dos pasos ya está activada");
         }
 
-        String secreto = Totp.generarSecreto();
-        usuario.setTotpSecret(secreto);
-        userRepository.save(usuario);
+        String secret = Totp.generateSecret();
+        user.setTotpSecret(secret);
+        userRepository.save(user);
 
-        return new TwoFactorSetupResponse(secreto, Totp.uri(EMISOR, usuario.getEmail(), secreto));
+        return new TwoFactorSetupResponse(secret, Totp.uri(ISSUER, user.getEmail(), secret));
     }
 
     /**
@@ -77,23 +77,23 @@ public class TwoFactorService {
      * recuperación en claro; es la única vez que se pueden ver.
      */
     @Transactional
-    public List<String> activar(UUID usuarioId, String codigo) {
-        User usuario = cargar(usuarioId);
-        demoCuentasProtegidas.exigirNoProtegida(usuario);
-        if (usuario.isTotpEnabled()) {
+    public List<String> enable(UUID userId, String code) {
+        User user = load(userId);
+        protectedDemoAccounts.requireNotProtected(user);
+        if (user.isTotpEnabled()) {
             throw new ConflictException("La verificación en dos pasos ya está activada");
         }
-        if (usuario.getTotpSecret() == null) {
+        if (user.getTotpSecret() == null) {
             throw new BadRequestException("Primero hay que empezar la configuración");
         }
-        if (!Totp.verificar(usuario.getTotpSecret(), codigo, Instant.now())) {
+        if (!Totp.verify(user.getTotpSecret(), code, Instant.now())) {
             throw new BadRequestException("El código no es correcto. Comprueba la hora de tu móvil e inténtalo de nuevo.");
         }
 
-        usuario.setTotpEnabled(true);
-        userRepository.save(usuario);
+        user.setTotpEnabled(true);
+        userRepository.save(user);
 
-        return generarCodigosDeRecuperacion(usuario);
+        return generateRecoveryCodes(user);
     }
 
     /**
@@ -103,30 +103,30 @@ public class TwoFactorService {
      * contraseña.
      */
     @Transactional
-    public void desactivar(UUID usuarioId, String password, String codigo, String ip) {
-        User usuario = cargar(usuarioId);
-        if (!usuario.isTotpEnabled()) {
+    public void disable(UUID userId, String password, String code, String ip) {
+        User user = load(userId);
+        if (!user.isTotpEnabled()) {
             throw new BadRequestException("La verificación en dos pasos no está activada");
         }
 
-        if (loginAttemptService.estaBloqueado(usuario.getEmail())) {
+        if (loginAttemptService.isLocked(user.getEmail())) {
             throw new TooManyRequestsException("Demasiados intentos fallidos. Vuelve a intentarlo en "
-                    + loginAttemptService.minutosDeBloqueo() + " minutos");
+                    + loginAttemptService.minutesOfLockout() + " minutos");
         }
 
-        if (!passwordEncoder.matches(password, usuario.getPasswordHash())) {
-            loginAttemptService.registrarFallo(usuario.getEmail(), ip);
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            loginAttemptService.recordFailure(user.getEmail(), ip);
             throw new BadRequestException("La contraseña no es correcta");
         }
-        if (!codigoValido(usuario, codigo)) {
-            loginAttemptService.registrarFallo(usuario.getEmail(), ip);
+        if (!validCode(user, code)) {
+            loginAttemptService.recordFailure(user.getEmail(), ip);
             throw new BadRequestException("El código no es correcto");
         }
 
-        usuario.setTotpEnabled(false);
-        usuario.setTotpSecret(null);
-        userRepository.save(usuario);
-        recoveryCodeRepository.borrarDe(usuario.getId());
+        user.setTotpEnabled(false);
+        user.setTotpSecret(null);
+        userRepository.save(user);
+        recoveryCodeRepository.deleteByUser(user.getId());
     }
 
     /**
@@ -134,59 +134,59 @@ public class TwoFactorService {
      * recuperación, que se gasta al usarlo.
      */
     @Transactional
-    public boolean codigoValido(User usuario, String codigo) {
-        if (codigo == null || codigo.isBlank()) {
+    public boolean validCode(User user, String code) {
+        if (code == null || code.isBlank()) {
             return false;
         }
-        String limpio = codigo.trim();
+        String clean = code.trim();
 
-        return Totp.verificar(usuario.getTotpSecret(), limpio, Instant.now())
-                || consumirCodigoDeRecuperacion(usuario, limpio);
+        return Totp.verify(user.getTotpSecret(), clean, Instant.now())
+                || consumeRecoveryCode(user, clean);
     }
 
-    private boolean consumirCodigoDeRecuperacion(User usuario, String codigo) {
+    private boolean consumeRecoveryCode(User user, String code) {
         return recoveryCodeRepository
-                .findByUserIdAndCodeHashAndUsedAtIsNull(usuario.getId(), Tokens.hashear(normalizar(codigo)))
-                .map(recuperacion -> {
-                    recuperacion.marcarComoUsado();
-                    recoveryCodeRepository.save(recuperacion);
+                .findByUserIdAndCodeHashAndUsedAtIsNull(user.getId(), Tokens.hash(normalize(code)))
+                .map(recovery -> {
+                    recovery.markAsUsed();
+                    recoveryCodeRepository.save(recovery);
                     return true;
                 })
                 .orElse(false);
     }
 
     /** Un juego nuevo sustituye al anterior: los viejos dejan de valer. */
-    private List<String> generarCodigosDeRecuperacion(User usuario) {
-        recoveryCodeRepository.borrarDe(usuario.getId());
+    private List<String> generateRecoveryCodes(User user) {
+        recoveryCodeRepository.deleteByUser(user.getId());
 
-        List<String> codigos = new ArrayList<>();
-        for (int i = 0; i < CODIGOS_DE_RECUPERACION; i++) {
-            String codigo = generarCodigo();
-            recoveryCodeRepository.save(new TotpRecoveryCode(usuario, Tokens.hashear(normalizar(codigo))));
-            codigos.add(codigo);
+        List<String> codes = new ArrayList<>();
+        for (int i = 0; i < RECOVERY_CODES; i++) {
+            String code = generateCode();
+            recoveryCodeRepository.save(new TotpRecoveryCode(user, Tokens.hash(normalize(code))));
+            codes.add(code);
         }
-        return codigos;
+        return codes;
     }
 
     /** Con forma "abcde-fghij": más fácil de copiar a mano que diez letras seguidas. */
-    private String generarCodigo() {
-        StringBuilder codigo = new StringBuilder();
-        for (int i = 0; i < LONGITUD_DEL_CODIGO; i++) {
-            if (i == LONGITUD_DEL_CODIGO / 2) {
-                codigo.append('-');
+    private String generateCode() {
+        StringBuilder code = new StringBuilder();
+        for (int i = 0; i < CODE_LENGTH; i++) {
+            if (i == CODE_LENGTH / 2) {
+                code.append('-');
             }
-            codigo.append(ALFABETO_RECUPERACION.charAt(ALEATORIO.nextInt(ALFABETO_RECUPERACION.length())));
+            code.append(ALPHABET_RECOVERY.charAt(RANDOM.nextInt(ALPHABET_RECOVERY.length())));
         }
-        return codigo.toString();
+        return code.toString();
     }
 
     /** Se guarda y se compara sin guion, mayúsculas ni espacios, para perdonar cómo se teclee. */
-    private String normalizar(String codigo) {
-        return codigo.replace("-", "").replace(" ", "").toLowerCase();
+    private String normalize(String code) {
+        return code.replace("-", "").replace(" ", "").toLowerCase();
     }
 
-    private User cargar(UUID usuarioId) {
-        return userRepository.findById(usuarioId)
-                .orElseThrow(() -> NotFoundException.de("Usuario", usuarioId));
+    private User load(UUID userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> NotFoundException.of("Usuario", userId));
     }
 }

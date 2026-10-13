@@ -6,7 +6,7 @@ import com.eduvibe.model.Topic;
 
 public record TopicResponse(UUID id, String title, int sortOrder) {
 
-    public static TopicResponse de(Topic tema) {
-        return new TopicResponse(tema.getId(), tema.getTitle(), tema.getSortOrder());
+    public static TopicResponse of(Topic topic) {
+        return new TopicResponse(topic.getId(), topic.getTitle(), topic.getSortOrder());
     }
 }

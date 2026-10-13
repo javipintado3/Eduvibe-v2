@@ -33,24 +33,24 @@ public record ExamDetailResponse(
         BigDecimal miNota,
         Instant createdAt) {
 
-    public static ExamDetailResponse de(Exam examen, boolean puedoEditar, int numeroPreguntas, int totalPuntos,
+    public static ExamDetailResponse of(Exam exam, boolean puedoEditar, int numeroPreguntas, int totalPuntos,
                                         String miEstado, BigDecimal miNota) {
         return new ExamDetailResponse(
-                examen.getId(),
-                examen.getSchoolClass().getId(),
-                examen.getSchoolClass().getName(),
-                examen.getSchoolClass().getSubject(),
-                examen.getTopic() == null ? null : examen.getTopic().getId(),
-                examen.getTitle(),
-                examen.getDescription(),
-                examen.getDurationMinutes(),
-                examen.getDueDate(),
-                examen.haVencido(),
+                exam.getId(),
+                exam.getSchoolClass().getId(),
+                exam.getSchoolClass().getName(),
+                exam.getSchoolClass().getSubject(),
+                exam.getTopic() == null ? null : exam.getTopic().getId(),
+                exam.getTitle(),
+                exam.getDescription(),
+                exam.getDurationMinutes(),
+                exam.getDueDate(),
+                exam.haVencido(),
                 puedoEditar,
                 numeroPreguntas,
                 totalPuntos,
                 miEstado,
                 miNota,
-                examen.getCreatedAt());
+                exam.getCreatedAt());
     }
 }

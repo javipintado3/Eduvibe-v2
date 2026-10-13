@@ -28,7 +28,7 @@ public class TopicService {
      * clase sin más que conocer su identificador.
      */
     @Transactional(readOnly = true)
-    public Topic resolverDeClase(UUID topicId, UUID classId) {
+    public Topic resolveOfSchoolClass(UUID topicId, UUID classId) {
         if (topicId == null) {
             return null;
         }

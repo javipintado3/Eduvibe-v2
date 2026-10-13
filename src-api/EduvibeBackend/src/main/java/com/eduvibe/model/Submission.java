@@ -87,7 +87,7 @@ public class Submission {
     }
 
     /** Guarda el trabajo sin enviarlo: el alumno puede seguir después. */
-    public void guardarBorrador(String content, String fileUrl) {
+    public void saveDraft(String content, String fileUrl) {
         this.content = content;
         this.fileUrl = fileUrl;
         this.status = SubmissionStatus.DRAFT;
@@ -110,22 +110,22 @@ public class Submission {
      * "llegó tarde" no pueda dar una respuesta distinta según a qué miembro se
      * le pregunte.
      */
-    public void enviar(String content, String fileUrl, Instant momento) {
+    public void enviar(String content, String fileUrl, Instant moment) {
         this.content = content;
         this.fileUrl = fileUrl;
         this.status = SubmissionStatus.SUBMITTED;
-        this.submittedAt = momento;
+        this.submittedAt = moment;
     }
 
-    public void marcarComoCalificada() {
+    public void markAsGraded() {
         this.status = SubmissionStatus.GRADED;
     }
 
-    public boolean esBorrador() {
+    public boolean isDraft() {
         return status == SubmissionStatus.DRAFT;
     }
 
-    public boolean estaCalificada() {
+    public boolean isGraded() {
         return status == SubmissionStatus.GRADED;
     }
 
@@ -134,6 +134,6 @@ public class Submission {
      * estar calificada y haber llegado tarde a la vez.
      */
     public boolean entregadaTarde() {
-        return assignment.seEntregaTarde(submittedAt);
+        return assignment.lateSubmission(submittedAt);
     }
 }

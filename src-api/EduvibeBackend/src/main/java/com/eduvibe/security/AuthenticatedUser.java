@@ -12,7 +12,7 @@ import com.eduvibe.model.enums.UserRole;
  * controlador o un servicio pueden saber quién es y de qué organización sin
  * volver a consultar la base de datos en cada petición.
  *
- * @param sesion datos del token concreto con el que se ha entrado, que hacen
+ * @param session datos del token concreto con el que se ha entrado, que hacen
  *               falta para poder revocarlo. Es null cuando la identidad no
  *               viene de un token (por ejemplo, en las pruebas).
  */
@@ -22,14 +22,14 @@ public record AuthenticatedUser(
         String name,
         UserRole role,
         UUID organizationId,
-        Sesion sesion) {
+        Session session) {
 
     /**
      * @param id        identificador del token (jti); null en tokens anteriores a la revocación
      * @param version   versión de sesiones del usuario cuando se emitió el token
      * @param expiresAt cuándo caduca el token por sí solo
      */
-    public record Sesion(UUID id, int version, Instant expiresAt) {
+    public record Session(UUID id, int version, Instant expiresAt) {
     }
 
     /** Identidad sin datos de token. */
@@ -37,7 +37,7 @@ public record AuthenticatedUser(
         this(id, email, name, role, organizationId, null);
     }
 
-    public boolean esAdmin() {
+    public boolean isAdmin() {
         return role == UserRole.ADMIN;
     }
 }

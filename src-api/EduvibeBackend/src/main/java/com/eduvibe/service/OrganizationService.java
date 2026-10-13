@@ -25,54 +25,54 @@ import lombok.RequiredArgsConstructor;
 public class OrganizationService {
 
     /** Dos o más etiquetas separadas por puntos, como "iesalixar.edu". */
-    private static final Pattern DOMINIO = Pattern.compile(
+    private static final Pattern DOMAIN = Pattern.compile(
             "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$");
 
     private final OrganizationRepository organizationRepository;
     private final AuthService authService;
 
     @Transactional(readOnly = true)
-    public OrganizationResponse obtener() {
-        return OrganizationResponse.de(organizacionActual());
+    public OrganizationResponse get() {
+        return OrganizationResponse.of(currentOrganization());
     }
 
     @Transactional
-    public OrganizationResponse cambiarDominioPermitido(String dominio) {
-        Organization organizacion = organizacionActual();
-        String normalizado = normalizar(dominio);
+    public OrganizationResponse changeAllowedDomain(String domain) {
+        Organization organization = currentOrganization();
+        String normalized = normalize(domain);
 
         // El dominio es único entre centros: si otro ya lo tiene, se avisa con
         // un mensaje claro en lugar de dejar que lo rechace la base de datos
-        if (normalizado != null && organizationRepository.findByAllowedDomain(normalizado)
-                .filter(otra -> !otra.getId().equals(organizacion.getId()))
+        if (normalized != null && organizationRepository.findByAllowedDomain(normalized)
+                .filter(other -> !other.getId().equals(organization.getId()))
                 .isPresent()) {
             throw new ConflictException("Ese dominio ya está asignado a otro centro");
         }
 
-        organizacion.setAllowedDomain(normalizado);
-        organizationRepository.save(organizacion);
+        organization.setAllowedDomain(normalized);
+        organizationRepository.save(organization);
 
-        return OrganizationResponse.de(organizacion);
+        return OrganizationResponse.of(organization);
     }
 
     /** Vacío significa "sin restricción"; se admite que escriban "@dominio.es". */
-    private String normalizar(String dominio) {
-        if (dominio == null || dominio.isBlank()) {
+    private String normalize(String domain) {
+        if (domain == null || domain.isBlank()) {
             return null;
         }
-        String limpio = dominio.trim().toLowerCase();
-        if (limpio.startsWith("@")) {
-            limpio = limpio.substring(1);
+        String clean = domain.trim().toLowerCase();
+        if (clean.startsWith("@")) {
+            clean = clean.substring(1);
         }
-        if (!DOMINIO.matcher(limpio).matches()) {
+        if (!DOMAIN.matcher(clean).matches()) {
             throw new BadRequestException("El dominio no es válido. Ejemplo: iesalixar.edu");
         }
-        return limpio;
+        return clean;
     }
 
-    private Organization organizacionActual() {
-        var id = authService.identidadActual().organizationId();
+    private Organization currentOrganization() {
+        var id = authService.currentIdentity().organizationId();
         return organizationRepository.findById(id)
-                .orElseThrow(() -> NotFoundException.de("Organización", id));
+                .orElseThrow(() -> NotFoundException.of("Organización", id));
     }
 }

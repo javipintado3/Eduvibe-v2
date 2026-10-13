@@ -25,8 +25,8 @@ public class AnnouncementController {
     private final AnnouncementService announcementService;
 
     @DeleteMapping("/{announcementId}")
-    public ResponseEntity<Void> eliminar(@PathVariable UUID announcementId) {
-        announcementService.eliminar(announcementId);
+    public ResponseEntity<Void> delete(@PathVariable UUID announcementId) {
+        announcementService.delete(announcementId);
         return ResponseEntity.noContent().build();
     }
 }

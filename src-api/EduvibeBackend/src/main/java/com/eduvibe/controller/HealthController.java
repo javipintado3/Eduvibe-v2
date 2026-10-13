@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class HealthController {
 
     @GetMapping
-    public ResponseEntity<Map<String, Object>> estado() {
+    public ResponseEntity<Map<String, Object>> status() {
         return ResponseEntity.ok(Map.of(
                 "status", "ok",
                 "timestamp", Instant.now()));

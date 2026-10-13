@@ -11,9 +11,9 @@ import org.springframework.data.domain.Pageable;
  * {@code spring.data.web.pageable}), y se ordenan siempre por el criterio que
  * fija cada consulta.
  */
-public final class Paginacion {
+public final class Pagination {
 
-    private Paginacion() {
+    private Pagination() {
     }
 
     /**
@@ -23,8 +23,8 @@ public final class Paginacion {
      * cliente elija por qué propiedad ordenar una entidad es abrir la puerta a
      * un 500 con solo escribir mal un nombre: el orden lo decide cada consulta.
      */
-    public static Pageable sinOrden(Pageable pedida) {
-        return PageRequest.of(pedida.getPageNumber(), pedida.getPageSize());
+    public static Pageable unsorted(Pageable requested) {
+        return PageRequest.of(requested.getPageNumber(), requested.getPageSize());
     }
 
     /**
@@ -33,7 +33,7 @@ public final class Paginacion {
      * aparte para "sin filtro", ni un parámetro nulo cuyo tipo PostgreSQL no
      * sabría deducir.
      */
-    public static String patronDeBusqueda(String texto) {
+    public static String searchPattern(String texto) {
         if (texto == null || texto.isBlank()) {
             return "%";
         }

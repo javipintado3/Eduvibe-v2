@@ -46,7 +46,7 @@ public class ExamAnswer {
         this.selectedOption = selectedOption;
     }
 
-    public boolean esCorrecta() {
+    public boolean isCorrect() {
         return selectedOption != null && selectedOption.isCorrect();
     }
 }

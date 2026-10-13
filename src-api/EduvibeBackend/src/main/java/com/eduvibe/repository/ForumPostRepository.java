@@ -18,7 +18,7 @@ public interface ForumPostRepository extends JpaRepository<ForumPost, UUID> {
     /** Borrar la cuenta vacía el texto de los mensajes, sin quitar los de las demás personas del hilo. */
     @Modifying
     @Query("UPDATE ForumPost p SET p.content = :texto WHERE p.author.id = :authorId")
-    int sustituirContenidoDe(@Param("authorId") UUID authorId, @Param("texto") String texto);
+    int replaceContentOf(@Param("authorId") UUID authorId, @Param("texto") String texto);
 
     List<ForumPost> findByThreadIdOrderByCreatedAtAsc(UUID threadId);
 
@@ -29,16 +29,16 @@ public interface ForumPostRepository extends JpaRepository<ForumPost, UUID> {
      * hilos de una clase. En una sola consulta, no una por hilo.
      */
     @Query("""
-            SELECT p.thread.id AS threadId, COUNT(p) AS total, MAX(p.createdAt) AS ultima
+            SELECT p.thread.id AS threadId, COUNT(p) AS total, MAX(p.createdAt) AS lastPostAt
             FROM ForumPost p
             WHERE p.thread.id IN :threadIds
             GROUP BY p.thread.id
             """)
-    List<EstadisticasDeHilo> estadisticasDe(@Param("threadIds") List<UUID> threadIds);
+    List<StatisticsOfThread> statisticsOf(@Param("threadIds") List<UUID> threadIds);
 
-    interface EstadisticasDeHilo {
+    interface StatisticsOfThread {
         UUID getThreadId();
         long getTotal();
-        Instant getUltima();
+        Instant getLastPostAt();
     }
 }

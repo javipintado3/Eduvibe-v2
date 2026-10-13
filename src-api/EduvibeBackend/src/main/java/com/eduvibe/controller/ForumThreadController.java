@@ -33,20 +33,20 @@ public class ForumThreadController {
     private final ForumService forumService;
 
     @GetMapping("/{threadId}")
-    public ResponseEntity<ForumThreadDetailResponse> detalle(@PathVariable UUID threadId) {
-        return ResponseEntity.ok(forumService.detalle(threadId));
+    public ResponseEntity<ForumThreadDetailResponse> detail(@PathVariable UUID threadId) {
+        return ResponseEntity.ok(forumService.detail(threadId));
     }
 
     @PostMapping("/{threadId}/posts")
-    public ResponseEntity<ForumPostResponse> responder(@PathVariable UUID threadId,
-                                                        @Valid @RequestBody SaveForumPostRequest peticion) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(forumService.responder(threadId, peticion));
+    public ResponseEntity<ForumPostResponse> reply(@PathVariable UUID threadId,
+                                                        @Valid @RequestBody SaveForumPostRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(forumService.reply(threadId, request));
     }
 
     /** Borra el hilo entero, con todos sus mensajes. Su autor, o el profesorado como moderación. */
     @DeleteMapping("/{threadId}")
-    public ResponseEntity<Void> eliminar(@PathVariable UUID threadId) {
-        forumService.eliminarHilo(threadId);
+    public ResponseEntity<Void> delete(@PathVariable UUID threadId) {
+        forumService.deleteThread(threadId);
         return ResponseEntity.noContent().build();
     }
 }

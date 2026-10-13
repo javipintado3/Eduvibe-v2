@@ -30,34 +30,34 @@ public record AssignmentResponse(
         Instant createdAt) {
 
     /** Vista de alumno: su propio estado en la tarea. */
-    public static AssignmentResponse paraAlumno(Assignment tarea, String miEstado, Boolean miEntregaTarde) {
+    public static AssignmentResponse forStudent(Assignment assignment, String miEstado, Boolean miEntregaTarde) {
         return new AssignmentResponse(
-                tarea.getId(),
-                tarea.getSchoolClass().getId(),
-                tarea.getTopic() == null ? null : tarea.getTopic().getId(),
-                tarea.getTitle(),
-                tarea.getDueDate(),
-                tarea.getPoints(),
-                tarea.haVencido(),
+                assignment.getId(),
+                assignment.getSchoolClass().getId(),
+                assignment.getTopic() == null ? null : assignment.getTopic().getId(),
+                assignment.getTitle(),
+                assignment.getDueDate(),
+                assignment.getPoints(),
+                assignment.haVencido(),
                 miEstado,
                 miEntregaTarde,
                 null,
-                tarea.getCreatedAt());
+                assignment.getCreatedAt());
     }
 
     /** Vista de profesor: cuántas entregas lleva recibidas. */
-    public static AssignmentResponse paraProfesor(Assignment tarea, long entregasRecibidas) {
+    public static AssignmentResponse forTeacher(Assignment assignment, long entregasRecibidas) {
         return new AssignmentResponse(
-                tarea.getId(),
-                tarea.getSchoolClass().getId(),
-                tarea.getTopic() == null ? null : tarea.getTopic().getId(),
-                tarea.getTitle(),
-                tarea.getDueDate(),
-                tarea.getPoints(),
-                tarea.haVencido(),
+                assignment.getId(),
+                assignment.getSchoolClass().getId(),
+                assignment.getTopic() == null ? null : assignment.getTopic().getId(),
+                assignment.getTitle(),
+                assignment.getDueDate(),
+                assignment.getPoints(),
+                assignment.haVencido(),
                 null,
                 null,
                 entregasRecibidas,
-                tarea.getCreatedAt());
+                assignment.getCreatedAt());
     }
 }

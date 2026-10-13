@@ -24,5 +24,5 @@ public interface ExamQuestionRepository extends JpaRepository<ExamQuestion, UUID
             WHERE q.exam.schoolClass.id = :classId
             ORDER BY q.exam.createdAt DESC, q.sortOrder ASC
             """)
-    List<ExamQuestion> findBancoDeClase(@Param("classId") UUID classId);
+    List<ExamQuestion> findBankForSchoolClass(@Param("classId") UUID classId);
 }

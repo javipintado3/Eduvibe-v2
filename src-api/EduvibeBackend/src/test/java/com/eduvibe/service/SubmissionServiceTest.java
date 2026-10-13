@@ -23,7 +23,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
 import com.eduvibe.dto.common.PageResponse;
-import com.eduvibe.dto.submission.EntregaPorCorregirResponse;
+import com.eduvibe.dto.submission.SubmissionToGradeResponse;
 import com.eduvibe.model.Assignment;
 import com.eduvibe.model.ClassGroup;
 import com.eduvibe.model.Organization;
@@ -46,126 +46,126 @@ class SubmissionServiceTest {
     @InjectMocks
     private SubmissionService submissionService;
 
-    private final Organization organizacion = new Organization("Centro", null);
-    private final SchoolClass clase = clase();
-    private final User profesor = usuario("Profe", UserRole.TEACHER);
-    private final AuthenticatedUser identidad =
+    private final Organization organization = new Organization("Centro", null);
+    private final SchoolClass schoolClass = schoolClass();
+    private final User teacher = user("Profe", UserRole.TEACHER);
+    private final AuthenticatedUser identity =
             new AuthenticatedUser(UUID.randomUUID(), "profe@centro.es", "Profe", UserRole.TEACHER, UUID.randomUUID());
 
     @Test
     @DisplayName("Devuelve la página pedida con la clase y la tarea de cada entrega pendiente")
     void returnsRequestedPageWithClassAndAssignment() {
-        Assignment tarea = tarea("Redacción");
-        Submission ana = entrega(tarea, usuario("Ana", UserRole.STUDENT), null);
-        Submission luis = entrega(tarea, usuario("Luis", UserRole.STUDENT), null);
-        Pageable pedida = PageRequest.of(0, 10);
-        when(authService.identidadActual()).thenReturn(identidad);
-        when(submissionRepository.findPorCorregirDeProfesor(any(), any()))
-                .thenReturn(new PageImpl<>(List.of(ana, luis), pedida, 2));
+        Assignment assignment = assignment("Redacción");
+        Submission ana = submission(assignment, user("Ana", UserRole.STUDENT), null);
+        Submission luis = submission(assignment, user("Luis", UserRole.STUDENT), null);
+        Pageable requested = PageRequest.of(0, 10);
+        when(authService.currentIdentity()).thenReturn(identity);
+        when(submissionRepository.findToGradeForTeacher(any(), any()))
+                .thenReturn(new PageImpl<>(List.of(ana, luis), requested, 2));
 
-        PageResponse<EntregaPorCorregirResponse> resultado = submissionService.porCorregir(pedida);
+        PageResponse<SubmissionToGradeResponse> result = submissionService.toGrade(requested);
 
-        assertThat(resultado.contenido()).extracting(EntregaPorCorregirResponse::studentName)
+        assertThat(result.contenido()).extracting(SubmissionToGradeResponse::studentName)
                 .containsExactly("Ana", "Luis");
-        assertThat(resultado.contenido().get(0).className()).isEqualTo("1º Bachillerato A");
-        assertThat(resultado.contenido().get(0).assignmentTitle()).isEqualTo("Redacción");
-        assertThat(resultado.contenido().get(0).groupName()).isNull();
+        assertThat(result.contenido().get(0).className()).isEqualTo("1º Bachillerato A");
+        assertThat(result.contenido().get(0).assignmentTitle()).isEqualTo("Redacción");
+        assertThat(result.contenido().get(0).groupName()).isNull();
     }
 
     @Test
     @DisplayName("Informa del total de entregas y de páginas, no solo de las de la página actual")
     void reportsTotalsOfTheWholeQueue() {
-        Assignment tarea = tarea("Redacción");
-        Submission ana = entrega(tarea, usuario("Ana", UserRole.STUDENT), null);
-        Pageable pedida = PageRequest.of(1, 10);
-        when(authService.identidadActual()).thenReturn(identidad);
-        when(submissionRepository.findPorCorregirDeProfesor(any(), any()))
-                .thenReturn(new PageImpl<>(List.of(ana), pedida, 11));
+        Assignment assignment = assignment("Redacción");
+        Submission ana = submission(assignment, user("Ana", UserRole.STUDENT), null);
+        Pageable requested = PageRequest.of(1, 10);
+        when(authService.currentIdentity()).thenReturn(identity);
+        when(submissionRepository.findToGradeForTeacher(any(), any()))
+                .thenReturn(new PageImpl<>(List.of(ana), requested, 11));
 
-        PageResponse<EntregaPorCorregirResponse> resultado = submissionService.porCorregir(pedida);
+        PageResponse<SubmissionToGradeResponse> result = submissionService.toGrade(requested);
 
-        assertThat(resultado.pagina()).isEqualTo(1);
-        assertThat(resultado.tamano()).isEqualTo(10);
-        assertThat(resultado.totalElementos()).isEqualTo(11);
-        assertThat(resultado.totalPaginas()).isEqualTo(2);
-        assertThat(resultado.ultima()).isTrue();
+        assertThat(result.pagina()).isEqualTo(1);
+        assertThat(result.tamano()).isEqualTo(10);
+        assertThat(result.totalElementos()).isEqualTo(11);
+        assertThat(result.totalPaginas()).isEqualTo(2);
+        assertThat(result.ultima()).isTrue();
     }
 
     @Test
     @DisplayName("Una entrega grupal se muestra con el nombre de su subgrupo")
     void showsTheGroupNameInGroupSubmissions() {
-        Assignment tarea = tarea("Proyecto en equipo");
-        Submission delEquipo = entrega(tarea, usuario("Ana", UserRole.STUDENT), grupo("Equipo 1"));
-        Pageable pedida = PageRequest.of(0, 10);
-        when(authService.identidadActual()).thenReturn(identidad);
-        when(submissionRepository.findPorCorregirDeProfesor(any(), any()))
-                .thenReturn(new PageImpl<>(List.of(delEquipo), pedida, 1));
+        Assignment assignment = assignment("Proyecto en equipo");
+        Submission ofTeam = submission(assignment, user("Ana", UserRole.STUDENT), group("Equipo 1"));
+        Pageable requested = PageRequest.of(0, 10);
+        when(authService.currentIdentity()).thenReturn(identity);
+        when(submissionRepository.findToGradeForTeacher(any(), any()))
+                .thenReturn(new PageImpl<>(List.of(ofTeam), requested, 1));
 
-        PageResponse<EntregaPorCorregirResponse> resultado = submissionService.porCorregir(pedida);
+        PageResponse<SubmissionToGradeResponse> result = submissionService.toGrade(requested);
 
-        assertThat(resultado.contenido()).extracting(EntregaPorCorregirResponse::groupName)
+        assertThat(result.contenido()).extracting(SubmissionToGradeResponse::groupName)
                 .containsExactly("Equipo 1");
     }
 
     @Test
     @DisplayName("Sin entregas pendientes devuelve una página vacía")
     void returnsEmptyPageWhenNothingPending() {
-        Pageable pedida = PageRequest.of(0, 10);
-        when(authService.identidadActual()).thenReturn(identidad);
-        when(submissionRepository.findPorCorregirDeProfesor(any(), any()))
-                .thenReturn(new PageImpl<>(List.of(), pedida, 0));
+        Pageable requested = PageRequest.of(0, 10);
+        when(authService.currentIdentity()).thenReturn(identity);
+        when(submissionRepository.findToGradeForTeacher(any(), any()))
+                .thenReturn(new PageImpl<>(List.of(), requested, 0));
 
-        PageResponse<EntregaPorCorregirResponse> resultado = submissionService.porCorregir(pedida);
+        PageResponse<SubmissionToGradeResponse> result = submissionService.toGrade(requested);
 
-        assertThat(resultado.contenido()).isEmpty();
-        assertThat(resultado.totalElementos()).isZero();
+        assertThat(result.contenido()).isEmpty();
+        assertThat(result.totalElementos()).isZero();
     }
 
     @Test
     @DisplayName("Ignora el orden que pida el cliente: el de la cola lo fija la consulta")
     void ignoresClientProvidedSort() {
-        Pageable conOrden = PageRequest.of(2, 5, Sort.by("propiedadQueNoExiste"));
-        when(authService.identidadActual()).thenReturn(identidad);
-        when(submissionRepository.findPorCorregirDeProfesor(any(), any()))
+        Pageable withOrder = PageRequest.of(2, 5, Sort.by("propiedadQueNoExiste"));
+        when(authService.currentIdentity()).thenReturn(identity);
+        when(submissionRepository.findToGradeForTeacher(any(), any()))
                 .thenReturn(Page.empty());
 
-        submissionService.porCorregir(conOrden);
+        submissionService.toGrade(withOrder);
 
         ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-        verify(submissionRepository).findPorCorregirDeProfesor(any(), captor.capture());
+        verify(submissionRepository).findToGradeForTeacher(any(), captor.capture());
         assertThat(captor.getValue().getPageNumber()).isEqualTo(2);
         assertThat(captor.getValue().getPageSize()).isEqualTo(5);
         assertThat(captor.getValue().getSort().isUnsorted()).isTrue();
     }
 
-    private SchoolClass clase() {
+    private SchoolClass schoolClass() {
         SchoolClass c = new SchoolClass(new Organization("Centro", null), "1º Bachillerato A", "Matemáticas", null, null);
         c.setId(UUID.randomUUID());
         return c;
     }
 
-    private User usuario(String nombre, UserRole rol) {
-        User u = new User(organizacion, nombre.toLowerCase() + "@centro.es", nombre, rol);
+    private User user(String name, UserRole role) {
+        User u = new User(organization, name.toLowerCase() + "@centro.es", name, role);
         u.setId(UUID.randomUUID());
         return u;
     }
 
-    private ClassGroup grupo(String nombre) {
-        ClassGroup g = new ClassGroup(clase, nombre);
+    private ClassGroup group(String name) {
+        ClassGroup g = new ClassGroup(schoolClass, name);
         g.setId(UUID.randomUUID());
         return g;
     }
 
-    private Assignment tarea(String titulo) {
-        Assignment a = new Assignment(clase, titulo, null, null, 100, profesor);
+    private Assignment assignment(String title) {
+        Assignment a = new Assignment(schoolClass, title, null, null, 100, teacher);
         a.setId(UUID.randomUUID());
         return a;
     }
 
-    private Submission entrega(Assignment tarea, User alumno, ClassGroup grupo) {
-        Submission s = new Submission(tarea, alumno);
+    private Submission submission(Assignment assignment, User student, ClassGroup group) {
+        Submission s = new Submission(assignment, student);
         s.setId(UUID.randomUUID());
-        s.setClassGroup(grupo);
+        s.setClassGroup(group);
         s.enviar("Trabajo", null, Instant.parse("2026-09-26T10:00:00Z"));
         return s;
     }

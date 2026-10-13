@@ -20,11 +20,11 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebConfig implements WebMvcConfigurer {
 
     @Value("${app.uploads.dir}")
-    private String directorioSubidas;
+    private String uploadsDirectory;
 
     @Override
-    public void addResourceHandlers(ResourceHandlerRegistry registro) {
-        String ubicacion = Paths.get(directorioSubidas).toAbsolutePath().normalize().toUri().toString();
-        registro.addResourceHandler("/uploads/**").addResourceLocations(ubicacion);
+    public void addResourceHandlers(ResourceHandlerRegistry registration) {
+        String location = Paths.get(uploadsDirectory).toAbsolutePath().normalize().toUri().toString();
+        registration.addResourceHandler("/uploads/**").addResourceLocations(location);
     }
 }

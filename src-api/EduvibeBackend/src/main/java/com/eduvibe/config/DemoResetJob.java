@@ -50,38 +50,38 @@ public class DemoResetJob {
 
     private final Flyway flyway;
     private final JdbcTemplate jdbc;
-    private final String ubicacionesDeFlyway;
-    private final int horasHastaReinicio;
+    private final String flywayLocations;
+    private final int hoursUntilReset;
 
     public DemoResetJob(Flyway flyway, JdbcTemplate jdbc,
-                        @Value("${spring.flyway.locations}") String ubicacionesDeFlyway,
-                        @Value("${app.demo.reset-after-hours:12}") int horasHastaReinicio) {
+                        @Value("${spring.flyway.locations}") String flywayLocations,
+                        @Value("${app.demo.reset-after-hours:12}") int hoursUntilReset) {
         this.flyway = flyway;
         this.jdbc = jdbc;
-        this.ubicacionesDeFlyway = ubicacionesDeFlyway;
-        this.horasHastaReinicio = horasHastaReinicio;
+        this.flywayLocations = flywayLocations;
+        this.hoursUntilReset = hoursUntilReset;
     }
 
     @Scheduled(cron = "${app.demo.reset-cron}", zone = "${app.demo.reset-zone:Europe/Madrid}")
-    public void restablecer() {
-        if (!esUnaDemo()) {
+    public void resetOnSchedule() {
+        if (!isDemo()) {
             return;
         }
-        reiniciar();
+        reset();
     }
 
     /** Al arrancar: si la demo lleva demasiado sin reiniciarse, se reinicia antes de enseñarla. */
     @EventListener(ApplicationReadyEvent.class)
-    public void restablecerSiHaceMuchoQueNoSeHizo() {
-        if (!esUnaDemo() || horasHastaReinicio <= 0 || !llevaDemasiadoSinReiniciar()) {
+    public void resetIfNotResetRecently() {
+        if (!isDemo() || hoursUntilReset <= 0 || !isOverdueForReset()) {
             return;
         }
-        LOG.info("La demo lleva más de {} h sin reiniciarse", horasHastaReinicio);
-        reiniciar();
+        LOG.info("La demo lleva más de {} h sin reiniciarse", hoursUntilReset);
+        reset();
     }
 
-    private boolean esUnaDemo() {
-        if (!ubicacionesDeFlyway.contains("db/demo")) {
+    private boolean isDemo() {
+        if (!flywayLocations.contains("db/demo")) {
             LOG.error("Reinicio de la demo cancelado: la semilla db/demo no está cargada, "
                     + "así que esta base de datos no se considera una demo.");
             return false;
@@ -90,16 +90,16 @@ public class DemoResetJob {
     }
 
     /** Sin entrada de la primera migración (no debería pasar) se prefiere no tocar nada. */
-    private boolean llevaDemasiadoSinReiniciar() {
-        Boolean demasiado = jdbc.query(
+    private boolean isOverdueForReset() {
+        Boolean tooMuch = jdbc.query(
                 "SELECT (now() - installed_on) > make_interval(hours => ?) "
                         + "FROM flyway_schema_history WHERE version = '1'",
                 rs -> rs.next() ? rs.getBoolean(1) : null,
-                horasHastaReinicio);
-        return Boolean.TRUE.equals(demasiado);
+                hoursUntilReset);
+        return Boolean.TRUE.equals(tooMuch);
     }
 
-    private void reiniciar() {
+    private void reset() {
         LOG.info("Reiniciando la demo: se borran los datos y se vuelve a cargar la semilla");
         flyway.clean();
         flyway.migrate();
@@ -108,7 +108,7 @@ public class DemoResetJob {
 
     /** Flyway trae el borrado prohibido; solo se permite cuando esta tarea está activada. */
     @Bean
-    static FlywayConfigurationCustomizer permitirBorradoDeLaDemo() {
-        return configuracion -> configuracion.cleanDisabled(false);
+    static FlywayConfigurationCustomizer allowDemoReset() {
+        return configuration -> configuration.cleanDisabled(false);
     }
 }

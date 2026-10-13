@@ -39,54 +39,54 @@ public class ClassGroupService {
     private final ClassGroupMemberRepository classGroupMemberRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final UserRepository userRepository;
-    private final ClassAccessService acceso;
+    private final ClassAccessService access;
 
     @Transactional(readOnly = true)
-    public List<ClassGroupResponse> listar(UUID classId) {
-        acceso.exigirVisible(classId);
+    public List<ClassGroupResponse> list(UUID classId) {
+        access.requireVisible(classId);
 
-        List<ClassGroup> grupos = classGroupRepository.findBySchoolClassIdOrderByNameAsc(classId);
-        if (grupos.isEmpty()) {
+        List<ClassGroup> groups = classGroupRepository.findBySchoolClassIdOrderByNameAsc(classId);
+        if (groups.isEmpty()) {
             return List.of();
         }
 
-        List<UUID> ids = grupos.stream().map(ClassGroup::getId).toList();
-        Map<UUID, List<ClassGroupMember>> miembrosPorGrupo = classGroupMemberRepository.findByClassGroupIdIn(ids)
+        List<UUID> ids = groups.stream().map(ClassGroup::getId).toList();
+        Map<UUID, List<ClassGroupMember>> membersByGroup = classGroupMemberRepository.findByClassGroupIdIn(ids)
                 .stream()
                 .collect(Collectors.groupingBy(m -> m.getClassGroup().getId()));
 
-        return grupos.stream()
-                .map(grupo -> ClassGroupResponse.de(grupo, miembrosPorGrupo.getOrDefault(grupo.getId(), List.of())))
+        return groups.stream()
+                .map(group -> ClassGroupResponse.of(group, membersByGroup.getOrDefault(group.getId(), List.of())))
                 .toList();
     }
 
     @Transactional
-    public ClassGroupResponse crear(UUID classId, SaveClassGroupRequest peticion) {
-        SchoolClass clase = acceso.exigirEditable(classId);
+    public ClassGroupResponse create(UUID classId, SaveClassGroupRequest request) {
+        SchoolClass schoolClass = access.requireEditable(classId);
 
-        ClassGroup grupo = new ClassGroup(clase, peticion.name().trim());
-        classGroupRepository.saveAndFlush(grupo);
+        ClassGroup group = new ClassGroup(schoolClass, request.name().trim());
+        classGroupRepository.saveAndFlush(group);
 
-        List<ClassGroupMember> miembros = asignarMiembros(grupo, classId, peticion.memberIds());
-        return ClassGroupResponse.de(grupo, miembros);
+        List<ClassGroupMember> members = assignMembers(group, classId, request.memberIds());
+        return ClassGroupResponse.of(group, members);
     }
 
     /** Reemplaza el nombre y los miembros enteros, igual que una rúbrica reemplaza sus criterios. */
     @Transactional
-    public ClassGroupResponse actualizar(UUID groupId, SaveClassGroupRequest peticion) {
-        ClassGroup grupo = classGroupRepository.findById(groupId)
-                .orElseThrow(() -> NotFoundException.de("Subgrupo", groupId));
+    public ClassGroupResponse update(UUID groupId, SaveClassGroupRequest request) {
+        ClassGroup group = classGroupRepository.findById(groupId)
+                .orElseThrow(() -> NotFoundException.of("Subgrupo", groupId));
 
-        UUID classId = grupo.getSchoolClass().getId();
-        acceso.exigirEditable(classId);
+        UUID classId = group.getSchoolClass().getId();
+        access.requireEditable(classId);
 
-        grupo.setName(peticion.name().trim());
-        classGroupRepository.save(grupo);
+        group.setName(request.name().trim());
+        classGroupRepository.save(group);
 
         classGroupMemberRepository.deleteByClassGroupId(groupId);
-        List<ClassGroupMember> miembros = asignarMiembros(grupo, classId, peticion.memberIds());
+        List<ClassGroupMember> members = assignMembers(group, classId, request.memberIds());
 
-        return ClassGroupResponse.de(grupo, miembros);
+        return ClassGroupResponse.of(group, members);
     }
 
     /**
@@ -94,22 +94,22 @@ public class ClassGroupService {
      * grupal. Null si no está en ninguno todavía.
      */
     @Transactional(readOnly = true)
-    public ClassGroupResponse miGrupoEnClase(UUID userId, UUID classId) {
-        return classGroupMemberRepository.findDeAlumnoEnClase(userId, classId)
-                .map(membresia -> {
-                    ClassGroup grupo = membresia.getClassGroup();
-                    return ClassGroupResponse.de(grupo, classGroupMemberRepository.findByClassGroupId(grupo.getId()));
+    public ClassGroupResponse myGroupInSchoolClass(UUID userId, UUID classId) {
+        return classGroupMemberRepository.findForStudentInSchoolClass(userId, classId)
+                .map(membership -> {
+                    ClassGroup group = membership.getClassGroup();
+                    return ClassGroupResponse.of(group, classGroupMemberRepository.findByClassGroupId(group.getId()));
                 })
                 .orElse(null);
     }
 
     @Transactional
-    public void eliminar(UUID groupId) {
-        ClassGroup grupo = classGroupRepository.findById(groupId)
-                .orElseThrow(() -> NotFoundException.de("Subgrupo", groupId));
+    public void delete(UUID groupId) {
+        ClassGroup group = classGroupRepository.findById(groupId)
+                .orElseThrow(() -> NotFoundException.of("Subgrupo", groupId));
 
-        acceso.exigirEditable(grupo.getSchoolClass().getId());
-        classGroupRepository.delete(grupo);
+        access.requireEditable(group.getSchoolClass().getId());
+        classGroupRepository.delete(group);
     }
 
     /**
@@ -117,19 +117,19 @@ public class ClassGroupService {
      * esto, se podría meter en un subgrupo a cualquiera solo con conocer su
      * identificador— y crea las filas de pertenencia.
      */
-    private List<ClassGroupMember> asignarMiembros(ClassGroup grupo, UUID classId, List<UUID> memberIds) {
-        List<ClassGroupMember> miembros = new ArrayList<>();
+    private List<ClassGroupMember> assignMembers(ClassGroup group, UUID classId, List<UUID> memberIds) {
+        List<ClassGroupMember> members = new ArrayList<>();
         for (UUID userId : memberIds) {
-            boolean esAlumno = enrollmentRepository
+            boolean isStudent = enrollmentRepository
                     .existsBySchoolClassIdAndUserIdAndRoleInClass(classId, userId, EnrollmentRole.STUDENT);
-            if (!esAlumno) {
+            if (!isStudent) {
                 throw new BadRequestException("Todos los miembros deben ser alumnado matriculado en esta clase");
             }
-            User alumno = userRepository.findById(userId)
-                    .orElseThrow(() -> NotFoundException.de("Usuario", userId));
-            miembros.add(new ClassGroupMember(grupo, alumno));
+            User student = userRepository.findById(userId)
+                    .orElseThrow(() -> NotFoundException.of("Usuario", userId));
+            members.add(new ClassGroupMember(group, student));
         }
-        classGroupMemberRepository.saveAll(miembros);
-        return miembros;
+        classGroupMemberRepository.saveAll(members);
+        return members;
     }
 }

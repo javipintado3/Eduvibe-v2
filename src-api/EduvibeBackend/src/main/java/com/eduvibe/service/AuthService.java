@@ -44,7 +44,7 @@ public class AuthService {
      * no tiene contraseña con la que comprobar nada, así que avisarle solo a ella
      * delataría qué correos tienen una invitación sin aceptar.
      */
-    private static final String CREDENCIALES_INVALIDAS =
+    private static final String INVALID_CREDENTIALS =
             "Usuario y/o contraseña incorrectos. Si aún no has activado tu cuenta, abre el enlace de invitación que recibiste por correo.";
 
     /**
@@ -58,67 +58,67 @@ public class AuthService {
      * delataría qué direcciones están registradas, aunque el mensaje de error
      * sea idéntico en los dos casos.
      */
-    private static final String HASH_FICTICIO =
+    private static final String HASH_FAKE =
             new BCryptPasswordEncoder().encode(UUID.randomUUID().toString());
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final DemoCuentasProtegidas demoCuentasProtegidas;
+    private final ProtectedDemoAccounts protectedDemoAccounts;
     private final JwtService jwtService;
     private final InvitationService invitationService;
     private final LoginAttemptService loginAttemptService;
     private final TwoFactorService twoFactorService;
 
     @Transactional
-    public AuthResponse login(LoginRequest peticion, String ip) {
-        String email = User.normalizarEmail(peticion.email());
+    public AuthResponse login(LoginRequest request, String ip) {
+        String email = User.normalizeEmail(request.email());
 
         // Se comprueba antes de mirar la contraseña, y se aplica igual a emails
         // que existen y que no: así el bloqueo no delata qué direcciones hay
-        if (loginAttemptService.estaBloqueado(email)) {
+        if (loginAttemptService.isLocked(email)) {
             throw new TooManyRequestsException("Demasiados intentos fallidos. Vuelve a intentarlo en "
-                    + loginAttemptService.minutosDeBloqueo() + " minutos");
+                    + loginAttemptService.minutesOfLockout() + " minutos");
         }
 
-        Optional<User> usuario = userRepository.findByEmail(email);
+        Optional<User> user = userRepository.findByEmail(email);
 
-        String hash = usuario.map(User::getPasswordHash).orElse(HASH_FICTICIO);
-        boolean contrasenaCorrecta = passwordEncoder.matches(peticion.password(), hash);
+        String hash = user.map(User::getPasswordHash).orElse(HASH_FAKE);
+        boolean correctPassword = passwordEncoder.matches(request.password(), hash);
 
         // Contraseña acertada en una cuenta desactivada: se le dice, porque quien
         // la sabe ya es dueño de la cuenta y "usuario o contraseña incorrectos"
         // solo lo confundiría. No cuenta como fallo (no es un intento de adivinar).
         // Una cuenta dada de baja por RGPD no llega aquí: pierde la contraseña.
-        if (usuario.isPresent() && contrasenaCorrecta && usuario.get().getStatus() == UserStatus.DISABLED) {
+        if (user.isPresent() && correctPassword && user.get().getStatus() == UserStatus.DISABLED) {
             throw new AccountDisabledException();
         }
 
         // Email inexistente, cuenta pendiente y contraseña incorrecta (también en
         // una cuenta desactivada) se tratan igual a propósito: el mismo mensaje y,
         // gracias a la comprobación de arriba, el mismo tiempo de respuesta.
-        boolean credencialesValidas = usuario.isPresent()
-                && usuario.get().puedeIniciarSesion()
-                && contrasenaCorrecta;
+        boolean validCredentials = user.isPresent()
+                && user.get().canStartSession()
+                && correctPassword;
 
-        if (!credencialesValidas) {
-            loginAttemptService.registrarFallo(email, ip);
-            throw new BadCredentialsException(CREDENCIALES_INVALIDAS);
+        if (!validCredentials) {
+            loginAttemptService.recordFailure(email, ip);
+            throw new BadCredentialsException(INVALID_CREDENTIALS);
         }
 
         // Contraseña correcta: si la cuenta tiene el 2FA activado, falta el código.
         // Pedirlo no cuenta como fallo; equivocarse al darlo, sí.
-        if (usuario.get().isTotpEnabled()) {
-            if (peticion.totpCode() == null || peticion.totpCode().isBlank()) {
+        if (user.get().isTotpEnabled()) {
+            if (request.totpCode() == null || request.totpCode().isBlank()) {
                 throw new TwoFactorRequiredException();
             }
-            if (!twoFactorService.codigoValido(usuario.get(), peticion.totpCode())) {
-                loginAttemptService.registrarFallo(email, ip);
+            if (!twoFactorService.validCode(user.get(), request.totpCode())) {
+                loginAttemptService.recordFailure(email, ip);
                 throw new BadCredentialsException("Código de verificación incorrecto");
             }
         }
 
-        loginAttemptService.registrarExito(email, ip);
-        return construirRespuesta(usuario.get());
+        loginAttemptService.recordSuccess(email, ip);
+        return buildAnswer(user.get());
     }
 
     /**
@@ -126,9 +126,9 @@ public class AuthService {
      * obligarla a volver a escribir lo que acaba de teclear.
      */
     @Transactional
-    public AuthResponse aceptarInvitacion(String token, AcceptInvitationRequest peticion) {
-        User usuario = invitationService.aceptar(token, peticion.password());
-        return construirRespuesta(usuario);
+    public AuthResponse acceptInvitation(String token, AcceptInvitationRequest request) {
+        User user = invitationService.accept(token, request.password());
+        return buildAnswer(user);
     }
 
     /**
@@ -140,43 +140,43 @@ public class AuthService {
      * la sesión, y equivocarse al teclear la contraseña actual no es eso.
      */
     @Transactional
-    public AuthResponse cambiarPassword(ChangePasswordRequest peticion, String ip) {
-        AuthenticatedUser autenticado = identidadActual();
-        User usuario = userRepository.findById(autenticado.id())
-                .orElseThrow(() -> NotFoundException.de("Usuario", autenticado.id()));
-        demoCuentasProtegidas.exigirNoProtegida(usuario);
+    public AuthResponse changePassword(ChangePasswordRequest request, String ip) {
+        AuthenticatedUser autenticado = currentIdentity();
+        User user = userRepository.findById(autenticado.id())
+                .orElseThrow(() -> NotFoundException.of("Usuario", autenticado.id()));
+        protectedDemoAccounts.requireNotProtected(user);
 
-        if (loginAttemptService.estaBloqueado(usuario.getEmail())) {
+        if (loginAttemptService.isLocked(user.getEmail())) {
             throw new TooManyRequestsException("Demasiados intentos fallidos. Vuelve a intentarlo en "
-                    + loginAttemptService.minutosDeBloqueo() + " minutos");
+                    + loginAttemptService.minutesOfLockout() + " minutos");
         }
 
-        if (!passwordEncoder.matches(peticion.currentPassword(), usuario.getPasswordHash())) {
-            loginAttemptService.registrarFallo(usuario.getEmail(), ip);
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+            loginAttemptService.recordFailure(user.getEmail(), ip);
             throw new BadRequestException("La contraseña actual no es correcta");
         }
 
-        if (passwordEncoder.matches(peticion.newPassword(), usuario.getPasswordHash())) {
+        if (passwordEncoder.matches(request.newPassword(), user.getPasswordHash())) {
             throw new BadRequestException("La contraseña nueva debe ser distinta de la actual");
         }
 
-        usuario.cambiarPassword(passwordEncoder.encode(peticion.newPassword()));
+        user.changePassword(passwordEncoder.encode(request.newPassword()));
         // Cierra el resto de sesiones: si alguien más tenía la cuenta abierta, deja de tenerla
-        usuario.invalidarSesiones();
-        userRepository.save(usuario);
+        user.invalidateSessions();
+        userRepository.save(user);
 
         // La sesión actual también se habría invalidado, así que se devuelve una nueva
-        return construirRespuesta(usuario);
+        return buildAnswer(user);
     }
 
     /** Usuario de la petición en curso, releído de base de datos. */
     @Transactional(readOnly = true)
-    public UserResponse usuarioActual() {
-        AuthenticatedUser autenticado = identidadActual();
+    public UserResponse currentUser() {
+        AuthenticatedUser autenticado = currentIdentity();
 
         return userRepository.findById(autenticado.id())
-                .map(UserResponse::de)
-                .orElseThrow(() -> NotFoundException.de("Usuario", autenticado.id()));
+                .map(UserResponse::of)
+                .orElseThrow(() -> NotFoundException.of("Usuario", autenticado.id()));
     }
 
     /**
@@ -185,19 +185,19 @@ public class AuthService {
      * @throws BadCredentialsException si no hay ninguna, lo que solo puede
      *         ocurrir si se llama desde una ruta pública por error.
      */
-    public AuthenticatedUser identidadActual() {
-        var autenticacion = SecurityContextHolder.getContext().getAuthentication();
+    public AuthenticatedUser currentIdentity() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        if (autenticacion == null || !(autenticacion.getPrincipal() instanceof AuthenticatedUser usuario)) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedUser user)) {
             throw new BadCredentialsException("No hay ninguna sesión activa");
         }
-        return usuario;
+        return user;
     }
 
-    private AuthResponse construirRespuesta(User usuario) {
+    private AuthResponse buildAnswer(User user) {
         return new AuthResponse(
-                jwtService.emitirPara(usuario),
-                jwtService.caducidadDeUnTokenNuevo(),
-                UserResponse.de(usuario));
+                jwtService.issueFor(user),
+                jwtService.expiryOfTokenNew(),
+                UserResponse.of(user));
     }
 }

@@ -18,15 +18,15 @@ public record RegistrationRequestResponse(
         Instant reviewedAt,
         Instant createdAt) {
 
-    public static RegistrationRequestResponse de(RegistrationRequest solicitud) {
+    public static RegistrationRequestResponse of(RegistrationRequest request) {
         return new RegistrationRequestResponse(
-                solicitud.getId(),
-                solicitud.getName(),
-                solicitud.getEmail(),
-                solicitud.getMessage(),
-                solicitud.getStatus().getValor(),
-                solicitud.getVerifiedAt(),
-                solicitud.getReviewedAt(),
-                solicitud.getCreatedAt());
+                request.getId(),
+                request.getName(),
+                request.getEmail(),
+                request.getMessage(),
+                request.getStatus().getValue(),
+                request.getVerifiedAt(),
+                request.getReviewedAt(),
+                request.getCreatedAt());
     }
 }

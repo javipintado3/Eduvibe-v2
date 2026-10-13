@@ -42,19 +42,19 @@ public class AssignmentController {
     private final RubricService rubricService;
 
     @GetMapping("/{assignmentId}")
-    public ResponseEntity<AssignmentDetailResponse> detalle(@PathVariable UUID assignmentId) {
-        return ResponseEntity.ok(assignmentService.detalle(assignmentId));
+    public ResponseEntity<AssignmentDetailResponse> detail(@PathVariable UUID assignmentId) {
+        return ResponseEntity.ok(assignmentService.detail(assignmentId));
     }
 
     @PutMapping("/{assignmentId}")
-    public ResponseEntity<AssignmentDetailResponse> actualizar(@PathVariable UUID assignmentId,
-                                                               @Valid @RequestBody SaveAssignmentRequest peticion) {
-        return ResponseEntity.ok(assignmentService.actualizar(assignmentId, peticion));
+    public ResponseEntity<AssignmentDetailResponse> update(@PathVariable UUID assignmentId,
+                                                               @Valid @RequestBody SaveAssignmentRequest request) {
+        return ResponseEntity.ok(assignmentService.update(assignmentId, request));
     }
 
     @DeleteMapping("/{assignmentId}")
-    public ResponseEntity<Void> eliminar(@PathVariable UUID assignmentId) {
-        assignmentService.eliminar(assignmentId);
+    public ResponseEntity<Void> delete(@PathVariable UUID assignmentId) {
+        assignmentService.delete(assignmentId);
         return ResponseEntity.noContent().build();
     }
 
@@ -65,27 +65,27 @@ public class AssignmentController {
      * llamarlo dos veces deja el mismo resultado que llamarlo una.
      */
     @PutMapping("/{assignmentId}/submission")
-    public ResponseEntity<SubmissionResponse> entregar(@PathVariable UUID assignmentId,
-                                                       @Valid @RequestBody SubmitRequest peticion) {
-        return ResponseEntity.ok(submissionService.guardarMiEntrega(assignmentId, peticion));
+    public ResponseEntity<SubmissionResponse> submit(@PathVariable UUID assignmentId,
+                                                       @Valid @RequestBody SubmitRequest request) {
+        return ResponseEntity.ok(submissionService.saveMySubmission(assignmentId, request));
     }
 
     /** Todas las entregas de la tarea. Solo para el profesorado de la clase. */
     @GetMapping("/{assignmentId}/submissions")
-    public ResponseEntity<List<SubmissionResponse>> entregas(@PathVariable UUID assignmentId) {
-        return ResponseEntity.ok(submissionService.listarDeTarea(assignmentId));
+    public ResponseEntity<List<SubmissionResponse>> submissions(@PathVariable UUID assignmentId) {
+        return ResponseEntity.ok(submissionService.listByAssignment(assignmentId));
     }
 
     /** Crea la rúbrica de la tarea, o sustituye por completo la que ya hubiera. */
     @PutMapping("/{assignmentId}/rubric")
-    public ResponseEntity<RubricResponse> guardarRubrica(@PathVariable UUID assignmentId,
-                                                         @Valid @RequestBody SaveRubricRequest peticion) {
-        return ResponseEntity.ok(rubricService.guardar(assignmentId, peticion));
+    public ResponseEntity<RubricResponse> saveRubric(@PathVariable UUID assignmentId,
+                                                         @Valid @RequestBody SaveRubricRequest request) {
+        return ResponseEntity.ok(rubricService.save(assignmentId, request));
     }
 
     @DeleteMapping("/{assignmentId}/rubric")
-    public ResponseEntity<Void> borrarRubrica(@PathVariable UUID assignmentId) {
-        rubricService.eliminar(assignmentId);
+    public ResponseEntity<Void> deleteRubric(@PathVariable UUID assignmentId) {
+        rubricService.delete(assignmentId);
         return ResponseEntity.noContent().build();
     }
 }

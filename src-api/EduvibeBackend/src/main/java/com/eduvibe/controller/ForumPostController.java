@@ -21,8 +21,8 @@ public class ForumPostController {
     private final ForumService forumService;
 
     @DeleteMapping("/{postId}")
-    public ResponseEntity<Void> eliminar(@PathVariable UUID postId) {
-        forumService.eliminarMensaje(postId);
+    public ResponseEntity<Void> delete(@PathVariable UUID postId) {
+        forumService.deleteMessage(postId);
         return ResponseEntity.noContent().build();
     }
 }

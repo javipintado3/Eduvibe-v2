@@ -14,21 +14,21 @@ import jakarta.servlet.http.HttpServletRequest;
  */
 public final class ClientIp {
 
-    private static final String CABECERA = "X-Forwarded-For";
+    private static final String HEADER = "X-Forwarded-For";
 
     private ClientIp() {
     }
 
-    public static String de(HttpServletRequest peticion, boolean proxyDeConfianza) {
-        if (proxyDeConfianza) {
-            String reenviada = peticion.getHeader(CABECERA);
-            if (reenviada != null && !reenviada.isBlank()) {
+    public static String of(HttpServletRequest request, boolean trustedProxy) {
+        if (trustedProxy) {
+            String resent = request.getHeader(HEADER);
+            if (resent != null && !resent.isBlank()) {
                 // El proxy añade al final la dirección que él ha visto; lo que
                 // haya antes lo ha podido escribir el propio cliente
-                String[] direcciones = reenviada.split(",");
-                return direcciones[direcciones.length - 1].trim();
+                String[] addresses = resent.split(",");
+                return addresses[addresses.length - 1].trim();
             }
         }
-        return peticion.getRemoteAddr();
+        return request.getRemoteAddr();
     }
 }

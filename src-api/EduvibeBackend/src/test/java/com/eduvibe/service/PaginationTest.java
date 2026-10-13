@@ -13,32 +13,32 @@ import org.springframework.data.domain.Sort;
 
 import com.eduvibe.dto.common.PageResponse;
 
-class PaginacionTest {
+class PaginationTest {
 
     @Test
     @DisplayName("Conserva la página y el tamaño pedidos y descarta el orden")
     void keepsPageAndSizeButDropsSort() {
-        Pageable pedida = PageRequest.of(3, 7, Sort.by(Sort.Direction.DESC, "loQueSea"));
+        Pageable requested = PageRequest.of(3, 7, Sort.by(Sort.Direction.DESC, "loQueSea"));
 
-        Pageable limpia = Paginacion.sinOrden(pedida);
+        Pageable cleans = Pagination.unsorted(requested);
 
-        assertThat(limpia.getPageNumber()).isEqualTo(3);
-        assertThat(limpia.getPageSize()).isEqualTo(7);
-        assertThat(limpia.getSort().isUnsorted()).isTrue();
+        assertThat(cleans.getPageNumber()).isEqualTo(3);
+        assertThat(cleans.getPageSize()).isEqualTo(7);
+        assertThat(cleans.getSort().isUnsorted()).isTrue();
     }
 
     @Test
     @DisplayName("Sin texto de búsqueda el patrón casa con todo")
     void blankSearchMatchesEverything() {
-        assertThat(Paginacion.patronDeBusqueda(null)).isEqualTo("%");
-        assertThat(Paginacion.patronDeBusqueda("")).isEqualTo("%");
-        assertThat(Paginacion.patronDeBusqueda("   ")).isEqualTo("%");
+        assertThat(Pagination.searchPattern(null)).isEqualTo("%");
+        assertThat(Pagination.searchPattern("")).isEqualTo("%");
+        assertThat(Pagination.searchPattern("   ")).isEqualTo("%");
     }
 
     @Test
     @DisplayName("El texto de búsqueda se recorta y pasa a minúsculas dentro de un LIKE")
     void searchTextIsTrimmedAndLowercased() {
-        assertThat(Paginacion.patronDeBusqueda("  Matemáticas ")).isEqualTo("%matemáticas%");
+        assertThat(Pagination.searchPattern("  Matemáticas ")).isEqualTo("%matemáticas%");
     }
 
     @Test
@@ -46,13 +46,13 @@ class PaginacionTest {
     void wrapsPrebuiltContentKeepingPagingData() {
         var pagina = new PageImpl<>(List.of("a", "b"), PageRequest.of(2, 2), 6);
 
-        PageResponse<Integer> respuesta = PageResponse.de(pagina, List.of(1, 2));
+        PageResponse<Integer> answer = PageResponse.of(pagina, List.of(1, 2));
 
-        assertThat(respuesta.contenido()).containsExactly(1, 2);
-        assertThat(respuesta.pagina()).isEqualTo(2);
-        assertThat(respuesta.tamano()).isEqualTo(2);
-        assertThat(respuesta.totalElementos()).isEqualTo(6);
-        assertThat(respuesta.totalPaginas()).isEqualTo(3);
-        assertThat(respuesta.ultima()).isTrue();
+        assertThat(answer.contenido()).containsExactly(1, 2);
+        assertThat(answer.pagina()).isEqualTo(2);
+        assertThat(answer.tamano()).isEqualTo(2);
+        assertThat(answer.totalElementos()).isEqualTo(6);
+        assertThat(answer.totalPaginas()).isEqualTo(3);
+        assertThat(answer.ultima()).isTrue();
     }
 }

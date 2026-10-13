@@ -28,13 +28,13 @@ class LoginAttemptServiceTest {
     @Mock
     private LoginAttemptRepository repository;
 
-    private LoginAttemptService servicio;
+    private LoginAttemptService service;
 
     @BeforeEach
     void crearServicio() {
-        AppProperties propiedades = new AppProperties(null, null, null, null,
+        AppProperties properties = new AppProperties(null, null, null, null,
                 new AppProperties.Login(5, 15), null, null);
-        servicio = new LoginAttemptService(repository, propiedades);
+        service = new LoginAttemptService(repository, properties);
     }
 
     @Test
@@ -43,7 +43,7 @@ class LoginAttemptServiceTest {
         when(repository.countByEmailAndSucceededFalseAndAttemptedAtAfter(eq(EMAIL), any(Instant.class)))
                 .thenReturn(4L);
 
-        assertThat(servicio.estaBloqueado(EMAIL)).isFalse();
+        assertThat(service.isLocked(EMAIL)).isFalse();
     }
 
     @Test
@@ -52,54 +52,54 @@ class LoginAttemptServiceTest {
         when(repository.countByEmailAndSucceededFalseAndAttemptedAtAfter(eq(EMAIL), any(Instant.class)))
                 .thenReturn(5L);
 
-        assertThat(servicio.estaBloqueado(EMAIL)).isTrue();
+        assertThat(service.isLocked(EMAIL)).isTrue();
     }
 
     @Test
     @DisplayName("solo cuenta los fallos de la ventana de bloqueo")
     void soloCuentaLaVentana() {
-        servicio.estaBloqueado(EMAIL);
+        service.isLocked(EMAIL);
 
-        ArgumentCaptor<Instant> desde = ArgumentCaptor.forClass(Instant.class);
-        verify(repository).countByEmailAndSucceededFalseAndAttemptedAtAfter(eq(EMAIL), desde.capture());
+        ArgumentCaptor<Instant> from = ArgumentCaptor.forClass(Instant.class);
+        verify(repository).countByEmailAndSucceededFalseAndAttemptedAtAfter(eq(EMAIL), from.capture());
 
-        Instant esperado = Instant.now().minusSeconds(15 * 60);
-        assertThat(desde.getValue()).isBetween(esperado.minusSeconds(5), esperado.plusSeconds(5));
+        Instant expected = Instant.now().minusSeconds(15 * 60);
+        assertThat(from.getValue()).isBetween(expected.minusSeconds(5), expected.plusSeconds(5));
     }
 
     @Test
     @DisplayName("registra un fallo con el email y la IP")
     void registraElFallo() {
-        servicio.registrarFallo(EMAIL, "10.0.0.1");
+        service.recordFailure(EMAIL, "10.0.0.1");
 
-        ArgumentCaptor<LoginAttempt> intento = ArgumentCaptor.forClass(LoginAttempt.class);
-        verify(repository).save(intento.capture());
-        assertThat(intento.getValue().getEmail()).isEqualTo(EMAIL);
-        assertThat(intento.getValue().getIpAddress()).isEqualTo("10.0.0.1");
-        assertThat(intento.getValue().isSucceeded()).isFalse();
+        ArgumentCaptor<LoginAttempt> attempt = ArgumentCaptor.forClass(LoginAttempt.class);
+        verify(repository).save(attempt.capture());
+        assertThat(attempt.getValue().getEmail()).isEqualTo(EMAIL);
+        assertThat(attempt.getValue().getIpAddress()).isEqualTo("10.0.0.1");
+        assertThat(attempt.getValue().isSucceeded()).isFalse();
     }
 
     @Test
     @DisplayName("un acceso correcto borra los fallos previos y se apunta a sí mismo")
     void exitoReiniciaElContador() {
-        servicio.registrarExito(EMAIL, "10.0.0.1");
+        service.recordSuccess(EMAIL, "10.0.0.1");
 
-        verify(repository).borrarFallosDe(EMAIL);
-        ArgumentCaptor<LoginAttempt> intento = ArgumentCaptor.forClass(LoginAttempt.class);
-        verify(repository).save(intento.capture());
-        assertThat(intento.getValue().isSucceeded()).isTrue();
+        verify(repository).deleteFailuresByEmail(EMAIL);
+        ArgumentCaptor<LoginAttempt> attempt = ArgumentCaptor.forClass(LoginAttempt.class);
+        verify(repository).save(attempt.capture());
+        assertThat(attempt.getValue().isSucceeded()).isTrue();
     }
 
     @Test
     @DisplayName("la purga borra lo anterior a 90 días")
     void purgaPorRetencion() {
-        when(repository.borrarAnterioresA(any(Instant.class))).thenReturn(3);
+        when(repository.deleteOlderThan(any(Instant.class))).thenReturn(3);
 
-        servicio.purgarAntiguos();
+        service.purgeOld();
 
-        ArgumentCaptor<Instant> limite = ArgumentCaptor.forClass(Instant.class);
-        verify(repository).borrarAnterioresA(limite.capture());
-        Instant esperado = Instant.now().minusSeconds(90L * 24 * 3600);
-        assertThat(limite.getValue()).isBetween(esperado.minusSeconds(5), esperado.plusSeconds(5));
+        ArgumentCaptor<Instant> limit = ArgumentCaptor.forClass(Instant.class);
+        verify(repository).deleteOlderThan(limit.capture());
+        Instant expected = Instant.now().minusSeconds(90L * 24 * 3600);
+        assertThat(limit.getValue()).isBetween(expected.minusSeconds(5), expected.plusSeconds(5));
     }
 }

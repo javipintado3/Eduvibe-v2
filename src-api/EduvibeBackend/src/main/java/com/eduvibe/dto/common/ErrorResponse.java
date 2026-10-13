@@ -25,11 +25,11 @@ public record ErrorResponse(
         Map<String, String> campos,
         Instant timestamp) {
 
-    public static ErrorResponse de(int status, String error, String message, String path) {
+    public static ErrorResponse of(int status, String error, String message, String path) {
         return new ErrorResponse(status, error, message, path, null, Instant.now());
     }
 
-    public static ErrorResponse deValidacion(String path, Map<String, String> campos) {
+    public static ErrorResponse ofValidation(String path, Map<String, String> campos) {
         return new ErrorResponse(400, "Bad Request", "Hay campos con errores", path, campos, Instant.now());
     }
 }

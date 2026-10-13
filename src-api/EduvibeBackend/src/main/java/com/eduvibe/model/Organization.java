@@ -53,7 +53,7 @@ public class Organization {
     /**
      * Indica si un email puede darse de alta en esta organización.
      */
-    public boolean admiteEmail(String email) {
+    public boolean acceptsEmail(String email) {
         if (allowedDomain == null || allowedDomain.isBlank()) {
             return true;
         }

@@ -16,12 +16,12 @@ public record ForumPostResponse(
         Instant createdAt,
         boolean puedoBorrar) {
 
-    public static ForumPostResponse de(ForumPost mensaje, boolean puedoBorrar) {
+    public static ForumPostResponse of(ForumPost message, boolean puedoBorrar) {
         return new ForumPostResponse(
-                mensaje.getId(),
-                mensaje.getContent(),
-                mensaje.getAuthor().getName(),
-                mensaje.getCreatedAt(),
+                message.getId(),
+                message.getContent(),
+                message.getAuthor().getName(),
+                message.getCreatedAt(),
                 puedoBorrar);
     }
 }

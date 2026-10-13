@@ -30,7 +30,7 @@ public class MailService {
     private final JavaMailSender mailSender;
 
     @Value("${app.mail.from:}")
-    private String remitente;
+    private String sender;
 
     /**
      * Enlace para elegir una contraseña nueva.
@@ -40,19 +40,19 @@ public class MailService {
      * direcciones están dadas de alta, aunque la respuesta sea idéntica.
      */
     @Async
-    public void enviarRestablecimiento(User destinatario, String enlace) {
-        if (remitente == null || remitente.isBlank()) {
+    public void sendReset(User recipient, String link) {
+        if (sender == null || sender.isBlank()) {
             LOG.info("Correo no configurado. Enlace para restablecer la contraseña de {}: {}",
-                    destinatario.getEmail(), enlace);
+                    recipient.getEmail(), link);
             return;
         }
 
         try {
-            SimpleMailMessage mensaje = new SimpleMailMessage();
-            mensaje.setFrom(remitente);
-            mensaje.setTo(destinatario.getEmail());
-            mensaje.setSubject("Restablece tu contraseña de Eduvibe");
-            mensaje.setText("""
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(sender);
+            message.setTo(recipient.getEmail());
+            message.setSubject("Restablece tu contraseña de Eduvibe");
+            message.setText("""
                     Hola %s:
 
                     Has pedido restablecer tu contraseña en Eduvibe. Para elegir una
@@ -62,13 +62,13 @@ public class MailService {
 
                     El enlace sirve una sola vez y caduca pronto. Si no lo has pedido
                     tú, ignora este correo: tu contraseña no cambiará.
-                    """.formatted(destinatario.getName(), enlace));
+                    """.formatted(recipient.getName(), link));
 
-            mailSender.send(mensaje);
+            mailSender.send(message);
 
         } catch (Exception e) {
             LOG.warn("No se ha podido enviar el restablecimiento a {}: {}",
-                    destinatario.getEmail(), e.getMessage());
+                    recipient.getEmail(), e.getMessage());
         }
     }
 
@@ -78,19 +78,19 @@ public class MailService {
      * que la respuesta tarde igual haya o no que enviar nada.
      */
     @Async
-    public void enviarVerificacionDeRegistro(String nombre, String email, String enlace) {
-        if (remitente == null || remitente.isBlank()) {
+    public void sendVerificationOfRegistration(String name, String email, String link) {
+        if (sender == null || sender.isBlank()) {
             LOG.info("Correo no configurado. Enlace para confirmar la solicitud de registro de {}: {}",
-                    email, enlace);
+                    email, link);
             return;
         }
 
         try {
-            SimpleMailMessage mensaje = new SimpleMailMessage();
-            mensaje.setFrom(remitente);
-            mensaje.setTo(email);
-            mensaje.setSubject("Confirma tu correo en Eduvibe");
-            mensaje.setText("""
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(sender);
+            message.setTo(email);
+            message.setSubject("Confirma tu correo en Eduvibe");
+            message.setText("""
                     Hola %s:
 
                     Has pedido una cuenta en Eduvibe. Para confirmar que este correo es
@@ -102,9 +102,9 @@ public class MailService {
                     acepta, recibirás otro correo para elegir tu contraseña.
 
                     Si no lo has pedido tú, ignora este correo: no se creará ninguna cuenta.
-                    """.formatted(nombre, enlace));
+                    """.formatted(name, link));
 
-            mailSender.send(mensaje);
+            mailSender.send(message);
 
         } catch (Exception e) {
             LOG.warn("No se ha podido enviar la confirmación de registro a {}: {}", email, e.getMessage());
@@ -113,25 +113,25 @@ public class MailService {
 
     /** Aviso de que la administración ha rechazado la solicitud. */
     @Async
-    public void enviarSolicitudRechazada(String nombre, String email) {
-        if (remitente == null || remitente.isBlank()) {
+    public void sendRejectedRequest(String name, String email) {
+        if (sender == null || sender.isBlank()) {
             LOG.info("Correo no configurado. Solicitud de registro de {} rechazada", email);
             return;
         }
 
         try {
-            SimpleMailMessage mensaje = new SimpleMailMessage();
-            mensaje.setFrom(remitente);
-            mensaje.setTo(email);
-            mensaje.setSubject("Tu solicitud en Eduvibe");
-            mensaje.setText("""
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(sender);
+            message.setTo(email);
+            message.setSubject("Tu solicitud en Eduvibe");
+            message.setText("""
                     Hola %s:
 
                     La administración de tu centro no ha aceptado tu solicitud de cuenta en
                     Eduvibe. Si crees que es un error, ponte en contacto con tu centro.
-                    """.formatted(nombre));
+                    """.formatted(name));
 
-            mailSender.send(mensaje);
+            mailSender.send(message);
 
         } catch (Exception e) {
             LOG.warn("No se ha podido avisar del rechazo a {}: {}", email, e.getMessage());
@@ -142,19 +142,19 @@ public class MailService {
      * @return true si el correo ha salido; false si no hay remitente
      *         configurado o el envío ha fallado.
      */
-    public boolean enviarInvitacion(User destinatario, String enlace) {
-        if (remitente == null || remitente.isBlank()) {
+    public boolean sendInvitation(User recipient, String link) {
+        if (sender == null || sender.isBlank()) {
             LOG.info("Correo no configurado. Enlace de invitación para {}: {}",
-                    destinatario.getEmail(), enlace);
+                    recipient.getEmail(), link);
             return false;
         }
 
         try {
-            SimpleMailMessage mensaje = new SimpleMailMessage();
-            mensaje.setFrom(remitente);
-            mensaje.setTo(destinatario.getEmail());
-            mensaje.setSubject("Tu acceso a Eduvibe");
-            mensaje.setText("""
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(sender);
+            message.setTo(recipient.getEmail());
+            message.setSubject("Tu acceso a Eduvibe");
+            message.setText("""
                     Hola %s:
 
                     Se ha creado una cuenta para ti en Eduvibe. Para activarla y
@@ -164,16 +164,16 @@ public class MailService {
 
                     El enlace sirve una sola vez. Si caduca, pide a tu centro que
                     te lo vuelva a enviar.
-                    """.formatted(destinatario.getName(), enlace));
+                    """.formatted(recipient.getName(), link));
 
-            mailSender.send(mensaje);
+            mailSender.send(message);
             return true;
 
         } catch (Exception e) {
             // No se propaga: el alta ya se ha hecho y el enlace se devuelve en
             // la respuesta, así que el administrador puede entregarlo a mano.
             LOG.warn("No se ha podido enviar la invitación a {}: {}",
-                    destinatario.getEmail(), e.getMessage());
+                    recipient.getEmail(), e.getMessage());
             return false;
         }
     }

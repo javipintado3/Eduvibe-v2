@@ -15,7 +15,7 @@ public interface InvitationRepository extends JpaRepository<Invitation, UUID> {
 
     @Modifying
     @Query("DELETE FROM Invitation i WHERE i.user.id = :userId")
-    int borrarDe(@Param("userId") UUID userId);
+    int deleteByUser(@Param("userId") UUID userId);
 
     /** Se busca por el hash: el token en claro nunca llega a la base de datos. */
     Optional<Invitation> findByTokenHash(String tokenHash);
@@ -30,5 +30,5 @@ public interface InvitationRepository extends JpaRepository<Invitation, UUID> {
     @Modifying
     @Query("UPDATE Invitation i SET i.usedAt = CURRENT_TIMESTAMP "
          + "WHERE i.user.id = :userId AND i.usedAt IS NULL")
-    int invalidarPendientesDe(@Param("userId") UUID userId);
+    int invalidatePendingFor(@Param("userId") UUID userId);
 }

@@ -18,12 +18,12 @@ public record MemberResponse(
         String roleInClass,
         Instant enrolledAt) {
 
-    public static MemberResponse de(Enrollment matricula) {
+    public static MemberResponse of(Enrollment enrollment) {
         return new MemberResponse(
-                matricula.getUser().getId(),
-                matricula.getUser().getName(),
-                matricula.getUser().getEmail(),
-                matricula.getRoleInClass().getValor(),
-                matricula.getEnrolledAt());
+                enrollment.getUser().getId(),
+                enrollment.getUser().getName(),
+                enrollment.getUser().getEmail(),
+                enrollment.getRoleInClass().getValue(),
+                enrollment.getEnrolledAt());
     }
 }

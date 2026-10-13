@@ -29,7 +29,7 @@ import com.eduvibe.dto.common.PageResponse;
  * Muro de avisos de una clase.
  *
  * Solo el profesorado de la clase (o administración) publica y retira avisos;
- * lo decide {@link ClassAccessService#exigirEditable}, igual que para tareas y
+ * lo decide {@link ClassAccessService#requireEditable}, igual que para tareas y
  * temas. El alumnado matriculado solo lee.
  */
 @Service
@@ -39,48 +39,48 @@ public class AnnouncementService {
     private final AnnouncementRepository announcementRepository;
     private final UserRepository userRepository;
     private final EnrollmentRepository enrollmentRepository;
-    private final ClassAccessService acceso;
+    private final ClassAccessService access;
     private final AuthService authService;
     private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
-    public PageResponse<AnnouncementResponse> listar(UUID classId, Pageable pageable) {
-        acceso.exigirVisible(classId);
-        boolean puedoBorrar = acceso.puedeCalificarEn(classId);
+    public PageResponse<AnnouncementResponse> list(UUID classId, Pageable pageable) {
+        access.requireVisible(classId);
+        boolean puedoBorrar = access.canGradeIn(classId);
 
-        return PageResponse.de(
+        return PageResponse.of(
                 announcementRepository.findBySchoolClassIdOrderByPinnedDescCreatedAtDesc(
-                        classId, Paginacion.sinOrden(pageable)),
-                aviso -> AnnouncementResponse.de(aviso, puedoBorrar));
+                        classId, Pagination.unsorted(pageable)),
+                announcement -> AnnouncementResponse.of(announcement, puedoBorrar));
     }
 
     @Transactional
-    public AnnouncementResponse crear(UUID classId, SaveAnnouncementRequest peticion) {
-        SchoolClass clase = acceso.exigirEditable(classId);
-        AuthenticatedUser autenticado = authService.identidadActual();
+    public AnnouncementResponse create(UUID classId, SaveAnnouncementRequest request) {
+        SchoolClass schoolClass = access.requireEditable(classId);
+        AuthenticatedUser autenticado = authService.currentIdentity();
 
-        User autor = userRepository.findById(autenticado.id())
-                .orElseThrow(() -> NotFoundException.de("Usuario", autenticado.id()));
+        User author = userRepository.findById(autenticado.id())
+                .orElseThrow(() -> NotFoundException.of("Usuario", autenticado.id()));
 
-        Announcement aviso = new Announcement(clase, autor, peticion.content().trim(), peticion.estaFijado());
-        announcementRepository.saveAndFlush(aviso);
+        Announcement announcement = new Announcement(schoolClass, author, request.content().trim(), request.isPinned());
+        announcementRepository.saveAndFlush(announcement);
 
         List<User> alumnado = enrollmentRepository
                 .findBySchoolClassIdAndRoleInClassOrderByUserNameAsc(classId, EnrollmentRole.STUDENT)
                 .stream().map(Enrollment::getUser).toList();
-        notificationService.emitirParaVarios(alumnado, Notification.AVISO_NUEVO, Map.of(
-                "className", clase.getName(), "classId", classId.toString()));
+        notificationService.issueForSeveral(alumnado, Notification.NEW_ANNOUNCEMENT, Map.of(
+                "className", schoolClass.getName(), "classId", classId.toString()));
 
-        return AnnouncementResponse.de(aviso, true);
+        return AnnouncementResponse.of(announcement, true);
     }
 
     @Transactional
-    public void eliminar(UUID announcementId) {
-        Announcement aviso = announcementRepository.findById(announcementId)
-                .orElseThrow(() -> NotFoundException.de("Aviso", announcementId));
+    public void delete(UUID announcementId) {
+        Announcement announcement = announcementRepository.findById(announcementId)
+                .orElseThrow(() -> NotFoundException.of("Aviso", announcementId));
 
-        acceso.exigirEditable(aviso.getSchoolClass().getId());
+        access.requireEditable(announcement.getSchoolClass().getId());
 
-        announcementRepository.delete(aviso);
+        announcementRepository.delete(announcement);
     }
 }

@@ -40,30 +40,30 @@ public class JwtService {
     private static final String CLAIM_NAME = "name";
     private static final String CLAIM_ROLE = "role";
     private static final String CLAIM_ORG = "org";
-    /** Versión de sesiones del usuario al emitir el token: ver User#invalidarSesiones. */
+    /** Versión de sesiones del usuario al emitir el token: ver User#invalidateSessions. */
     private static final String CLAIM_VERSION = "tv";
 
-    private final SecretKey clave;
-    private final Duration validez;
+    private final SecretKey key;
+    private final Duration validity;
 
-    public JwtService(AppProperties propiedades, Environment entorno) {
-        String secreto = propiedades.jwt().secret();
-        if (secreto == null || secreto.isBlank()) {
+    public JwtService(AppProperties properties, Environment environment) {
+        String secret = properties.jwt().secret();
+        if (secret == null || secret.isBlank()) {
             // En producción una clave aleatoria cerraría todas las sesiones en cada
             // reinicio (y no valdría con más de una instancia): mejor no arrancar.
-            if (entorno.acceptsProfiles(Profiles.of("prod"))) {
+            if (environment.acceptsProfiles(Profiles.of("prod"))) {
                 throw new IllegalStateException(
                         "JWT_SECRET es obligatorio con el perfil 'prod'. Genera uno con: openssl rand -base64 48");
             }
-            this.clave = Jwts.SIG.HS256.key().build();
+            this.key = Jwts.SIG.HS256.key().build();
             LOG.warn("No hay JWT_SECRET configurado: se ha generado una clave aleatoria. "
                     + "Los tokens dejarán de ser válidos al reiniciar la aplicación.");
         } else {
-            this.clave = Keys.hmacShaKeyFor(secreto.getBytes(StandardCharsets.UTF_8));
+            this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         }
-        this.validez = propiedades.jwt().expirationMinutes() > 0
-                ? Duration.ofMinutes(propiedades.jwt().expirationMinutes())
-                : Duration.ofHours(propiedades.jwt().expirationHours());
+        this.validity = properties.jwt().expirationMinutes() > 0
+                ? Duration.ofMinutes(properties.jwt().expirationMinutes())
+                : Duration.ofHours(properties.jwt().expirationHours());
     }
 
     /**
@@ -73,25 +73,25 @@ public class JwtService {
      * identificador no, así que un token emitido sigue apuntando a la misma
      * persona aunque le corrijan la dirección.
      */
-    public String emitirPara(User usuario) {
-        Instant ahora = Instant.now();
+    public String issueFor(User user) {
+        Instant now = Instant.now();
         return Jwts.builder()
                 .id(UUID.randomUUID().toString())
-                .subject(usuario.getId().toString())
-                .claim(CLAIM_EMAIL, usuario.getEmail())
-                .claim(CLAIM_NAME, usuario.getName())
-                .claim(CLAIM_ROLE, usuario.getRole().getValor())
-                .claim(CLAIM_ORG, usuario.getOrganization().getId().toString())
-                .claim(CLAIM_VERSION, usuario.getTokenVersion())
-                .issuedAt(Date.from(ahora))
-                .expiration(Date.from(ahora.plus(validez)))
-                .signWith(clave)
+                .subject(user.getId().toString())
+                .claim(CLAIM_EMAIL, user.getEmail())
+                .claim(CLAIM_NAME, user.getName())
+                .claim(CLAIM_ROLE, user.getRole().getValue())
+                .claim(CLAIM_ORG, user.getOrganization().getId().toString())
+                .claim(CLAIM_VERSION, user.getTokenVersion())
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plus(validity)))
+                .signWith(key)
                 .compact();
     }
 
     /** Cuándo caduca el token que se acaba de emitir. */
-    public Instant caducidadDeUnTokenNuevo() {
-        return Instant.now().plus(validez);
+    public Instant expiryOfTokenNew() {
+        return Instant.now().plus(validity);
     }
 
     /**
@@ -102,10 +102,10 @@ public class JwtService {
      *         es una situación normal (caduca, o alguien prueba a mano), no un
      *         error del que haya que informar con una traza.
      */
-    public AuthenticatedUser leer(String token) {
+    public AuthenticatedUser read(String token) {
         try {
             Claims claims = Jwts.parser()
-                    .verifyWith(clave)
+                    .verifyWith(key)
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
@@ -114,9 +114,9 @@ public class JwtService {
                     UUID.fromString(claims.getSubject()),
                     claims.get(CLAIM_EMAIL, String.class),
                     claims.get(CLAIM_NAME, String.class),
-                    UserRole.desdeValor(claims.get(CLAIM_ROLE, String.class)),
+                    UserRole.fromValue(claims.get(CLAIM_ROLE, String.class)),
                     UUID.fromString(claims.get(CLAIM_ORG, String.class)),
-                    new AuthenticatedUser.Sesion(
+                    new AuthenticatedUser.Session(
                             // Los tokens emitidos antes de existir la revocación no traen id ni
                             // versión: se leen como "sin id" y versión 0 y siguen valiendo hasta caducar
                             claims.getId() == null ? null : UUID.fromString(claims.getId()),

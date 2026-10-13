@@ -15,13 +15,13 @@ public interface PasswordResetRepository extends JpaRepository<PasswordReset, UU
 
     @Modifying
     @Query("DELETE FROM PasswordReset p WHERE p.user.id = :userId")
-    int borrarDe(@Param("userId") UUID userId);
+    int deleteByUser(@Param("userId") UUID userId);
 
     /** Se busca por el hash: el token en claro nunca llega a la base de datos. */
     Optional<PasswordReset> findByTokenHash(String tokenHash);
 
     /** ¿Ha pedido este usuario un enlace desde el instante indicado? */
-    boolean existsByUserIdAndCreatedAtAfter(UUID userId, Instant desde);
+    boolean existsByUserIdAndCreatedAtAfter(UUID userId, Instant from);
 
     /**
      * Invalida los enlaces que siguen vivos de un usuario: al emitir uno nuevo,
@@ -30,5 +30,5 @@ public interface PasswordResetRepository extends JpaRepository<PasswordReset, UU
     @Modifying
     @Query("UPDATE PasswordReset p SET p.usedAt = CURRENT_TIMESTAMP "
          + "WHERE p.user.id = :userId AND p.usedAt IS NULL")
-    int invalidarPendientesDe(@Param("userId") UUID userId);
+    int invalidatePendingFor(@Param("userId") UUID userId);
 }

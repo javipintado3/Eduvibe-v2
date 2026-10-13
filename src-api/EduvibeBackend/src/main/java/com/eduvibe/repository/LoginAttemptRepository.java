@@ -18,18 +18,18 @@ public interface LoginAttemptRepository extends JpaRepository<LoginAttempt, UUID
     /** Borrar la cuenta elimina todo su historial de accesos, que incluye su IP. */
     @Modifying
     @Query("DELETE FROM LoginAttempt a WHERE a.email = :email")
-    int borrarTodosDe(@Param("email") String email);
+    int deleteAllByEmail(@Param("email") String email);
 
     /** Fallos de un email desde el instante indicado. */
-    long countByEmailAndSucceededFalseAndAttemptedAtAfter(String email, Instant desde);
+    long countByEmailAndSucceededFalseAndAttemptedAtAfter(String email, Instant from);
 
     /** Un acceso correcto deja el contador a cero: se descartan los fallos previos. */
     @Modifying
     @Query("DELETE FROM LoginAttempt a WHERE a.email = :email AND a.succeeded = false")
-    int borrarFallosDe(@Param("email") String email);
+    int deleteFailuresByEmail(@Param("email") String email);
 
     /** Retención: nada se conserva más allá de la fecha indicada. */
     @Modifying
     @Query("DELETE FROM LoginAttempt a WHERE a.attemptedAt < :antesDe")
-    int borrarAnterioresA(@Param("antesDe") Instant antesDe);
+    int deleteOlderThan(@Param("antesDe") Instant before);
 }

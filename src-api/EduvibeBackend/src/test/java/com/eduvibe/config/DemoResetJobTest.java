@@ -21,8 +21,8 @@ import org.springframework.jdbc.core.ResultSetExtractor;
 
 class DemoResetJobTest {
 
-    private static final String CON_SEMILLA = "classpath:db/migration,classpath:db/demo";
-    private static final String SIN_SEMILLA = "classpath:db/migration";
+    private static final String WITH_SEED = "classpath:db/migration,classpath:db/demo";
+    private static final String WITHOUT_SEED = "classpath:db/migration";
 
     private Flyway flyway;
     private JdbcTemplate jdbc;
@@ -35,28 +35,28 @@ class DemoResetJobTest {
 
     /** Simula lo que devuelve la base de datos: true = hace más de las horas indicadas. */
     @SuppressWarnings("unchecked")
-    private void ultimoReinicio(Boolean hechoHaceMucho) {
-        when(jdbc.query(anyString(), any(ResultSetExtractor.class), eq(12))).thenReturn(hechoHaceMucho);
+    private void lastReset(Boolean longAgo) {
+        when(jdbc.query(anyString(), any(ResultSetExtractor.class), eq(12))).thenReturn(longAgo);
     }
 
     @Nested
     @DisplayName("A la hora del cron")
-    class ACronometro {
+    class ATimer {
 
         @Test
         @DisplayName("borra y vuelve a crear todo, en ese orden")
         void reinicia() {
-            new DemoResetJob(flyway, jdbc, CON_SEMILLA, 12).restablecer();
+            new DemoResetJob(flyway, jdbc, WITH_SEED, 12).resetOnSchedule();
 
-            InOrder orden = inOrder(flyway);
-            orden.verify(flyway).clean();
-            orden.verify(flyway).migrate();
+            InOrder order = inOrder(flyway);
+            order.verify(flyway).clean();
+            order.verify(flyway).migrate();
         }
 
         @Test
         @DisplayName("se niega si no hay semilla de demo: esa base de datos no es una demo")
         void sinSemillaNoTocaNada() {
-            new DemoResetJob(flyway, jdbc, SIN_SEMILLA, 12).restablecer();
+            new DemoResetJob(flyway, jdbc, WITHOUT_SEED, 12).resetOnSchedule();
 
             verifyNoInteractions(flyway);
         }
@@ -64,14 +64,14 @@ class DemoResetJobTest {
 
     @Nested
     @DisplayName("Al arrancar")
-    class AlArrancar {
+    class OnStart {
 
         @Test
         @DisplayName("reinicia si hace más de las horas indicadas del último reinicio")
         void reiniciaSiHaceMucho() {
-            ultimoReinicio(true);
+            lastReset(true);
 
-            new DemoResetJob(flyway, jdbc, CON_SEMILLA, 12).restablecerSiHaceMuchoQueNoSeHizo();
+            new DemoResetJob(flyway, jdbc, WITH_SEED, 12).resetIfNotResetRecently();
 
             verify(flyway).clean();
             verify(flyway).migrate();
@@ -80,9 +80,9 @@ class DemoResetJobTest {
         @Test
         @DisplayName("no toca nada si el último reinicio es reciente")
         void noReiniciaSiEsReciente() {
-            ultimoReinicio(false);
+            lastReset(false);
 
-            new DemoResetJob(flyway, jdbc, CON_SEMILLA, 12).restablecerSiHaceMuchoQueNoSeHizo();
+            new DemoResetJob(flyway, jdbc, WITH_SEED, 12).resetIfNotResetRecently();
 
             verify(flyway, never()).clean();
         }
@@ -90,9 +90,9 @@ class DemoResetJobTest {
         @Test
         @DisplayName("si no hay rastro de la primera migración, prefiere no borrar")
         void sinRastroNoBorra() {
-            ultimoReinicio(null);
+            lastReset(null);
 
-            new DemoResetJob(flyway, jdbc, CON_SEMILLA, 12).restablecerSiHaceMuchoQueNoSeHizo();
+            new DemoResetJob(flyway, jdbc, WITH_SEED, 12).resetIfNotResetRecently();
 
             verify(flyway, never()).clean();
         }
@@ -100,7 +100,7 @@ class DemoResetJobTest {
         @Test
         @DisplayName("con 0 horas la función está apagada y ni siquiera consulta la base de datos")
         void apagadoConCero() {
-            new DemoResetJob(flyway, jdbc, CON_SEMILLA, 0).restablecerSiHaceMuchoQueNoSeHizo();
+            new DemoResetJob(flyway, jdbc, WITH_SEED, 0).resetIfNotResetRecently();
 
             verifyNoInteractions(flyway, jdbc);
         }
@@ -108,7 +108,7 @@ class DemoResetJobTest {
         @Test
         @DisplayName("se niega si no hay semilla de demo, aunque haga mucho del último reinicio")
         void sinSemillaNoBorra() {
-            new DemoResetJob(flyway, jdbc, SIN_SEMILLA, 12).restablecerSiHaceMuchoQueNoSeHizo();
+            new DemoResetJob(flyway, jdbc, WITHOUT_SEED, 12).resetIfNotResetRecently();
 
             verifyNoInteractions(flyway);
         }

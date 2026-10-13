@@ -22,7 +22,7 @@ public interface AssignmentRepository extends JpaRepository<Assignment, UUID> {
             WHERE a.schoolClass.id = :classId
             ORDER BY a.dueDate ASC NULLS LAST, a.createdAt DESC
             """)
-    List<Assignment> findDeClase(@Param("classId") UUID classId);
+    List<Assignment> findForSchoolClass(@Param("classId") UUID classId);
 
     long countBySchoolClassId(UUID classId);
 
@@ -42,10 +42,10 @@ public interface AssignmentRepository extends JpaRepository<Assignment, UUID> {
                    SELECT m.schoolClass.id FROM Enrollment m WHERE m.user.id = :userId)
             ORDER BY a.dueDate ASC
             """)
-    List<Assignment> findConEntregaParaUsuario(@Param("orgId") UUID orgId,
+    List<Assignment> findWithSubmissionForUser(@Param("orgId") UUID orgId,
                                                @Param("userId") UUID userId,
-                                               @Param("desde") Instant desde,
-                                               @Param("hasta") Instant hasta);
+                                               @Param("desde") Instant from,
+                                               @Param("hasta") Instant until);
 
     /** Para la administración, que ve las entregas de todo el centro. */
     @Query("""
@@ -54,9 +54,9 @@ public interface AssignmentRepository extends JpaRepository<Assignment, UUID> {
               AND a.dueDate BETWEEN :desde AND :hasta
             ORDER BY a.dueDate ASC
             """)
-    List<Assignment> findConEntregaDeOrganizacion(@Param("orgId") UUID orgId,
-                                                  @Param("desde") Instant desde,
-                                                  @Param("hasta") Instant hasta);
+    List<Assignment> findWithSubmissionForOrganization(@Param("orgId") UUID orgId,
+                                                  @Param("desde") Instant from,
+                                                  @Param("hasta") Instant until);
 
     /**
      * Tareas todavía por hacer, para el resumen de perfil del alumnado: sin
@@ -75,5 +75,5 @@ public interface AssignmentRepository extends JpaRepository<Assignment, UUID> {
                   WHERE s.student.id = :studentId
                     AND s.status <> com.eduvibe.model.enums.SubmissionStatus.DRAFT)
             """)
-    long countPendientesDeAlumno(@Param("studentId") UUID studentId);
+    long countPendingForStudent(@Param("studentId") UUID studentId);
 }

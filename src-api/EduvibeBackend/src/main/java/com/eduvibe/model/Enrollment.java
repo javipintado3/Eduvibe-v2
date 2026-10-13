@@ -60,7 +60,7 @@ public class Enrollment {
         this.roleInClass = roleInClass;
     }
 
-    public boolean esProfesor() {
+    public boolean isTeacher() {
         return roleInClass == EnrollmentRole.TEACHER;
     }
 }

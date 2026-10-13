@@ -89,7 +89,7 @@ public class Grade {
     }
 
     /** Actualiza una nota ya puesta, dejando constancia de quién la revisa. */
-    public void corregir(BigDecimal rawScore, BigDecimal score, String feedback, User gradedBy,
+    public void grade(BigDecimal rawScore, BigDecimal score, String feedback, User gradedBy,
                           boolean latePenaltyApplied) {
         this.rawScore = rawScore;
         this.score = score;

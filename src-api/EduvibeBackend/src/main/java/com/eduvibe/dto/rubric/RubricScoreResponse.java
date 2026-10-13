@@ -11,11 +11,11 @@ public record RubricScoreResponse(
         BigDecimal maxPoints,
         BigDecimal points) {
 
-    public static RubricScoreResponse de(RubricScore puntuacion) {
+    public static RubricScoreResponse of(RubricScore score) {
         return new RubricScoreResponse(
-                puntuacion.getCriterion().getId(),
-                puntuacion.getCriterion().getDescription(),
-                puntuacion.getCriterion().getMaxPoints(),
-                puntuacion.getPoints());
+                score.getCriterion().getId(),
+                score.getCriterion().getDescription(),
+                score.getCriterion().getMaxPoints(),
+                score.getPoints());
     }
 }

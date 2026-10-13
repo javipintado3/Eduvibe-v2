@@ -1,4 +1,4 @@
-package com.eduvibe.dto.perfil;
+package com.eduvibe.dto.profile;
 
 import java.math.BigDecimal;
 import java.time.Instant;

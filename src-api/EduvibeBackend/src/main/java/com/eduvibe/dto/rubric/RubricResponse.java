@@ -11,10 +11,10 @@ public record RubricResponse(
         UUID id,
         List<CriterionResponse> criteria) {
 
-    public static RubricResponse de(Rubric rubrica, List<RubricCriterion> criterios) {
+    public static RubricResponse of(Rubric rubric, List<RubricCriterion> criteria) {
         return new RubricResponse(
-                rubrica.getId(),
-                criterios.stream().map(CriterionResponse::de).toList());
+                rubric.getId(),
+                criteria.stream().map(CriterionResponse::of).toList());
     }
 
     public record CriterionResponse(
@@ -22,8 +22,8 @@ public record RubricResponse(
             String description,
             BigDecimal maxPoints) {
 
-        public static CriterionResponse de(RubricCriterion criterio) {
-            return new CriterionResponse(criterio.getId(), criterio.getDescription(), criterio.getMaxPoints());
+        public static CriterionResponse of(RubricCriterion criterion) {
+            return new CriterionResponse(criterion.getId(), criterion.getDescription(), criterion.getMaxPoints());
         }
     }
 }

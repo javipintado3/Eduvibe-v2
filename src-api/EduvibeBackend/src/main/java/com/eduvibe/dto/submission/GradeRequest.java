@@ -34,7 +34,7 @@ public record GradeRequest(
         @Valid
         List<RubricScoreInput> rubricScores) {
 
-    public List<RubricScoreInput> rubricScoresOSinNinguna() {
+    public List<RubricScoreInput> rubricScoresOrNone() {
         return rubricScores == null ? List.of() : rubricScores;
     }
 }

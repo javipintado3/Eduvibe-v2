@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import com.eduvibe.dto.perfil.PersonalDataExport;
+import com.eduvibe.dto.profile.PersonalDataExport;
 import com.eduvibe.exception.BadRequestException;
 import com.eduvibe.exception.NotFoundException;
 import com.eduvibe.exception.TooManyRequestsException;
@@ -60,10 +60,10 @@ import lombok.RequiredArgsConstructor;
  */
 @Service
 @RequiredArgsConstructor
-public class DatosPersonalesService {
+public class PersonalDataService {
 
     /** Lo que queda donde había texto libre de la persona en el foro. */
-    static final String TEXTO_ELIMINADO = "[Contenido eliminado a petición de la persona]";
+    static final String DELETED_TEXT = "[Contenido eliminado a petición de la persona]";
 
     private final UserRepository userRepository;
     private final EnrollmentRepository enrollmentRepository;
@@ -82,7 +82,7 @@ public class DatosPersonalesService {
     private final RevokedTokenRepository revokedTokenRepository;
     private final GdprRequestRepository gdprRequestRepository;
     private final PasswordEncoder passwordEncoder;
-    private final DemoCuentasProtegidas demoCuentasProtegidas;
+    private final ProtectedDemoAccounts protectedDemoAccounts;
     private final LoginAttemptService loginAttemptService;
     private final TwoFactorService twoFactorService;
     private final FileStorageService fileStorageService;
@@ -90,75 +90,75 @@ public class DatosPersonalesService {
     // ------------------------------------------------------------- exportar
 
     @Transactional
-    public PersonalDataExport exportar(UUID usuarioId) {
-        User usuario = cargar(usuarioId);
+    public PersonalDataExport export(UUID userId) {
+        User user = load(userId);
 
-        List<Submission> entregas = submissionRepository.findByStudentIdOrderByCreatedAtAsc(usuarioId);
-        Map<UUID, Grade> notas = entregas.isEmpty() ? Map.of()
-                : gradeRepository.findDeEntregas(entregas.stream().map(Submission::getId).toList()).stream()
-                        .collect(Collectors.toMap(nota -> nota.getSubmission().getId(), Function.identity()));
+        List<Submission> submissions = submissionRepository.findByStudentIdOrderByCreatedAtAsc(userId);
+        Map<UUID, Grade> grades = submissions.isEmpty() ? Map.of()
+                : gradeRepository.findForSubmissions(submissions.stream().map(Submission::getId).toList()).stream()
+                        .collect(Collectors.toMap(grade -> grade.getSubmission().getId(), Function.identity()));
 
-        PersonalDataExport datos = new PersonalDataExport(
+        PersonalDataExport data = new PersonalDataExport(
                 Instant.now(),
-                new PersonalDataExport.Profile(usuario.getId(), usuario.getName(), usuario.getEmail(),
-                        usuario.getRole().getValor(), usuario.getStatus().getValor(),
-                        usuario.getOrganization().getName(), usuario.getAvatarUrl(),
-                        usuario.isTotpEnabled(), usuario.getCreatedAt()),
+                new PersonalDataExport.Profile(user.getId(), user.getName(), user.getEmail(),
+                        user.getRole().getValue(), user.getStatus().getValue(),
+                        user.getOrganization().getName(), user.getAvatarUrl(),
+                        user.isTotpEnabled(), user.getCreatedAt()),
 
-                enrollmentRepository.findByUserIdOrderBySchoolClassNameAsc(usuarioId).stream()
+                enrollmentRepository.findByUserIdOrderBySchoolClassNameAsc(userId).stream()
                         .map(m -> new PersonalDataExport.Enrollment(
                                 m.getSchoolClass().getName(), m.getRoleInClass().name().toLowerCase(), m.getEnrolledAt()))
                         .toList(),
 
-                classGroupMemberRepository.findByUserId(usuarioId).stream()
+                classGroupMemberRepository.findByUserId(userId).stream()
                         .map(m -> new PersonalDataExport.Group(
                                 m.getClassGroup().getName(), m.getClassGroup().getSchoolClass().getName()))
                         .toList(),
 
-                entregas.stream()
+                submissions.stream()
                         .map(e -> new PersonalDataExport.Submission(
                                 e.getAssignment().getSchoolClass().getName(), e.getAssignment().getTitle(),
                                 e.getContent(), e.getFileUrl(), e.getStatus().name().toLowerCase(),
-                                e.getSubmittedAt(), e.getTeacherNote(), aDto(notas.get(e.getId()))))
+                                e.getSubmittedAt(), e.getTeacherNote(), aDto(grades.get(e.getId()))))
                         .toList(),
 
-                examAttemptRepository.findByStudentIdOrderByStartedAtAsc(usuarioId).stream()
+                examAttemptRepository.findByStudentIdOrderByStartedAtAsc(userId).stream()
                         .map(i -> new PersonalDataExport.ExamAttempt(
                                 i.getExam().getSchoolClass().getName(), i.getExam().getTitle(),
                                 i.getStartedAt(), i.getSubmittedAt(), i.getScore()))
                         .toList(),
 
-                forumThreadRepository.findByAuthorIdOrderByCreatedAtAsc(usuarioId).stream()
+                forumThreadRepository.findByAuthorIdOrderByCreatedAtAsc(userId).stream()
                         .map(h -> new PersonalDataExport.ForumThread(
                                 h.getSchoolClass().getName(), h.getTitle(), h.getCreatedAt()))
                         .toList(),
 
-                forumPostRepository.findByAuthorIdOrderByCreatedAtAsc(usuarioId).stream()
+                forumPostRepository.findByAuthorIdOrderByCreatedAtAsc(userId).stream()
                         .map(p -> new PersonalDataExport.ForumPost(
                                 p.getThread().getTitle(), p.getContent(), p.getCreatedAt()))
                         .toList(),
 
-                announcementRepository.findByAuthorIdOrderByCreatedAtAsc(usuarioId).stream()
+                announcementRepository.findByAuthorIdOrderByCreatedAtAsc(userId).stream()
                         .map(a -> new PersonalDataExport.Announcement(
                                 a.getSchoolClass().getName(), a.getContent(), a.getCreatedAt()))
                         .toList(),
 
-                notificationRepository.findByUserIdOrderByCreatedAtDesc(usuarioId, Pageable.unpaged()).stream()
+                notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, Pageable.unpaged()).stream()
                         .map(n -> new PersonalDataExport.Notification(
                                 n.getType(), n.getPayload(), n.getReadAt(), n.getCreatedAt()))
                         .toList(),
 
-                loginAttemptRepository.findByEmailOrderByAttemptedAtDesc(usuario.getEmail()).stream()
+                loginAttemptRepository.findByEmailOrderByAttemptedAtDesc(user.getEmail()).stream()
                         .map(a -> new PersonalDataExport.Access(a.getIpAddress(), a.isSucceeded(), a.getAttemptedAt()))
                         .toList());
 
-        gdprRequestRepository.save(GdprRequest.atendida(usuario, GdprRequest.EXPORTAR));
-        return datos;
+        gdprRequestRepository.save(GdprRequest.handled(user, GdprRequest.EXPORT));
+        return data;
     }
 
-    private PersonalDataExport.Grade aDto(Grade nota) {
-        return nota == null ? null
-                : new PersonalDataExport.Grade(nota.getScore(), nota.getRawScore(), nota.getFeedback(), nota.getGradedAt());
+    private PersonalDataExport.Grade aDto(Grade grade) {
+        return grade == null ? null
+                : new PersonalDataExport.Grade(grade.getScore(), grade.getRawScore(), grade.getFeedback(), grade.getGradedAt());
     }
 
     // --------------------------------------------------------------- borrar
@@ -170,61 +170,61 @@ public class DatosPersonalesService {
      * para el límite de intentos del login.
      */
     @Transactional
-    public void borrarCuenta(UUID usuarioId, String password, String codigo, String ip) {
-        User usuario = cargar(usuarioId);
-        demoCuentasProtegidas.exigirNoProtegida(usuario);
+    public void deleteAccount(UUID userId, String password, String code, String ip) {
+        User user = load(userId);
+        protectedDemoAccounts.requireNotProtected(user);
 
-        if (usuario.getStatus() != UserStatus.ACTIVE) {
+        if (user.getStatus() != UserStatus.ACTIVE) {
             throw new BadRequestException("La cuenta no está activa");
         }
 
-        if (loginAttemptService.estaBloqueado(usuario.getEmail())) {
+        if (loginAttemptService.isLocked(user.getEmail())) {
             throw new TooManyRequestsException("Demasiados intentos fallidos. Vuelve a intentarlo en "
-                    + loginAttemptService.minutosDeBloqueo() + " minutos");
+                    + loginAttemptService.minutesOfLockout() + " minutos");
         }
 
-        if (!passwordEncoder.matches(password, usuario.getPasswordHash())) {
-            loginAttemptService.registrarFallo(usuario.getEmail(), ip);
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            loginAttemptService.recordFailure(user.getEmail(), ip);
             throw new BadRequestException("La contraseña no es correcta");
         }
-        if (usuario.isTotpEnabled() && !twoFactorService.codigoValido(usuario, codigo)) {
-            loginAttemptService.registrarFallo(usuario.getEmail(), ip);
+        if (user.isTotpEnabled() && !twoFactorService.validCode(user, code)) {
+            loginAttemptService.recordFailure(user.getEmail(), ip);
             throw new BadRequestException("El código de verificación no es correcto");
         }
 
         // Sin administración el centro no se puede gestionar ni recuperar
-        if (usuario.getRole() == UserRole.ADMIN && userRepository.countByOrganizationIdAndRoleAndStatus(
-                usuario.getOrganization().getId(), UserRole.ADMIN, UserStatus.ACTIVE) <= 1) {
+        if (user.getRole() == UserRole.ADMIN && userRepository.countByOrganizationIdAndRoleAndStatus(
+                user.getOrganization().getId(), UserRole.ADMIN, UserStatus.ACTIVE) <= 1) {
             throw new BadRequestException(
                     "Eres la única persona administradora activa. Nombra a otra antes de borrar tu cuenta.");
         }
 
         // Archivos que dejan de tener dueño: la foto y los adjuntos de entregas sin calificar
-        List<Submission> borradores = submissionRepository.findSinCalificarDe(usuarioId);
-        List<String> archivos = new java.util.ArrayList<>();
-        archivos.add(usuario.getAvatarUrl());
-        borradores.forEach(b -> archivos.add(b.getFileUrl()));
+        List<Submission> drafts = submissionRepository.findUngradedFor(userId);
+        List<String> files = new java.util.ArrayList<>();
+        files.add(user.getAvatarUrl());
+        drafts.forEach(b -> files.add(b.getFileUrl()));
 
         // Lo que no es expediente
-        submissionRepository.deleteAll(borradores);
-        forumPostRepository.sustituirContenidoDe(usuarioId, TEXTO_ELIMINADO);
-        forumThreadRepository.sustituirTituloDe(usuarioId, TEXTO_ELIMINADO);
-        notificationRepository.borrarDe(usuarioId);
-        invitationRepository.borrarDe(usuarioId);
-        passwordResetRepository.borrarDe(usuarioId);
-        totpRecoveryCodeRepository.borrarDe(usuarioId);
-        revokedTokenRepository.borrarDe(usuarioId);
-        loginAttemptRepository.borrarTodosDe(usuario.getEmail());
+        submissionRepository.deleteAll(drafts);
+        forumPostRepository.replaceContentOf(userId, DELETED_TEXT);
+        forumThreadRepository.replaceTitleOf(userId, DELETED_TEXT);
+        notificationRepository.deleteByUser(userId);
+        invitationRepository.deleteByUser(userId);
+        passwordResetRepository.deleteByUser(userId);
+        totpRecoveryCodeRepository.deleteByUser(userId);
+        revokedTokenRepository.deleteByUser(userId);
+        loginAttemptRepository.deleteAllByEmail(user.getEmail());
 
-        usuario.darDeBajaPorSupresion();
-        userRepository.save(usuario);
-        gdprRequestRepository.save(GdprRequest.atendida(usuario, GdprRequest.BORRAR));
+        user.deactivateForErasure();
+        userRepository.save(user);
+        gdprRequestRepository.save(GdprRequest.handled(user, GdprRequest.DELETE));
 
         // Los archivos se borran de disco solo si la transacción llega a confirmarse
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                archivos.forEach(fileStorageService::borrar);
+                files.forEach(fileStorageService::delete);
             }
         });
     }
@@ -234,7 +234,7 @@ public class DatosPersonalesService {
     /**
      * Elimina a una persona por decisión de la administración.
      *
-     * Es la otra cara de {@link #borrarCuenta}: allí la persona ejerce su derecho
+     * Es la otra cara de {@link #deleteAccount}: allí la persona ejerce su derecho
      * de supresión y se conserva su expediente identificable; aquí el centro
      * decide que ya no forma parte de él, así que se anonimiza también el nombre.
      * Lo que escribió o creó (foros, anuncios, exámenes, notas puestas) se queda
@@ -246,33 +246,33 @@ public class DatosPersonalesService {
      * no al último administrador) las hace quien llama.
      */
     @Transactional
-    public void eliminarUsuario(User usuario) {
-        UUID id = usuario.getId();
-        String avatar = usuario.getAvatarUrl();
+    public void deleteUser(User user) {
+        UUID id = user.getId();
+        String avatar = user.getAvatarUrl();
 
-        enrollmentRepository.borrarDe(id);
-        classGroupMemberRepository.borrarDe(id);
-        notificationRepository.borrarDe(id);
-        invitationRepository.borrarDe(id);
-        passwordResetRepository.borrarDe(id);
-        totpRecoveryCodeRepository.borrarDe(id);
-        revokedTokenRepository.borrarDe(id);
-        loginAttemptRepository.borrarTodosDe(usuario.getEmail());
+        enrollmentRepository.deleteByUser(id);
+        classGroupMemberRepository.deleteByUser(id);
+        notificationRepository.deleteByUser(id);
+        invitationRepository.deleteByUser(id);
+        passwordResetRepository.deleteByUser(id);
+        totpRecoveryCodeRepository.deleteByUser(id);
+        revokedTokenRepository.deleteByUser(id);
+        loginAttemptRepository.deleteAllByEmail(user.getEmail());
 
-        usuario.eliminar();
-        userRepository.save(usuario);
+        user.delete();
+        userRepository.save(user);
 
         // La foto se borra de disco solo si la transacción llega a confirmarse
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                fileStorageService.borrar(avatar);
+                fileStorageService.delete(avatar);
             }
         });
     }
 
-    private User cargar(UUID usuarioId) {
-        return userRepository.findById(usuarioId)
-                .orElseThrow(() -> NotFoundException.de("Usuario", usuarioId));
+    private User load(UUID userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> NotFoundException.of("Usuario", userId));
     }
 }

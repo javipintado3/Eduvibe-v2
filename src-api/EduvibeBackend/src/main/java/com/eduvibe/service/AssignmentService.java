@@ -43,7 +43,7 @@ public class AssignmentService {
     private final SubmissionRepository submissionRepository;
     private final UserRepository userRepository;
     private final EnrollmentRepository enrollmentRepository;
-    private final ClassAccessService acceso;
+    private final ClassAccessService access;
     private final AuthService authService;
     private final SubmissionService submissionService;
     private final NotificationService notificationService;
@@ -52,34 +52,34 @@ public class AssignmentService {
     private final ClassGroupService classGroupService;
 
     @Transactional
-    public AssignmentDetailResponse crear(UUID classId, SaveAssignmentRequest peticion) {
-        SchoolClass clase = acceso.exigirEditable(classId);
-        AuthenticatedUser autenticado = authService.identidadActual();
+    public AssignmentDetailResponse create(UUID classId, SaveAssignmentRequest request) {
+        SchoolClass schoolClass = access.requireEditable(classId);
+        AuthenticatedUser autenticado = authService.currentIdentity();
 
-        User autor = userRepository.findById(autenticado.id())
-                .orElseThrow(() -> NotFoundException.de("Usuario", autenticado.id()));
+        User author = userRepository.findById(autenticado.id())
+                .orElseThrow(() -> NotFoundException.of("Usuario", autenticado.id()));
 
-        Assignment tarea = new Assignment(clase, peticion.title().trim(), peticion.description(),
-                peticion.dueDate(), peticion.puntosOPorDefecto(), autor);
-        tarea.setTopic(topicService.resolverDeClase(peticion.topicId(), classId));
-        tarea.setLatePenaltyPercent(peticion.penalizacionOPorDefecto());
-        tarea.setWeight(peticion.pesoOPorDefecto());
-        tarea.setGroupAssignment(peticion.esGrupalOPorDefecto());
+        Assignment assignment = new Assignment(schoolClass, request.title().trim(), request.description(),
+                request.dueDate(), request.pointsOrDefault(), author);
+        assignment.setTopic(topicService.resolveOfSchoolClass(request.topicId(), classId));
+        assignment.setLatePenaltyPercent(request.penaltyOrDefault());
+        assignment.setWeight(request.weightOrDefault());
+        assignment.setGroupAssignment(request.isGroupOrDefault());
 
-        assignmentRepository.saveAndFlush(tarea);
-        notificarAlumnado(classId, clase, tarea);
+        assignmentRepository.saveAndFlush(assignment);
+        notifyStudents(classId, schoolClass, assignment);
 
-        return AssignmentDetailResponse.de(tarea, true, null, null, null);
+        return AssignmentDetailResponse.of(assignment, true, null, null, null);
     }
 
     /** Avisa a todo el alumnado matriculado de que hay una novedad con este título. */
-    private void notificarAlumnado(UUID classId, SchoolClass clase, Assignment tarea) {
+    private void notifyStudents(UUID classId, SchoolClass schoolClass, Assignment assignment) {
         List<User> alumnado = enrollmentRepository
                 .findBySchoolClassIdAndRoleInClassOrderByUserNameAsc(classId, EnrollmentRole.STUDENT)
                 .stream().map(Enrollment::getUser).toList();
 
-        notificationService.emitirParaVarios(alumnado, Notification.TAREA_NUEVA, Map.of(
-                "className", clase.getName(), "title", tarea.getTitle(), "assignmentId", tarea.getId().toString()));
+        notificationService.issueForSeveral(alumnado, Notification.NEW_ASSIGNMENT, Map.of(
+                "className", schoolClass.getName(), "title", assignment.getTitle(), "assignmentId", assignment.getId().toString()));
     }
 
     /**
@@ -90,77 +90,77 @@ public class AssignmentService {
      * entregas del alumno se consultan todas juntas, no una por tarea.
      */
     @Transactional(readOnly = true)
-    public List<AssignmentResponse> listar(UUID classId) {
-        acceso.exigirVisible(classId);
-        AuthenticatedUser usuario = authService.identidadActual();
+    public List<AssignmentResponse> list(UUID classId) {
+        access.requireVisible(classId);
+        AuthenticatedUser user = authService.currentIdentity();
 
-        List<Assignment> tareas = assignmentRepository.findDeClase(classId);
-        if (tareas.isEmpty()) {
+        List<Assignment> assignments = assignmentRepository.findForSchoolClass(classId);
+        if (assignments.isEmpty()) {
             return List.of();
         }
 
-        if (acceso.puedeCalificarEn(classId)) {
-            return tareas.stream()
-                    .map(t -> AssignmentResponse.paraProfesor(t,
+        if (access.canGradeIn(classId)) {
+            return assignments.stream()
+                    .map(t -> AssignmentResponse.forTeacher(t,
                             submissionRepository.countByAssignmentId(t.getId())))
                     .toList();
         }
 
-        List<UUID> ids = tareas.stream().map(Assignment::getId).toList();
+        List<UUID> ids = assignments.stream().map(Assignment::getId).toList();
 
-        Map<UUID, Submission> misEntregas = new HashMap<>();
-        for (Submission entrega : submissionRepository.findDeAlumnoEnTareas(usuario.id(), ids)) {
-            misEntregas.put(entrega.getAssignment().getId(), entrega);
+        Map<UUID, Submission> mySubmissions = new HashMap<>();
+        for (Submission submission : submissionRepository.findForStudentInAssignments(user.id(), ids)) {
+            mySubmissions.put(submission.getAssignment().getId(), submission);
         }
 
-        return tareas.stream().map(tarea -> {
-            Submission mia = misEntregas.get(tarea.getId());
-            return AssignmentResponse.paraAlumno(
-                    tarea,
-                    mia == null ? null : mia.getStatus().getValor(),
-                    mia == null ? null : mia.entregadaTarde());
+        return assignments.stream().map(assignment -> {
+            Submission my = mySubmissions.get(assignment.getId());
+            return AssignmentResponse.forStudent(
+                    assignment,
+                    my == null ? null : my.getStatus().getValue(),
+                    my == null ? null : my.entregadaTarde());
         }).toList();
     }
 
     @Transactional(readOnly = true)
-    public AssignmentDetailResponse detalle(UUID assignmentId) {
-        Assignment tarea = buscarVisible(assignmentId);
-        UUID classId = tarea.getSchoolClass().getId();
+    public AssignmentDetailResponse detail(UUID assignmentId) {
+        Assignment assignment = findVisible(assignmentId);
+        UUID classId = assignment.getSchoolClass().getId();
 
-        boolean puedoEditar = acceso.puedeCalificarEn(classId);
+        boolean puedoEditar = access.canGradeIn(classId);
 
         // Al profesorado no se le adjunta "su" entrega: no la tiene
-        var miEntrega = puedoEditar ? null : submissionService.miEntregaSiExiste(tarea);
-        var rubrica = rubricService.obtenerSiExiste(assignmentId);
+        var miEntrega = puedoEditar ? null : submissionService.mySubmissionIfExists(assignment);
+        var rubric = rubricService.getIfExists(assignmentId);
 
-        AuthenticatedUser autenticado = authService.identidadActual();
-        var miGrupo = (!puedoEditar && tarea.isGroupAssignment())
-                ? classGroupService.miGrupoEnClase(autenticado.id(), classId)
+        AuthenticatedUser autenticado = authService.currentIdentity();
+        var myGroup = (!puedoEditar && assignment.isGroupAssignment())
+                ? classGroupService.myGroupInSchoolClass(autenticado.id(), classId)
                 : null;
 
-        return AssignmentDetailResponse.de(tarea, puedoEditar, miEntrega, rubrica, miGrupo);
+        return AssignmentDetailResponse.of(assignment, puedoEditar, miEntrega, rubric, myGroup);
     }
 
     @Transactional
-    public AssignmentDetailResponse actualizar(UUID assignmentId, SaveAssignmentRequest peticion) {
-        Assignment tarea = assignmentRepository.findById(assignmentId)
-                .orElseThrow(() -> NotFoundException.de("Tarea", assignmentId));
+    public AssignmentDetailResponse update(UUID assignmentId, SaveAssignmentRequest request) {
+        Assignment assignment = assignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> NotFoundException.of("Tarea", assignmentId));
 
-        UUID classId = tarea.getSchoolClass().getId();
-        acceso.exigirEditable(classId);
+        UUID classId = assignment.getSchoolClass().getId();
+        access.requireEditable(classId);
 
-        tarea.setTitle(peticion.title().trim());
-        tarea.setDescription(peticion.description());
-        tarea.setDueDate(peticion.dueDate());
-        tarea.setPoints(peticion.puntosOPorDefecto());
-        tarea.setLatePenaltyPercent(peticion.penalizacionOPorDefecto());
-        tarea.setWeight(peticion.pesoOPorDefecto());
-        tarea.setGroupAssignment(peticion.esGrupalOPorDefecto());
-        tarea.setTopic(topicService.resolverDeClase(peticion.topicId(), classId));
+        assignment.setTitle(request.title().trim());
+        assignment.setDescription(request.description());
+        assignment.setDueDate(request.dueDate());
+        assignment.setPoints(request.pointsOrDefault());
+        assignment.setLatePenaltyPercent(request.penaltyOrDefault());
+        assignment.setWeight(request.weightOrDefault());
+        assignment.setGroupAssignment(request.isGroupOrDefault());
+        assignment.setTopic(topicService.resolveOfSchoolClass(request.topicId(), classId));
 
-        assignmentRepository.save(tarea);
+        assignmentRepository.save(assignment);
 
-        return AssignmentDetailResponse.de(tarea, true, null, rubricService.obtenerSiExiste(assignmentId), null);
+        return AssignmentDetailResponse.of(assignment, true, null, rubricService.getIfExists(assignmentId), null);
     }
 
     /**
@@ -169,28 +169,28 @@ public class AssignmentService {
      * entregado nada: borrar trabajo corregido no debe ser un descuido posible.
      */
     @Transactional
-    public void eliminar(UUID assignmentId) {
-        Assignment tarea = assignmentRepository.findById(assignmentId)
-                .orElseThrow(() -> NotFoundException.de("Tarea", assignmentId));
+    public void delete(UUID assignmentId) {
+        Assignment assignment = assignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> NotFoundException.of("Tarea", assignmentId));
 
-        acceso.exigirEditable(tarea.getSchoolClass().getId());
+        access.requireEditable(assignment.getSchoolClass().getId());
 
-        long entregas = submissionRepository.countByAssignmentId(assignmentId);
-        if (entregas > 0) {
+        long submissions = submissionRepository.countByAssignmentId(assignmentId);
+        if (submissions > 0) {
             throw new BadRequestException(
-                    "No se puede borrar: ya hay " + entregas + " entrega(s). Edítala o retírala del tema.");
+                    "No se puede borrar: ya hay " + submissions + " entrega(s). Edítala o retírala del tema.");
         }
 
-        assignmentRepository.delete(tarea);
+        assignmentRepository.delete(assignment);
     }
 
     /** Busca una tarea comprobando que quien pregunta pueda ver su clase. */
     @Transactional(readOnly = true)
-    public Assignment buscarVisible(UUID assignmentId) {
-        Assignment tarea = assignmentRepository.findById(assignmentId)
-                .orElseThrow(() -> NotFoundException.de("Tarea", assignmentId));
+    public Assignment findVisible(UUID assignmentId) {
+        Assignment assignment = assignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> NotFoundException.of("Tarea", assignmentId));
 
-        acceso.exigirVisible(tarea.getSchoolClass().getId());
-        return tarea;
+        access.requireVisible(assignment.getSchoolClass().getId());
+        return assignment;
     }
 }

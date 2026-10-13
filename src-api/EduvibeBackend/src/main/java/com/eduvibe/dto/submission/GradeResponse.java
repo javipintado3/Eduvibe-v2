@@ -25,14 +25,14 @@ public record GradeResponse(
         boolean latePenaltyApplied,
         List<RubricScoreResponse> rubricScores) {
 
-    public static GradeResponse de(Grade nota, List<RubricScoreResponse> rubricScores) {
+    public static GradeResponse of(Grade grade, List<RubricScoreResponse> rubricScores) {
         return new GradeResponse(
-                nota.getScore(),
-                nota.getRawScore(),
-                nota.getFeedback(),
-                nota.getGradedBy().getName(),
-                nota.getGradedAt(),
-                nota.isLatePenaltyApplied(),
+                grade.getScore(),
+                grade.getRawScore(),
+                grade.getFeedback(),
+                grade.getGradedBy().getName(),
+                grade.getGradedAt(),
+                grade.isLatePenaltyApplied(),
                 rubricScores);
     }
 }

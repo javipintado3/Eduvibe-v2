@@ -14,7 +14,7 @@ import jakarta.validation.constraints.Size;
  * crearla sin ninguno y añadírselos después uno a uno.
  *
  * Reemplaza siempre a la rúbrica anterior si ya existía (ver
- * {@link com.eduvibe.service.RubricService#guardar}); no hay un PATCH
+ * {@link com.eduvibe.service.RubricService#save}); no hay un PATCH
  * criterio a criterio.
  */
 public record SaveRubricRequest(

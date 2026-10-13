@@ -8,23 +8,23 @@ package com.eduvibe.model.enums;
  * admite varios profesores, y por eso esto vive en enrollments y no en una
  * columna de classes.
  */
-public enum EnrollmentRole implements EnumConValor {
+public enum EnrollmentRole implements EnumWithValue {
 
     TEACHER("teacher"),
     STUDENT("student");
 
-    private final String valor;
+    private final String value;
 
-    EnrollmentRole(String valor) {
-        this.valor = valor;
+    EnrollmentRole(String value) {
+        this.value = value;
     }
 
     @Override
-    public String getValor() {
-        return valor;
+    public String getValue() {
+        return value;
     }
 
-    public static EnrollmentRole desdeValor(String valor) {
-        return EnumConValor.desde(EnrollmentRole.class, valor);
+    public static EnrollmentRole fromValue(String value) {
+        return EnumWithValue.from(EnrollmentRole.class, value);
     }
 }

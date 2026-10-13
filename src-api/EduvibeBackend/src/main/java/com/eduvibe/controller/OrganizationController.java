@@ -24,14 +24,14 @@ public class OrganizationController {
     private final OrganizationService organizationService;
 
     @GetMapping
-    public ResponseEntity<OrganizationResponse> obtener() {
-        return ResponseEntity.ok(organizationService.obtener());
+    public ResponseEntity<OrganizationResponse> get() {
+        return ResponseEntity.ok(organizationService.get());
     }
 
     @PutMapping("/allowed-domain")
-    public ResponseEntity<OrganizationResponse> cambiarDominioPermitido(
-            @RequestBody UpdateAllowedDomainRequest peticion) {
+    public ResponseEntity<OrganizationResponse> changeAllowedDomain(
+            @RequestBody UpdateAllowedDomainRequest request) {
 
-        return ResponseEntity.ok(organizationService.cambiarDominioPermitido(peticion.allowedDomain()));
+        return ResponseEntity.ok(organizationService.changeAllowedDomain(request.allowedDomain()));
     }
 }

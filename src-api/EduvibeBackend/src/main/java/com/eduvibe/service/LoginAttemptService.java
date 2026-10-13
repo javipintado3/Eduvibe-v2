@@ -32,39 +32,39 @@ public class LoginAttemptService {
     private static final Logger LOG = LoggerFactory.getLogger(LoginAttemptService.class);
 
     /** Cuánto se conserva el historial de intentos. */
-    private static final Duration RETENCION = Duration.ofDays(90);
+    private static final Duration RETENTION = Duration.ofDays(90);
 
     private final LoginAttemptRepository repository;
-    private final AppProperties propiedades;
+    private final AppProperties properties;
 
     /** Minutos que dura el bloqueo, para poder avisar al usuario. */
-    public long minutosDeBloqueo() {
-        return propiedades.login().lockoutMinutes();
+    public long minutesOfLockout() {
+        return properties.login().lockoutMinutes();
     }
 
     @Transactional(readOnly = true)
-    public boolean estaBloqueado(String email) {
-        Instant desde = Instant.now().minus(Duration.ofMinutes(propiedades.login().lockoutMinutes()));
-        long fallos = repository.countByEmailAndSucceededFalseAndAttemptedAtAfter(email, desde);
-        return fallos >= propiedades.login().maxFailedAttempts();
+    public boolean isLocked(String email) {
+        Instant from = Instant.now().minus(Duration.ofMinutes(properties.login().lockoutMinutes()));
+        long failures = repository.countByEmailAndSucceededFalseAndAttemptedAtAfter(email, from);
+        return failures >= properties.login().maxFailedAttempts();
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void registrarFallo(String email, String ip) {
+    public void recordFailure(String email, String ip) {
         repository.save(new LoginAttempt(email, ip, false));
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void registrarExito(String email, String ip) {
-        repository.borrarFallosDe(email);
+    public void recordSuccess(String email, String ip) {
+        repository.deleteFailuresByEmail(email);
         repository.save(new LoginAttempt(email, ip, true));
     }
 
     /** Cada noche se purga lo que supera el plazo de retención. */
     @Scheduled(cron = "0 30 3 * * *")
     @Transactional
-    public void purgarAntiguos() {
-        int borrados = repository.borrarAnterioresA(Instant.now().minus(RETENCION));
-        LOG.info("Purgados {} intentos de login de más de {} días", borrados, RETENCION.toDays());
+    public void purgeOld() {
+        int deleted = repository.deleteOlderThan(Instant.now().minus(RETENTION));
+        LOG.info("Purgados {} intentos de login de más de {} días", deleted, RETENTION.toDays());
     }
 }

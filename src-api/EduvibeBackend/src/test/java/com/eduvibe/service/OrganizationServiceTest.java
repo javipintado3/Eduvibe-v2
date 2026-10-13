@@ -33,75 +33,75 @@ class OrganizationServiceTest {
     @Mock
     private AuthService authService;
 
-    private OrganizationService servicio;
+    private OrganizationService service;
 
-    private final UUID idCentro = UUID.randomUUID();
-    private Organization centro;
+    private final UUID organizationId = UUID.randomUUID();
+    private Organization organization;
 
     @BeforeEach
     void preparar() {
-        servicio = new OrganizationService(organizationRepository, authService);
-        centro = new Organization("Centro", null);
-        centro.setId(idCentro);
-        when(authService.identidadActual()).thenReturn(
-                new AuthenticatedUser(UUID.randomUUID(), "admin@centro.es", "Admin", UserRole.ADMIN, idCentro));
-        when(organizationRepository.findById(idCentro)).thenReturn(Optional.of(centro));
+        service = new OrganizationService(organizationRepository, authService);
+        organization = new Organization("Centro", null);
+        organization.setId(organizationId);
+        when(authService.currentIdentity()).thenReturn(
+                new AuthenticatedUser(UUID.randomUUID(), "admin@centro.es", "Admin", UserRole.ADMIN, organizationId));
+        when(organizationRepository.findById(organizationId)).thenReturn(Optional.of(organization));
     }
 
     @Test
     @DisplayName("guarda el dominio normalizado: sin arroba inicial, sin espacios y en minúsculas")
     void normalizaElDominio() {
-        OrganizationResponse respuesta = servicio.cambiarDominioPermitido("  @IESAlixar.EDU ");
+        OrganizationResponse answer = service.changeAllowedDomain("  @IESAlixar.EDU ");
 
-        assertThat(respuesta.allowedDomain()).isEqualTo("iesalixar.edu");
-        assertThat(centro.getAllowedDomain()).isEqualTo("iesalixar.edu");
-        verify(organizationRepository).save(centro);
+        assertThat(answer.allowedDomain()).isEqualTo("iesalixar.edu");
+        assertThat(organization.getAllowedDomain()).isEqualTo("iesalixar.edu");
+        verify(organizationRepository).save(organization);
     }
 
     @Test
     @DisplayName("un valor vacío quita la restricción")
     void vacioQuitaLaRestriccion() {
-        centro.setAllowedDomain("iesalixar.edu");
+        organization.setAllowedDomain("iesalixar.edu");
 
-        servicio.cambiarDominioPermitido("  ");
+        service.changeAllowedDomain("  ");
 
-        assertThat(centro.getAllowedDomain()).isNull();
+        assertThat(organization.getAllowedDomain()).isNull();
     }
 
     @Test
     @DisplayName("rechaza un dominio con formato imposible")
     void rechazaFormatoInvalido() {
-        assertThatThrownBy(() -> servicio.cambiarDominioPermitido("no es un dominio"))
+        assertThatThrownBy(() -> service.changeAllowedDomain("no es un dominio"))
                 .isInstanceOf(BadRequestException.class);
-        assertThatThrownBy(() -> servicio.cambiarDominioPermitido("sinpunto"))
+        assertThatThrownBy(() -> service.changeAllowedDomain("sinpunto"))
                 .isInstanceOf(BadRequestException.class);
-        assertThatThrownBy(() -> servicio.cambiarDominioPermitido("uno@dos.es"))
+        assertThatThrownBy(() -> service.changeAllowedDomain("uno@dos.es"))
                 .isInstanceOf(BadRequestException.class);
 
-        verify(organizationRepository, never()).save(centro);
+        verify(organizationRepository, never()).save(organization);
     }
 
     @Test
     @DisplayName("avisa con claridad si otro centro ya tiene ese dominio")
     void dominioDeOtroCentro() {
-        Organization otro = new Organization("Otro", "iesalixar.edu");
-        otro.setId(UUID.randomUUID());
-        when(organizationRepository.findByAllowedDomain("iesalixar.edu")).thenReturn(Optional.of(otro));
+        Organization other = new Organization("Otro", "iesalixar.edu");
+        other.setId(UUID.randomUUID());
+        when(organizationRepository.findByAllowedDomain("iesalixar.edu")).thenReturn(Optional.of(other));
 
-        assertThatThrownBy(() -> servicio.cambiarDominioPermitido("iesalixar.edu"))
+        assertThatThrownBy(() -> service.changeAllowedDomain("iesalixar.edu"))
                 .isInstanceOf(ConflictException.class);
 
-        verify(organizationRepository, never()).save(centro);
+        verify(organizationRepository, never()).save(organization);
     }
 
     @Test
     @DisplayName("volver a guardar el dominio que ya tiene el propio centro no es un conflicto")
     void mismoDominioDelPropioCentro() {
-        centro.setAllowedDomain("iesalixar.edu");
-        when(organizationRepository.findByAllowedDomain("iesalixar.edu")).thenReturn(Optional.of(centro));
+        organization.setAllowedDomain("iesalixar.edu");
+        when(organizationRepository.findByAllowedDomain("iesalixar.edu")).thenReturn(Optional.of(organization));
 
-        servicio.cambiarDominioPermitido("iesalixar.edu");
+        service.changeAllowedDomain("iesalixar.edu");
 
-        verify(organizationRepository).save(centro);
+        verify(organizationRepository).save(organization);
     }
 }

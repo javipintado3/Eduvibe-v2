@@ -29,7 +29,7 @@ import com.eduvibe.repository.UserRepository;
 import com.eduvibe.security.AuthenticatedUser;
 
 @ExtendWith(MockitoExtension.class)
-class SesionServiceTest {
+class SessionServiceTest {
 
     @Mock
     private UserRepository userRepository;
@@ -37,99 +37,99 @@ class SesionServiceTest {
     @Mock
     private RevokedTokenRepository revokedTokenRepository;
 
-    private SesionService servicio;
+    private SessionService service;
 
-    private final UUID idUsuario = UUID.randomUUID();
+    private final UUID userId = UUID.randomUUID();
     private final UUID idToken = UUID.randomUUID();
-    private User usuario;
+    private User user;
 
     @BeforeEach
     void preparar() {
-        servicio = new SesionService(userRepository, revokedTokenRepository);
-        usuario = new User(new Organization("Centro", null), "ana@centro.es", "Ana", UserRole.STUDENT);
-        usuario.activarCon("$2a$10$hash");
+        service = new SessionService(userRepository, revokedTokenRepository);
+        user = new User(new Organization("Centro", null), "ana@centro.es", "Ana", UserRole.STUDENT);
+        user.enableWith("$2a$10$hash");
     }
 
-    private AuthenticatedUser identidad(int version) {
-        return new AuthenticatedUser(idUsuario, "ana@centro.es", "Ana", UserRole.STUDENT, UUID.randomUUID(),
-                new AuthenticatedUser.Sesion(idToken, version, Instant.now().plusSeconds(3600)));
+    private AuthenticatedUser identity(int version) {
+        return new AuthenticatedUser(userId, "ana@centro.es", "Ana", UserRole.STUDENT, UUID.randomUUID(),
+                new AuthenticatedUser.Session(idToken, version, Instant.now().plusSeconds(3600)));
     }
 
     @Nested
     @DisplayName("¿Sigue vigente el token?")
-    class EstaVigente {
+    class IsValid {
 
         @Test
         @DisplayName("sí, si no está revocado, la versión coincide y la cuenta está activa")
         void vigente() {
-            when(userRepository.findById(idUsuario)).thenReturn(Optional.of(usuario));
+            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
-            assertThat(servicio.estaVigente(identidad(0))).isTrue();
+            assertThat(service.isValid(identity(0))).isTrue();
         }
 
         @Test
         @DisplayName("no, si el token se ha revocado al cerrar sesión")
         void revocado() {
-            when(userRepository.findById(idUsuario)).thenReturn(Optional.of(usuario));
+            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
             when(revokedTokenRepository.existsById(idToken)).thenReturn(true);
 
-            assertThat(servicio.estaVigente(identidad(0))).isFalse();
+            assertThat(service.isValid(identity(0))).isFalse();
         }
 
         @Test
         @DisplayName("no, si desde que se emitió se han invalidado todas las sesiones del usuario")
         void versionAntigua() {
-            usuario.invalidarSesiones();
-            when(userRepository.findById(idUsuario)).thenReturn(Optional.of(usuario));
+            user.invalidateSessions();
+            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
-            assertThat(servicio.estaVigente(identidad(0))).isFalse();
+            assertThat(service.isValid(identity(0))).isFalse();
         }
 
         @Test
         @DisplayName("no, si la cuenta se ha desactivado: el acceso se corta al instante, no a las 8 horas")
         void cuentaDesactivada() {
-            usuario.setStatus(UserStatus.DISABLED);
-            when(userRepository.findById(idUsuario)).thenReturn(Optional.of(usuario));
+            user.setStatus(UserStatus.DISABLED);
+            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
-            assertThat(servicio.estaVigente(identidad(0))).isFalse();
+            assertThat(service.isValid(identity(0))).isFalse();
         }
 
         @Test
         @DisplayName("no, si el usuario ya no existe")
         void usuarioInexistente() {
-            when(userRepository.findById(idUsuario)).thenReturn(Optional.empty());
+            when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
-            assertThat(servicio.estaVigente(identidad(0))).isFalse();
+            assertThat(service.isValid(identity(0))).isFalse();
         }
 
         @Test
         @DisplayName("un token anterior a la revocación (sin id) sigue valiendo mientras no cambie la versión")
         void tokenSinId() {
-            when(userRepository.findById(idUsuario)).thenReturn(Optional.of(usuario));
-            AuthenticatedUser sinId = new AuthenticatedUser(idUsuario, "ana@centro.es", "Ana", UserRole.STUDENT,
-                    UUID.randomUUID(), new AuthenticatedUser.Sesion(null, 0, Instant.now().plusSeconds(60)));
+            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+            AuthenticatedUser withoutId = new AuthenticatedUser(userId, "ana@centro.es", "Ana", UserRole.STUDENT,
+                    UUID.randomUUID(), new AuthenticatedUser.Session(null, 0, Instant.now().plusSeconds(60)));
 
-            assertThat(servicio.estaVigente(sinId)).isTrue();
+            assertThat(service.isValid(withoutId)).isTrue();
             verify(revokedTokenRepository, never()).existsById(any());
         }
     }
 
     @Nested
     @DisplayName("Cerrar sesión")
-    class Cerrar {
+    class Close {
 
         @Test
         @DisplayName("apunta el token concreto como revocado, con su caducidad para poder purgarlo")
         void apuntaElToken() {
-            AuthenticatedUser identidad = identidad(0);
+            AuthenticatedUser identity = identity(0);
 
-            servicio.cerrar(identidad);
+            service.close(identity);
 
-            ArgumentCaptor<RevokedToken> guardado = ArgumentCaptor.forClass(RevokedToken.class);
-            verify(revokedTokenRepository).save(guardado.capture());
-            assertThat(guardado.getValue().getJti()).isEqualTo(idToken);
-            assertThat(guardado.getValue().getUserId()).isEqualTo(idUsuario);
-            assertThat(guardado.getValue().getExpiresAt()).isEqualTo(identidad.sesion().expiresAt());
+            ArgumentCaptor<RevokedToken> saved = ArgumentCaptor.forClass(RevokedToken.class);
+            verify(revokedTokenRepository).save(saved.capture());
+            assertThat(saved.getValue().getJti()).isEqualTo(idToken);
+            assertThat(saved.getValue().getUserId()).isEqualTo(userId);
+            assertThat(saved.getValue().getExpiresAt()).isEqualTo(identity.session().expiresAt());
         }
 
         @Test
@@ -137,7 +137,7 @@ class SesionServiceTest {
         void idempotente() {
             when(revokedTokenRepository.existsById(idToken)).thenReturn(true);
 
-            servicio.cerrar(identidad(0));
+            service.close(identity(0));
 
             verify(revokedTokenRepository, never()).save(any());
         }
@@ -145,11 +145,11 @@ class SesionServiceTest {
         @Test
         @DisplayName("la purga borra los revocados que ya habrían caducado")
         void purga() {
-            when(revokedTokenRepository.borrarCaducadosAntesDe(any(Instant.class))).thenReturn(2);
+            when(revokedTokenRepository.deleteExpiredBefore(any(Instant.class))).thenReturn(2);
 
-            servicio.purgarCaducados();
+            service.purgeExpired();
 
-            verify(revokedTokenRepository).borrarCaducadosAntesDe(any(Instant.class));
+            verify(revokedTokenRepository).deleteExpiredBefore(any(Instant.class));
         }
     }
 }

@@ -17,7 +17,7 @@ public interface ExamRepository extends JpaRepository<Exam, UUID> {
             WHERE e.schoolClass.id = :classId
             ORDER BY e.dueDate ASC NULLS LAST, e.createdAt DESC
             """)
-    List<Exam> findDeClase(@Param("classId") UUID classId);
+    List<Exam> findForSchoolClass(@Param("classId") UUID classId);
 
     long countByTopicId(UUID topicId);
 }

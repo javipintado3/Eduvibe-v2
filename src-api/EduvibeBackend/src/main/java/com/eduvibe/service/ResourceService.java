@@ -21,77 +21,77 @@ import lombok.RequiredArgsConstructor;
  * Materiales de una clase: apuntes, enlaces, vídeos.
  *
  * Como con avisos y tareas, solo el profesorado de la clase (o administración)
- * gestiona los materiales; lo decide {@link ClassAccessService#exigirEditable}.
+ * gestiona los materiales; lo decide {@link ClassAccessService#requireEditable}.
  */
 @Service
 @RequiredArgsConstructor
 public class ResourceService {
 
     private final ResourceRepository resourceRepository;
-    private final ClassAccessService acceso;
+    private final ClassAccessService access;
     private final TopicService topicService;
 
     @Transactional(readOnly = true)
-    public List<ResourceResponse> listar(UUID classId) {
-        acceso.exigirVisible(classId);
-        boolean esProfesor = acceso.puedeCalificarEn(classId);
+    public List<ResourceResponse> list(UUID classId) {
+        access.requireVisible(classId);
+        boolean isTeacher = access.canGradeIn(classId);
 
         return resourceRepository.findBySchoolClassIdOrderBySortOrderAscTitleAsc(classId)
                 .stream()
-                .map(material -> ResourceResponse.de(material, esProfesor))
+                .map(material -> ResourceResponse.of(material, isTeacher))
                 .toList();
     }
 
     /** El orden es automático: cada material nuevo va al final de la lista de la clase. */
     @Transactional
-    public ResourceResponse crear(UUID classId, SaveResourceRequest peticion) {
-        SchoolClass clase = acceso.exigirEditable(classId);
-        Topic tema = topicService.resolverDeClase(peticion.topicId(), classId);
+    public ResourceResponse create(UUID classId, SaveResourceRequest request) {
+        SchoolClass schoolClass = access.requireEditable(classId);
+        Topic topic = topicService.resolveOfSchoolClass(request.topicId(), classId);
 
-        int orden = resourceRepository.findBySchoolClassIdOrderBySortOrderAscTitleAsc(classId).size();
+        int order = resourceRepository.findBySchoolClassIdOrderBySortOrderAscTitleAsc(classId).size();
 
-        Resource material = new Resource(clase, peticion.title().trim(), normalizar(peticion.fileUrl()),
-                tipoOSinTipo(peticion.type()), orden);
-        material.setTopic(tema);
-        material.setAvailableFrom(peticion.availableFrom());
+        Resource material = new Resource(schoolClass, request.title().trim(), normalize(request.fileUrl()),
+                typeOrNone(request.type()), order);
+        material.setTopic(topic);
+        material.setAvailableFrom(request.availableFrom());
         resourceRepository.saveAndFlush(material);
 
-        return ResourceResponse.de(material, true);
+        return ResourceResponse.of(material, true);
     }
 
     @Transactional
-    public ResourceResponse actualizar(UUID resourceId, SaveResourceRequest peticion) {
+    public ResourceResponse update(UUID resourceId, SaveResourceRequest request) {
         Resource material = resourceRepository.findById(resourceId)
-                .orElseThrow(() -> NotFoundException.de("Material", resourceId));
+                .orElseThrow(() -> NotFoundException.of("Material", resourceId));
 
         UUID classId = material.getSchoolClass().getId();
-        acceso.exigirEditable(classId);
+        access.requireEditable(classId);
 
-        material.setTitle(peticion.title().trim());
-        material.setFileUrl(normalizar(peticion.fileUrl()));
-        material.setType(tipoOSinTipo(peticion.type()));
-        material.setTopic(topicService.resolverDeClase(peticion.topicId(), classId));
-        material.setAvailableFrom(peticion.availableFrom());
+        material.setTitle(request.title().trim());
+        material.setFileUrl(normalize(request.fileUrl()));
+        material.setType(typeOrNone(request.type()));
+        material.setTopic(topicService.resolveOfSchoolClass(request.topicId(), classId));
+        material.setAvailableFrom(request.availableFrom());
         resourceRepository.save(material);
 
-        return ResourceResponse.de(material, true);
+        return ResourceResponse.of(material, true);
     }
 
     @Transactional
-    public void eliminar(UUID resourceId) {
+    public void delete(UUID resourceId) {
         Resource material = resourceRepository.findById(resourceId)
-                .orElseThrow(() -> NotFoundException.de("Material", resourceId));
+                .orElseThrow(() -> NotFoundException.of("Material", resourceId));
 
-        acceso.exigirEditable(material.getSchoolClass().getId());
+        access.requireEditable(material.getSchoolClass().getId());
 
         resourceRepository.delete(material);
     }
 
-    private ResourceType tipoOSinTipo(String type) {
-        return (type == null || type.isBlank()) ? null : ResourceType.desdeValor(type);
+    private ResourceType typeOrNone(String type) {
+        return (type == null || type.isBlank()) ? null : ResourceType.fromValue(type);
     }
 
-    private String normalizar(String texto) {
+    private String normalize(String texto) {
         return (texto == null || texto.isBlank()) ? null : texto.trim();
     }
 }

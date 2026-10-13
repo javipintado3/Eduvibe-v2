@@ -21,64 +21,64 @@ public final class Csv {
     }
 
     public static String fila(String... campos) {
-        StringBuilder linea = new StringBuilder();
+        StringBuilder line = new StringBuilder();
         for (int i = 0; i < campos.length; i++) {
             if (i > 0) {
-                linea.append(',');
+                line.append(',');
             }
-            linea.append(escapar(campos[i]));
+            line.append(escape(campos[i]));
         }
-        return linea.toString();
+        return line.toString();
     }
 
-    private static String escapar(String valor) {
-        if (valor == null) {
+    private static String escape(String value) {
+        if (value == null) {
             return "";
         }
-        boolean necesitaComillas = valor.contains(",") || valor.contains("\"")
-                || valor.contains("\n") || valor.contains("\r");
-        String escapado = valor.replace("\"", "\"\"");
-        return necesitaComillas ? "\"" + escapado + "\"" : escapado;
+        boolean needsQuotes = value.contains(",") || value.contains("\"")
+                || value.contains("\n") || value.contains("\r");
+        String escaped = value.replace("\"", "\"\"");
+        return needsQuotes ? "\"" + escaped + "\"" : escaped;
     }
 
     /** Cada fila ya separada en campos. La primera fila es la cabecera, si la hay. */
-    public static List<List<String>> leer(Reader entrada) throws IOException {
+    public static List<List<String>> read(Reader input) throws IOException {
         List<List<String>> filas = new ArrayList<>();
 
-        try (BufferedReader lector = new BufferedReader(entrada)) {
-            String linea;
-            while ((linea = lector.readLine()) != null) {
-                if (linea.isBlank()) {
+        try (BufferedReader reader = new BufferedReader(input)) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.isBlank()) {
                     continue;
                 }
-                filas.add(parsearLinea(linea));
+                filas.add(parseLine(line));
             }
         }
         return filas;
     }
 
-    private static List<String> parsearLinea(String linea) {
+    private static List<String> parseLine(String line) {
         List<String> campos = new ArrayList<>();
         StringBuilder actual = new StringBuilder();
-        boolean entreComillas = false;
+        boolean betweenQuotes = false;
 
-        for (int i = 0; i < linea.length(); i++) {
-            char c = linea.charAt(i);
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
 
-            if (entreComillas) {
+            if (betweenQuotes) {
                 if (c == '"') {
-                    boolean comillaEscapada = i + 1 < linea.length() && linea.charAt(i + 1) == '"';
-                    if (comillaEscapada) {
+                    boolean escapedQuote = i + 1 < line.length() && line.charAt(i + 1) == '"';
+                    if (escapedQuote) {
                         actual.append('"');
                         i++;
                     } else {
-                        entreComillas = false;
+                        betweenQuotes = false;
                     }
                 } else {
                     actual.append(c);
                 }
             } else if (c == '"') {
-                entreComillas = true;
+                betweenQuotes = true;
             } else if (c == ',') {
                 campos.add(actual.toString().trim());
                 actual.setLength(0);

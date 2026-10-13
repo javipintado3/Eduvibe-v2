@@ -49,43 +49,43 @@ class PasswordResetServiceTest {
     @Mock
     private MailService mailService;
 
-    private PasswordResetService servicio;
+    private PasswordResetService service;
 
     @BeforeEach
     void crearServicio() {
-        AppProperties propiedades = new AppProperties(null, null, "http://localhost:4200", null,
+        AppProperties properties = new AppProperties(null, null, "http://localhost:4200", null,
                 null, new AppProperties.PasswordReset(60), null);
-        servicio = new PasswordResetService(
-                passwordResetRepository, userRepository, passwordEncoder, mailService, propiedades);
+        service = new PasswordResetService(
+                passwordResetRepository, userRepository, passwordEncoder, mailService, properties);
     }
 
-    private User usuarioActivo() {
-        User usuario = new User(new Organization("Centro", null), EMAIL, "Ana", UserRole.STUDENT);
-        usuario.activarCon("$2a$10$hashAntiguo");
-        return usuario;
+    private User activeUser() {
+        User user = new User(new Organization("Centro", null), EMAIL, "Ana", UserRole.STUDENT);
+        user.enableWith("$2a$10$hashAntiguo");
+        return user;
     }
 
     @Nested
     @DisplayName("Solicitar")
-    class Solicitar {
+    class Request {
 
         @Test
         @DisplayName("con una cuenta activa guarda solo el hash del token y envía el enlace con el token en claro")
         void cuentaActiva() {
-            User usuario = usuarioActivo();
-            when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(usuario));
+            User user = activeUser();
+            when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
 
-            servicio.solicitar(EMAIL);
+            service.request(EMAIL);
 
-            ArgumentCaptor<PasswordReset> guardado = ArgumentCaptor.forClass(PasswordReset.class);
-            verify(passwordResetRepository).save(guardado.capture());
-            ArgumentCaptor<String> enlace = ArgumentCaptor.forClass(String.class);
-            verify(mailService).enviarRestablecimiento(any(User.class), enlace.capture());
+            ArgumentCaptor<PasswordReset> saved = ArgumentCaptor.forClass(PasswordReset.class);
+            verify(passwordResetRepository).save(saved.capture());
+            ArgumentCaptor<String> link = ArgumentCaptor.forClass(String.class);
+            verify(mailService).sendReset(any(User.class), link.capture());
 
-            String token = enlace.getValue().substring(enlace.getValue().lastIndexOf('/') + 1);
-            assertThat(enlace.getValue()).startsWith("http://localhost:4200/restablecer/");
-            assertThat(guardado.getValue().getTokenHash()).isEqualTo(Tokens.hashear(token));
-            assertThat(guardado.getValue().getTokenHash()).isNotEqualTo(token);
+            String token = link.getValue().substring(link.getValue().lastIndexOf('/') + 1);
+            assertThat(link.getValue()).startsWith("http://localhost:4200/restablecer/");
+            assertThat(saved.getValue().getTokenHash()).isEqualTo(Tokens.hash(token));
+            assertThat(saved.getValue().getTokenHash()).isNotEqualTo(token);
         }
 
         @Test
@@ -93,7 +93,7 @@ class PasswordResetServiceTest {
         void emailInexistente() {
             when(userRepository.findByEmail("no-existe@centro.es")).thenReturn(Optional.empty());
 
-            servicio.solicitar("no-existe@centro.es");
+            service.request("no-existe@centro.es");
 
             verifyNoInteractions(passwordResetRepository, mailService);
         }
@@ -101,10 +101,10 @@ class PasswordResetServiceTest {
         @Test
         @DisplayName("con una cuenta pendiente de invitación no envía nada: la recuperación nunca activa cuentas")
         void cuentaPendiente() {
-            User pendiente = new User(new Organization("Centro", null), EMAIL, "Ana", UserRole.STUDENT);
-            when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(pendiente));
+            User pending = new User(new Organization("Centro", null), EMAIL, "Ana", UserRole.STUDENT);
+            when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(pending));
 
-            servicio.solicitar(EMAIL);
+            service.request(EMAIL);
 
             verifyNoInteractions(passwordResetRepository, mailService);
         }
@@ -112,12 +112,12 @@ class PasswordResetServiceTest {
         @Test
         @DisplayName("si acaba de pedir otro enlace ignora la petición, para no llenar de correos la bandeja")
         void esperaEntrePeticiones() {
-            User usuario = usuarioActivo();
-            when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(usuario));
+            User user = activeUser();
+            when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
             when(passwordResetRepository.existsByUserIdAndCreatedAtAfter(any(), any(Instant.class)))
                     .thenReturn(true);
 
-            servicio.solicitar(EMAIL);
+            service.request(EMAIL);
 
             verifyNoInteractions(mailService);
             verify(passwordResetRepository, never()).save(any());
@@ -126,27 +126,27 @@ class PasswordResetServiceTest {
 
     @Nested
     @DisplayName("Restablecer")
-    class Restablecer {
+    class Reset {
 
-        private PasswordReset enlaceVigente(User usuario) {
-            return new PasswordReset(usuario, Tokens.hashear("token-bueno"),
+        private PasswordReset validLink(User user) {
+            return new PasswordReset(user, Tokens.hash("token-bueno"),
                     Instant.now().plusSeconds(600));
         }
 
         @Test
         @DisplayName("con un enlace válido cambia la contraseña e invalida los demás enlaces")
         void enlaceValido() {
-            User usuario = usuarioActivo();
-            when(passwordResetRepository.findByTokenHash(Tokens.hashear("token-bueno")))
-                    .thenReturn(Optional.of(enlaceVigente(usuario)));
+            User user = activeUser();
+            when(passwordResetRepository.findByTokenHash(Tokens.hash("token-bueno")))
+                    .thenReturn(Optional.of(validLink(user)));
             when(passwordEncoder.encode("nueva-clave")).thenReturn("$2a$10$hashNuevo");
 
-            servicio.restablecer("token-bueno", "nueva-clave");
+            service.reset("token-bueno", "nueva-clave");
 
-            assertThat(usuario.getPasswordHash()).isEqualTo("$2a$10$hashNuevo");
-            verify(userRepository).save(usuario);
-            verify(passwordResetRepository).invalidarPendientesDe(usuario.getId());
-            assertThat(usuario.getTokenVersion()).isEqualTo(1);
+            assertThat(user.getPasswordHash()).isEqualTo("$2a$10$hashNuevo");
+            verify(userRepository).save(user);
+            verify(passwordResetRepository).invalidatePendingFor(user.getId());
+            assertThat(user.getTokenVersion()).isEqualTo(1);
         }
 
         @Test
@@ -154,7 +154,7 @@ class PasswordResetServiceTest {
         void tokenDesconocido() {
             when(passwordResetRepository.findByTokenHash(anyString())).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> servicio.restablecer("inventado", "nueva-clave"))
+            assertThatThrownBy(() -> service.reset("inventado", "nueva-clave"))
                     .isInstanceOf(BadRequestException.class);
 
             verify(userRepository, never()).save(any());
@@ -163,28 +163,28 @@ class PasswordResetServiceTest {
         @Test
         @DisplayName("con un enlace caducado lanza el mismo error y no cambia la contraseña")
         void enlaceCaducado() {
-            User usuario = usuarioActivo();
-            PasswordReset caducado = new PasswordReset(usuario, Tokens.hashear("token-viejo"),
+            User user = activeUser();
+            PasswordReset expired = new PasswordReset(user, Tokens.hash("token-viejo"),
                     Instant.now().minusSeconds(1));
-            when(passwordResetRepository.findByTokenHash(Tokens.hashear("token-viejo")))
-                    .thenReturn(Optional.of(caducado));
+            when(passwordResetRepository.findByTokenHash(Tokens.hash("token-viejo")))
+                    .thenReturn(Optional.of(expired));
 
-            assertThatThrownBy(() -> servicio.restablecer("token-viejo", "nueva-clave"))
+            assertThatThrownBy(() -> service.reset("token-viejo", "nueva-clave"))
                     .isInstanceOf(BadRequestException.class);
 
-            assertThat(usuario.getPasswordHash()).isEqualTo("$2a$10$hashAntiguo");
+            assertThat(user.getPasswordHash()).isEqualTo("$2a$10$hashAntiguo");
         }
 
         @Test
         @DisplayName("con un enlace ya usado lanza el mismo error")
         void enlaceYaUsado() {
-            User usuario = usuarioActivo();
-            PasswordReset usado = enlaceVigente(usuario);
-            usado.marcarComoUsado();
-            when(passwordResetRepository.findByTokenHash(Tokens.hashear("token-bueno")))
-                    .thenReturn(Optional.of(usado));
+            User user = activeUser();
+            PasswordReset used = validLink(user);
+            used.markAsUsed();
+            when(passwordResetRepository.findByTokenHash(Tokens.hash("token-bueno")))
+                    .thenReturn(Optional.of(used));
 
-            assertThatThrownBy(() -> servicio.restablecer("token-bueno", "nueva-clave"))
+            assertThatThrownBy(() -> service.reset("token-bueno", "nueva-clave"))
                     .isInstanceOf(BadRequestException.class);
 
             verify(userRepository, never()).save(any());
@@ -193,12 +193,12 @@ class PasswordResetServiceTest {
         @Test
         @DisplayName("si la cuenta se desactivó entre la petición y el uso, no cambia la contraseña")
         void cuentaDesactivada() {
-            User usuario = usuarioActivo();
-            usuario.setStatus(com.eduvibe.model.enums.UserStatus.DISABLED);
-            when(passwordResetRepository.findByTokenHash(Tokens.hashear("token-bueno")))
-                    .thenReturn(Optional.of(enlaceVigente(usuario)));
+            User user = activeUser();
+            user.setStatus(com.eduvibe.model.enums.UserStatus.DISABLED);
+            when(passwordResetRepository.findByTokenHash(Tokens.hash("token-bueno")))
+                    .thenReturn(Optional.of(validLink(user)));
 
-            assertThatThrownBy(() -> servicio.restablecer("token-bueno", "nueva-clave"))
+            assertThatThrownBy(() -> service.reset("token-bueno", "nueva-clave"))
                     .isInstanceOf(BadRequestException.class);
 
             verify(userRepository, never()).save(any());

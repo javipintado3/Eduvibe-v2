@@ -15,18 +15,18 @@ import com.eduvibe.model.ExamQuestion;
  */
 public record ExamQuestionResponse(UUID id, String text, int points, List<OptionResponse> options) {
 
-    public static ExamQuestionResponse de(ExamQuestion pregunta, List<ExamOption> opciones) {
+    public static ExamQuestionResponse of(ExamQuestion question, List<ExamOption> options) {
         return new ExamQuestionResponse(
-                pregunta.getId(),
-                pregunta.getText(),
-                pregunta.getPoints(),
-                opciones.stream().map(OptionResponse::de).toList());
+                question.getId(),
+                question.getText(),
+                question.getPoints(),
+                options.stream().map(OptionResponse::of).toList());
     }
 
     public record OptionResponse(UUID id, String text, boolean correct) {
 
-        public static OptionResponse de(ExamOption opcion) {
-            return new OptionResponse(opcion.getId(), opcion.getText(), opcion.isCorrect());
+        public static OptionResponse of(ExamOption option) {
+            return new OptionResponse(option.getId(), option.getText(), option.isCorrect());
         }
     }
 }

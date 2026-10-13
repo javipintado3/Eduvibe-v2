@@ -9,14 +9,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.eduvibe.dto.perfil.AvatarRequest;
-import com.eduvibe.dto.perfil.EraseAccountRequest;
-import com.eduvibe.dto.perfil.PersonalDataExport;
-import com.eduvibe.dto.perfil.ResumenPerfilResponse;
+import com.eduvibe.dto.profile.AvatarRequest;
+import com.eduvibe.dto.profile.EraseAccountRequest;
+import com.eduvibe.dto.profile.PersonalDataExport;
+import com.eduvibe.dto.profile.ProfileSummaryResponse;
 import com.eduvibe.dto.user.UserResponse;
 import com.eduvibe.service.AuthService;
-import com.eduvibe.service.DatosPersonalesService;
-import com.eduvibe.service.PerfilService;
+import com.eduvibe.service.PersonalDataService;
+import com.eduvibe.service.ProfileService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -29,20 +29,20 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/profile")
 @RequiredArgsConstructor
-public class PerfilController {
+public class ProfileController {
 
-    private final PerfilService perfilService;
-    private final DatosPersonalesService datosPersonalesService;
+    private final ProfileService profileService;
+    private final PersonalDataService personalDataService;
     private final AuthService authService;
 
     @GetMapping("/summary")
-    public ResponseEntity<ResumenPerfilResponse> resumen() {
-        return ResponseEntity.ok(perfilService.resumen());
+    public ResponseEntity<ProfileSummaryResponse> summary() {
+        return ResponseEntity.ok(profileService.summary());
     }
 
     @PutMapping("/avatar")
-    public ResponseEntity<UserResponse> actualizarAvatar(@RequestBody AvatarRequest peticion) {
-        return ResponseEntity.ok(perfilService.actualizarAvatar(peticion.url()));
+    public ResponseEntity<UserResponse> updateAvatar(@RequestBody AvatarRequest request) {
+        return ResponseEntity.ok(profileService.updateAvatar(request.url()));
     }
 
     /**
@@ -50,12 +50,12 @@ public class PerfilController {
      * portabilidad). Va como adjunto para que el navegador la guarde como archivo.
      */
     @GetMapping("/export")
-    public ResponseEntity<PersonalDataExport> exportarDatos() {
-        PersonalDataExport datos = datosPersonalesService.exportar(authService.identidadActual().id());
+    public ResponseEntity<PersonalDataExport> exportData() {
+        PersonalDataExport data = personalDataService.export(authService.currentIdentity().id());
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"eduvibe-mis-datos.json\"")
-                .body(datos);
+                .body(data);
     }
 
     /**
@@ -64,11 +64,11 @@ public class PerfilController {
      * no lo admiten todos los clientes ni proxies.
      */
     @PostMapping("/erase")
-    public ResponseEntity<Void> borrarCuenta(@Valid @RequestBody EraseAccountRequest peticion,
+    public ResponseEntity<Void> deleteAccount(@Valid @RequestBody EraseAccountRequest request,
                                              HttpServletRequest http) {
 
-        datosPersonalesService.borrarCuenta(authService.identidadActual().id(),
-                peticion.password(), peticion.code(), http.getRemoteAddr());
+        personalDataService.deleteAccount(authService.currentIdentity().id(),
+                request.password(), request.code(), http.getRemoteAddr());
         return ResponseEntity.noContent().build();
     }
 }

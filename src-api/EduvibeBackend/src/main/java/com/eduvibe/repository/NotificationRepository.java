@@ -17,7 +17,7 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
     /** Borrar la cuenta elimina sus notificaciones. */
     @Modifying
     @Query("DELETE FROM Notification n WHERE n.user.id = :userId")
-    int borrarDe(@Param("userId") UUID userId);
+    int deleteByUser(@Param("userId") UUID userId);
 
     Page<Notification> findByUserIdOrderByCreatedAtDesc(UUID userId, Pageable pageable);
 
@@ -32,5 +32,5 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
     @Modifying
     @Query("UPDATE Notification n SET n.readAt = CURRENT_TIMESTAMP "
          + "WHERE n.user.id = :userId AND n.readAt IS NULL")
-    int marcarTodasLeidas(@Param("userId") UUID userId);
+    int markAllRead(@Param("userId") UUID userId);
 }

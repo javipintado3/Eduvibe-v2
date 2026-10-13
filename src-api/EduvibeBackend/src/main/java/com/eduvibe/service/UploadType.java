@@ -7,16 +7,16 @@ import com.eduvibe.exception.BadRequestException;
  * {@link FileStorageService}. No es un enumerado de base de datos —nada lo
  * persiste—, así que no lleva el patrón EnumConValor de los demás.
  */
-public enum TipoSubida {
-    IMAGEN,
-    DOCUMENTO;
+public enum UploadType {
+    IMAGE,
+    DOCUMENT;
 
-    public static TipoSubida desdeValor(String valor) {
-        if ("imagen".equalsIgnoreCase(valor)) {
-            return IMAGEN;
+    public static UploadType fromValue(String value) {
+        if ("imagen".equalsIgnoreCase(value)) {
+            return IMAGE;
         }
-        if (valor == null || "documento".equalsIgnoreCase(valor)) {
-            return DOCUMENTO;
+        if (value == null || "documento".equalsIgnoreCase(value)) {
+            return DOCUMENT;
         }
         throw new BadRequestException("El tipo debe ser imagen o documento");
     }
