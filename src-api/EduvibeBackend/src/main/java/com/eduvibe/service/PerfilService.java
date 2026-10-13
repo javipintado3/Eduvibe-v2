@@ -78,7 +78,7 @@ public class PerfilService {
         Map<String, Long> usuariosPorRol = Arrays.stream(UserRole.values())
                 .collect(Collectors.toMap(
                         UserRole::getValor,
-                        rol -> userRepository.countByOrganizationIdAndRole(usuario.organizationId(), rol)));
+                        rol -> userRepository.countByOrganizationIdAndRoleAndDeletedAtIsNull(usuario.organizationId(), rol)));
 
         long clases = schoolClassRepository.countByOrganizationId(usuario.organizationId());
         long pendientes = userRepository.countByOrganizationIdAndStatus(usuario.organizationId(), UserStatus.PENDING);

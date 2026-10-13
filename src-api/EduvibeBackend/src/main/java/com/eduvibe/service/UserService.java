@@ -60,6 +60,7 @@ public class UserService {
     private final EnrollmentRepository enrollmentRepository;
     private final InvitationService invitationService;
     private final AuthService authService;
+    private final DatosPersonalesService datosPersonalesService;
 
     /**
      * Da de alta una cuenta en estado pendiente y emite su invitación.
@@ -117,6 +118,7 @@ public class UserService {
 
         Specification<User> filtro = Specification
                 .where(UserSpecifications.deOrganizacion(admin.organizationId()))
+                .and(UserSpecifications.noEliminados())
                 .and(UserSpecifications.conRol(rolONulo(role)))
                 .and(UserSpecifications.conEstado(estadoONulo(status)))
                 .and(UserSpecifications.queContenga(busqueda))
@@ -181,8 +183,9 @@ public class UserService {
     /**
      * Activa o desactiva una cuenta.
      *
-     * No hay borrado: desactivar conserva el histórico académico, que es lo que
-     * se quiere en un centro educativo. Y un administrador no puede
+     * Desactivar es reversible y conserva todo el histórico académico, que es lo que
+     * se quiere en un centro educativo; para quitar a alguien del centro está
+     * {@link #eliminar}. Un administrador no puede
      * desactivarse a sí mismo, o podría dejar la organización sin nadie capaz
      * de volver a entrar.
      */
@@ -209,6 +212,36 @@ public class UserService {
         return UserResponse.de(usuario);
     }
 
+
+    /**
+     * Elimina a una persona del centro (ver {@link DatosPersonalesService#eliminarUsuario}).
+     *
+     * Dos reglas para no dejar el centro sin gestión, la misma lógica que ya
+     * aplica {@link #cambiarEstado}: nadie puede eliminarse a sí mismo, y no se
+     * puede eliminar al último administrador activo.
+     */
+    @Transactional
+    public void eliminar(UUID id) {
+        AuthenticatedUser admin = authService.identidadActual();
+
+        if (admin.id().equals(id)) {
+            throw new BadRequestException("No puedes eliminar tu propia cuenta");
+        }
+
+        User usuario = buscarEnMiOrganizacion(id);
+
+        if (usuario.estaEliminado()) {
+            throw NotFoundException.de("Usuario", id);
+        }
+        if (usuario.getRole() == UserRole.ADMIN && usuario.getStatus() == UserStatus.ACTIVE
+                && userRepository.countByOrganizationIdAndRoleAndStatus(
+                        usuario.getOrganization().getId(), UserRole.ADMIN, UserStatus.ACTIVE) <= 1) {
+            throw new BadRequestException(
+                    "Es la única persona administradora activa. Nombra a otra antes de eliminarla.");
+        }
+
+        datosPersonalesService.eliminarUsuario(usuario);
+    }
     /**
      * Vuelve a emitir la invitación de una cuenta que todavía no la ha
      * aceptado. No se crea un usuario nuevo: se renueva el enlace del que ya
@@ -235,6 +268,7 @@ public class UserService {
 
         Specification<User> filtro = Specification
                 .where(UserSpecifications.deOrganizacion(admin.organizationId()))
+                .and(UserSpecifications.noEliminados())
                 .and(UserSpecifications.conRol(rolONulo(role)))
                 .and(UserSpecifications.conEstado(estadoONulo(status)))
                 .and(UserSpecifications.queContenga(busqueda));

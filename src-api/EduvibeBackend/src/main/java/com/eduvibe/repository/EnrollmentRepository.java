@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -60,4 +61,9 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, UUID> {
      */
     @EntityGraph(attributePaths = "user")
     List<Enrollment> findBySchoolClassIdIn(List<UUID> classIds);
+
+    /** Eliminar a la persona la saca de todas las clases y grupos. */
+    @Modifying
+    @Query("DELETE FROM Enrollment e WHERE e.user.id = :userId")
+    int borrarDe(@Param("userId") UUID userId);
 }

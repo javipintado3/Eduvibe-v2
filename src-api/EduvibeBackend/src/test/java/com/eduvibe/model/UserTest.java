@@ -81,4 +81,30 @@ class UserTest {
             assertThat(usuario.puedeIniciarSesion()).isFalse();
         }
     }
+
+    @Nested
+    @DisplayName("Eliminación por la administración")
+    class Eliminacion {
+
+        @Test
+        @DisplayName("anonimiza el nombre, inutiliza el acceso y deja constancia de cuándo")
+        void anonimiza() {
+            User usuario = nuevoUsuario();
+            usuario.activarCon("$2a$10$hash");
+
+            usuario.eliminar();
+
+            assertThat(usuario.getName()).isEqualTo(User.NOMBRE_ELIMINADO);
+            assertThat(usuario.getEmail()).endsWith("@eduvibe.invalid");
+            assertThat(usuario.puedeIniciarSesion()).isFalse();
+            assertThat(usuario.getStatus()).isEqualTo(UserStatus.DISABLED);
+            assertThat(usuario.getDeletedAt()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("una cuenta normal no figura como eliminada")
+        void porDefectoNoEstaEliminada() {
+            assertThat(nuevoUsuario().estaEliminado()).isFalse();
+        }
+    }
 }

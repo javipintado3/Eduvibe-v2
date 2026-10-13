@@ -321,4 +321,43 @@ class DatosPersonalesServiceTest {
                             || nombre.contains("hash"));
         }
     }
+
+    @Nested
+    @DisplayName("Eliminar un usuario (administración)")
+    class EliminarUsuario {
+
+        @Test
+        @DisplayName("lo anonimiza, lo saca de sus clases y borra su acceso, sin tocar lo que escribió")
+        void anonimizaYLimpia() {
+            servicio.eliminarUsuario(usuario);
+
+            assertThat(usuario.getName()).isEqualTo(User.NOMBRE_ELIMINADO);
+            assertThat(usuario.getEmail()).isEqualTo("borrada-" + idUsuario + "@eduvibe.invalid");
+            assertThat(usuario.getPasswordHash()).isNull();
+            assertThat(usuario.getAvatarUrl()).isNull();
+            assertThat(usuario.getStatus()).isEqualTo(UserStatus.DISABLED);
+            assertThat(usuario.estaEliminado()).isTrue();
+
+            verify(enrollmentRepository).borrarDe(idUsuario);
+            verify(classGroupMemberRepository).borrarDe(idUsuario);
+            verify(notificationRepository).borrarDe(idUsuario);
+            verify(revokedTokenRepository).borrarDe(idUsuario);
+            verify(loginAttemptRepository).borrarTodosDe("ana@centro.es");
+            verify(userRepository).save(usuario);
+
+            // Lo que escribió se queda: los mensajes de foro no se tocan
+            verify(forumPostRepository, never()).sustituirContenidoDe(any(), anyString());
+            verify(forumThreadRepository, never()).sustituirTituloDe(any(), anyString());
+        }
+
+        @Test
+        @DisplayName("borra la foto de disco solo cuando la transacción se confirma")
+        void borraLaFotoAlConfirmar() {
+            servicio.eliminarUsuario(usuario);
+            verify(fileStorageService, never()).borrar(anyString());
+
+            confirmarTransaccion();
+            verify(fileStorageService).borrar("/uploads/foto-de-ana.jpg");
+        }
+    }
 }

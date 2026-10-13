@@ -5,8 +5,9 @@ package com.eduvibe.model.enums;
  *
  * El ciclo de vida es: el admin da de alta al usuario y la cuenta nace en
  * PENDING sin contraseña; cuando la persona acepta la invitación y establece su
- * contraseña pasa a ACTIVE; si causa baja se pasa a DISABLED, nunca se borra,
- * para no perder el histórico académico.
+ * contraseña pasa a ACTIVE; si causa baja se pasa a DISABLED. La fila nunca se borra
+ * (ni siquiera al eliminar a alguien, que solo la anonimiza) para no perder el
+ * histórico académico.
  *
  * Solo las cuentas ACTIVE pueden iniciar sesión.
  */

@@ -78,6 +78,10 @@
           <button type="button" class="boton boton-suave boton-pequeno"
                   *ngIf="u.status === 'disabled'" [disabled]="trabajando()"
                   (click)="cambiarEstado('active')">Reactivar cuenta</button>
+
+          <button type="button" class="boton boton-peligro boton-pequeno"
+                  [disabled]="trabajando()"
+                  (click)="eliminar(u)">Eliminar usuario</button>
         </div>
       </div>
     </div>
