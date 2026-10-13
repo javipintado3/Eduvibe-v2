@@ -17,7 +17,7 @@ const PASOS = ['Conectando con el servidor', 'Despertando el servidor', 'Arranca
 /**
  * Pantalla de espera para cuando el servidor gratuito está dormido.
  *
- * Solo aparece si la API tarda más de un par de segundos; con el servidor
+ * Solo aparece si la API tarda más de un segundo en responder; con el servidor
  * despierto el visitante no la ve nunca. Tapa la interfaz entera a propósito:
  * hasta que la API responda, cualquier botón que pulsara se quedaría colgado.
  */

@@ -5,7 +5,7 @@ import { retry, takeWhile, timeout, timer } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 /** Si la API responde antes de esto, el visitante no llega a ver ningún aviso. */
-const SEGUNDOS_HASTA_AVISAR = 2;
+const SEGUNDOS_HASTA_AVISAR = 1;
 
 /**
  * Sabe si la API está despierta.
