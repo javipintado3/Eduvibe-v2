@@ -29,6 +29,7 @@ EduVibe is a second iteration of my final degree project (TFG). The goal is to b
 - **Invitation-based onboarding.** An admin creates the user and a single-use invitation token is emailed; the user sets their own password on acceptance. Passwords are never sent by email.
 - **Registration requests with admin approval.** Anyone with an email from the organization's allowed domain can request an account, but a request is not an account: the person must first confirm their email through a single-use link, and only then does it reach an admin, who accepts it (choosing the role) or rejects it. Requesters never pick their own role or password. The form answers identically whether or not the email exists, is rate-limited per IP and globally, and has a honeypot field against bots. Organizations without an allowed domain do not accept requests.
 - **Bulk user creation** from CSV, plus an admin panel with paginated, filterable user management.
+- **Removing a person.** An admin can remove a user. The account is anonymized instead of deleted, so what the person wrote (forum posts, announcements, exams, grades) is kept as "Deleted user". The last active admin cannot be removed.
 - **Three roles** (admin, teacher, student). Authorization depends on the user's real relationship with each class (enrolled, owner, etc.), not on role alone, so a teacher cannot touch another teacher's class.
 - **Self-service password recovery** through a single-use, expiring link.
 - **Password change** from the profile, requiring the current password.
@@ -95,7 +96,7 @@ Design decisions worth knowing about:
 - **Hashed single-use tokens.** Invitation, password-reset and email-confirmation tokens have 256 bits of entropy; only their SHA-256 hash is stored, so a database leak does not expose pending links. Passwords use BCrypt.
 - **TOTP implemented in-house** (HMAC-SHA1 per RFC 4226/6238) and verified against the RFC test vectors. Recovery codes use an alphabet without ambiguous characters and are stored hashed.
 - **Safe uploads.** Files are stored under a generated UUID name (never the client's), checked against an extension allow-list per upload type, with resolved paths normalized against the upload root and a 15 MB size limit.
-- **Schema under version control.** Flyway migrations (V1–V20) with `ddl-auto=validate`; Hibernate never alters the schema. `open-in-view` is disabled.
+- **Schema under version control.** Flyway migrations (V1–V21) with `ddl-auto=validate`; Hibernate never alters the schema. `open-in-view` is disabled.
 - **Constructor injection** throughout (no field `@Autowired`), UUID primary keys, and server-side pagination (default 10, max 50).
 - **Demo data** is a repeatable Flyway migration (`db/demo`) selected via configuration, not hardcoded in application code.
 
