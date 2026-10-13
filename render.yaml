@@ -53,6 +53,11 @@ services:
       - key: DEMO_READ_ONLY_EMAIL_DOMAIN
         value: eduvibe.demo
 
+      # Red de seguridad: cada día a las 4:00 (hora de Madrid) se borran los datos y se
+      # vuelve a cargar la semilla, así la demo siempre amanece como el primer día
+      - key: DEMO_RESET_CRON
+        value: "0 0 4 * * *"
+
       # El disco del plan gratuito no es permanente: los archivos subidos se pierden al reiniciar
       - key: UPLOADS_DIR
         value: /tmp/uploads

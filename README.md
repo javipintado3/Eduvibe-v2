@@ -179,6 +179,7 @@ Everything is driven by environment variables, with defaults suitable for local 
 | `UPLOADS_DIR` | `uploads` | Upload directory (a volume in Docker) |
 | `FLYWAY_LOCATIONS` | `classpath:db/migration,classpath:db/demo` | Drop `db/demo` to skip demo data |
 | `DEMO_READ_ONLY_EMAIL_DOMAIN` | empty | Accounts with this email domain (e.g. `eduvibe.demo`) can only read: the API rejects their writes with a 403. For public demos whose credentials are published; empty means off |
+| `DEMO_RESET_CRON` | empty | Cron expression (with seconds, e.g. `0 0 4 * * *`) that wipes the whole database and reloads the demo seed. **Demo databases only**: it refuses to run unless `DEMO_READ_ONLY_EMAIL_DOMAIN` is set. Timezone from `DEMO_RESET_ZONE` (default `Europe/Madrid`); empty means off |
 | `SPRING_PROFILES_ACTIVE` | *(none)* | With `prod`, the API refuses to start without `JWT_SECRET` |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | empty | First admin, created only when the database has no users (min. 12 characters) |
 | `ADMIN_NAME` / `ORGANIZATION_NAME` | `Administrador` / `EduVibe` | Name of that admin and of the initial organization |
