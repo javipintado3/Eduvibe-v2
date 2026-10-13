@@ -6,19 +6,19 @@ import { LogoComponent } from '../logo/logo.component';
 
 /** Lo que se enseña de fondo mientras el servidor despierta: la espera sirve para conocer la app. */
 const DIAPOSITIVAS = [
-  { imagen: 'assets/carga/mis-clases.jpg', etiqueta: 'Clases', titulo: 'Todas tus clases en un solo sitio',
+  { imagen: 'assets/carga/mis-clases.webp', etiqueta: 'Clases', titulo: 'Todas tus clases en un solo sitio',
     texto: 'Portadas, próximas entregas y avisos de un vistazo.' },
-  { imagen: 'assets/carga/unidades.jpg', etiqueta: 'Contenido', titulo: 'Cada clase, organizada por unidades',
+  { imagen: 'assets/carga/unidades.webp', etiqueta: 'Contenido', titulo: 'Cada clase, organizada por unidades',
     texto: 'Materiales, tareas y exámenes agrupados para que nadie se pierda.' },
-  { imagen: 'assets/carga/entregas.jpg', etiqueta: 'Tareas', titulo: 'Entregas, notas y rúbricas',
+  { imagen: 'assets/carga/entregas.webp', etiqueta: 'Tareas', titulo: 'Entregas, notas y rúbricas',
     texto: 'Corrige con una nota o con rúbrica y deja comentarios al alumnado.' },
-  { imagen: 'assets/carga/examenes.jpg', etiqueta: 'Exámenes', titulo: 'Exámenes con corrección automática',
+  { imagen: 'assets/carga/examenes.webp', etiqueta: 'Exámenes', titulo: 'Exámenes con corrección automática',
     texto: 'Banco de preguntas, tiempo limitado y nota al instante.' },
-  { imagen: 'assets/carga/foro.jpg', etiqueta: 'Foros', titulo: 'Dudas resueltas entre todos',
+  { imagen: 'assets/carga/foro.webp', etiqueta: 'Foros', titulo: 'Dudas resueltas entre todos',
     texto: 'Hilos de debate por clase, con profesorado y alumnado.' },
-  { imagen: 'assets/carga/analitica.jpg', etiqueta: 'Analítica', titulo: 'Detecta al alumnado en riesgo',
+  { imagen: 'assets/carga/analitica.webp', etiqueta: 'Analítica', titulo: 'Detecta al alumnado en riesgo',
     texto: 'Entregas, medias y progreso de cada persona de la clase.' },
-  { imagen: 'assets/carga/calendario.jpg', etiqueta: 'Calendario', titulo: 'Fechas de entrega y eventos',
+  { imagen: 'assets/carga/calendario.webp', etiqueta: 'Calendario', titulo: 'Fechas de entrega y eventos',
     texto: 'Todo lo que vence, en una vista mensual.' },
 ];
 
