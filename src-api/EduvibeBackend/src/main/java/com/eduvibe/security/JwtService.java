@@ -61,7 +61,9 @@ public class JwtService {
         } else {
             this.clave = Keys.hmacShaKeyFor(secreto.getBytes(StandardCharsets.UTF_8));
         }
-        this.validez = Duration.ofHours(propiedades.jwt().expirationHours());
+        this.validez = propiedades.jwt().expirationMinutes() > 0
+                ? Duration.ofMinutes(propiedades.jwt().expirationMinutes())
+                : Duration.ofHours(propiedades.jwt().expirationHours());
     }
 
     /**

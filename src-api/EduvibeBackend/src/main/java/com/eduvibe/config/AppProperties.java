@@ -35,8 +35,10 @@ public record AppProperties(
     /**
      * @param secret          clave de firma; si viene vacía se genera una aleatoria al arrancar
      * @param expirationHours horas que vale un token
+     * @param expirationMinutes minutos que vale un token; si es mayor que 0 manda sobre las horas
+     *                          (para la demo pública, donde interesa una sesión corta)
      */
-    public record Jwt(String secret, long expirationHours) {
+    public record Jwt(String secret, long expirationHours, long expirationMinutes) {
     }
 
     public record Invitation(long expirationHours) {

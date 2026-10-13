@@ -48,10 +48,14 @@ services:
       - key: FLYWAY_LOCATIONS
         value: classpath:db/migration,classpath:db/demo
 
-      # Las credenciales de la demo son públicas y sus cuentas pueden escribir: cada 3 horas
-      # se borran los datos y se vuelve a cargar la semilla, así la demo vuelve a su estado inicial
+      # Sesiones cortas: el token caduca a los 30 minutos y hay que volver a entrar
+      - key: JWT_EXPIRATION_MINUTES
+        value: "30"
+
+      # Las credenciales de la demo son públicas y sus cuentas pueden escribir: cada madrugada
+      # (4:00, hora de Madrid) se borran los datos y se vuelve a cargar la semilla
       - key: DEMO_RESET_CRON
-        value: "0 0 */3 * * *"
+        value: "0 0 4 * * *"
 
       # El disco del plan gratuito no es permanente: los archivos subidos se pierden al reiniciar
       - key: UPLOADS_DIR
