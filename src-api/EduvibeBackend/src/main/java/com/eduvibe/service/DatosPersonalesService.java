@@ -227,6 +227,48 @@ public class DatosPersonalesService {
         });
     }
 
+    // ------------------------------------------------- eliminar (administración)
+
+    /**
+     * Elimina a una persona por decisión de la administración.
+     *
+     * Es la otra cara de {@link #borrarCuenta}: allí la persona ejerce su derecho
+     * de supresión y se conserva su expediente identificable; aquí el centro
+     * decide que ya no forma parte de él, así que se anonimiza también el nombre.
+     * Lo que escribió o creó (foros, anuncios, exámenes, notas puestas) se queda
+     * como "Usuario eliminado" en lugar de borrarse, porque pertenece también a
+     * otras personas: un hilo de foro sin sus mensajes no se entiende.
+     *
+     * Se la saca de sus clases y grupos y se borran sus datos de acceso. Las
+     * comprobaciones de quién puede hacerlo (misma organización, no a uno mismo,
+     * no al último administrador) las hace quien llama.
+     */
+    @Transactional
+    public void eliminarUsuario(User usuario) {
+        UUID id = usuario.getId();
+        String avatar = usuario.getAvatarUrl();
+
+        enrollmentRepository.borrarDe(id);
+        classGroupMemberRepository.borrarDe(id);
+        notificationRepository.borrarDe(id);
+        invitationRepository.borrarDe(id);
+        passwordResetRepository.borrarDe(id);
+        totpRecoveryCodeRepository.borrarDe(id);
+        revokedTokenRepository.borrarDe(id);
+        loginAttemptRepository.borrarTodosDe(usuario.getEmail());
+
+        usuario.eliminar();
+        userRepository.save(usuario);
+
+        // La foto se borra de disco solo si la transacción llega a confirmarse
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                fileStorageService.borrar(avatar);
+            }
+        });
+    }
+
     private User cargar(UUID usuarioId) {
         return userRepository.findById(usuarioId)
                 .orElseThrow(() -> NotFoundException.de("Usuario", usuarioId));

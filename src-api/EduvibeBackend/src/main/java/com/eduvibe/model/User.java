@@ -92,6 +92,10 @@ public class User {
     @Column(name = "updated_at", insertable = false, updatable = false)
     private Instant updatedAt;
 
+    /** Se rellena cuando la administración elimina a la persona; ver {@link #eliminar()}. */
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
     public User(Organization organization, String email, String name, UserRole role) {
         this.organization = organization;
         this.email = normalizarEmail(email);
@@ -139,6 +143,28 @@ public class User {
         this.totpEnabled = false;
         this.status = UserStatus.DISABLED;
         invalidarSesiones();
+    }
+
+    /** Nombre que queda en todo lo que la persona escribió o creó. */
+    public static final String NOMBRE_ELIMINADO = "Usuario eliminado";
+
+    /**
+     * Eliminación por parte de la administración. No se borra la fila: lo que
+     * la persona escribió (foros, anuncios, exámenes, notas puestas) sigue
+     * apuntando a ella, y pasa a mostrarse como "Usuario eliminado".
+     *
+     * A diferencia de {@link #darDeBajaPorSupresion()}, que conserva el nombre
+     * para el expediente, aquí también se anonimiza el nombre: la persona
+     * desaparece de los listados y de todo lo que se ve.
+     */
+    public void eliminar() {
+        darDeBajaPorSupresion();
+        this.name = NOMBRE_ELIMINADO;
+        this.deletedAt = Instant.now();
+    }
+
+    public boolean estaEliminado() {
+        return deletedAt != null;
     }
 
     /** Cierra todas las sesiones abiertas: los tokens ya emitidos dejan de valer. */

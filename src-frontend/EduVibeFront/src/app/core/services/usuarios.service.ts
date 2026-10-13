@@ -58,6 +58,14 @@ export class UsuariosService {
     return this.http.patch<Usuario>(`${this.api}/${usuarioId}/status`, { status });
   }
 
+  /**
+   * Elimina a la persona del centro. No se borra de la base de datos: se anonimiza
+   * (queda como "Usuario eliminado" en lo que escribió) y desaparece de los listados.
+   */
+  eliminar(usuarioId: string): Observable<void> {
+    return this.http.delete<void>(`${this.api}/${usuarioId}`);
+  }
+
   reenviarInvitacion(usuarioId: string): Observable<Invitacion> {
     return this.http.post<Invitacion>(`${this.api}/${usuarioId}/invitation`, {});
   }

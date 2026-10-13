@@ -39,6 +39,11 @@ public final class UserSpecifications {
         return (raiz, consulta, cb) -> cb.equal(raiz.get("organization").get("id"), organizationId);
     }
 
+    /** Deja fuera a quien la administración ha eliminado: ya no es nadie del centro. */
+    public static Specification<User> noEliminados() {
+        return (raiz, consulta, cb) -> cb.isNull(raiz.get("deletedAt"));
+    }
+
     public static Specification<User> conRol(UserRole rol) {
         if (rol == null) {
             return null;

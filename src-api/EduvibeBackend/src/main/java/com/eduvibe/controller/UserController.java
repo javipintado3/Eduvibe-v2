@@ -12,6 +12,7 @@ import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -116,13 +117,23 @@ public class UserController {
                 .body(creado);
     }
 
-    /** Activación o desactivación. No existe el borrado. */
+    /** Activación o desactivación. Para quitar a alguien del centro, ver {@link #eliminar}. */
     @PatchMapping("/{id}/status")
     public ResponseEntity<UserResponse> cambiarEstado(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateUserStatusRequest peticion) {
 
         return ResponseEntity.ok(userService.cambiarEstado(id, peticion.status()));
+    }
+
+    /**
+     * Elimina a una persona del centro. Se anonimiza en lugar de borrarse, para
+     * no dejar huérfano lo que escribió; ver {@link UserService#eliminar}.
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminar(@PathVariable UUID id) {
+        userService.eliminar(id);
+        return ResponseEntity.noContent().build();
     }
 
     /** Vuelve a emitir la invitación de una cuenta pendiente. */

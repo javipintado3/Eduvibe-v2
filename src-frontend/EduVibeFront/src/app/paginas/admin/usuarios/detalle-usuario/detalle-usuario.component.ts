@@ -1,8 +1,9 @@
 import { Component, Input, OnInit, inject, signal } from '@angular/core';
 import { NgFor, NgIf } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
+import { ConfirmacionService } from '../../../../core/services/confirmacion.service';
 import { UsuariosService } from '../../../../core/services/usuarios.service';
 import { ClaseDeUsuario, Rol, Usuario } from '../../../../core/models';
 import { AvatarComponent } from '../../../../shared/avatar/avatar.component';
@@ -36,6 +37,8 @@ export class DetalleUsuarioComponent implements OnInit {
   readonly paginacionClases = paginacionLocal(() => this.clases());
 
   private readonly usuariosService = inject(UsuariosService);
+  private readonly confirmacion = inject(ConfirmacionService);
+  private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
 
   @Input() id = '';
@@ -129,6 +132,35 @@ export class DetalleUsuarioComponent implements OnInit {
       next: (usuario) => {
         this.trabajando.set(false);
         this.usuario.set(usuario);
+      },
+      error: (err) => {
+        this.trabajando.set(false);
+        this.errorAccion.set(AvisoComponent.mensajeDe(err));
+      },
+    });
+  }
+
+  async eliminar(usuario: Usuario): Promise<void> {
+    if (this.trabajando()) {
+      return;
+    }
+
+    const confirmado = await this.confirmacion.preguntar(
+      `¿Eliminar a ${usuario.name}? Saldrá de todas sus clases y no podrá volver a entrar. `
+        + 'Lo que escribió (foros, anuncios, notas) se conserva, pero como «Usuario eliminado». '
+        + 'Esta acción no se puede deshacer.',
+      { titulo: 'Eliminar usuario', textoConfirmar: 'Eliminar', peligro: true });
+    if (!confirmado) {
+      return;
+    }
+
+    this.trabajando.set(true);
+    this.errorAccion.set(null);
+
+    this.usuariosService.eliminar(this.id).subscribe({
+      next: () => {
+        this.trabajando.set(false);
+        this.router.navigate(['/admin/usuarios']);
       },
       error: (err) => {
         this.trabajando.set(false);

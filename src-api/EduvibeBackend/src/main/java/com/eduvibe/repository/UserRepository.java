@@ -35,6 +35,9 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
     /** Para el resumen de perfil de administración: usuarios por rol. */
     long countByOrganizationIdAndRole(UUID organizationId, UserRole role);
 
+    /** Igual, sin contar a quien la administración ha eliminado. */
+    long countByOrganizationIdAndRoleAndDeletedAtIsNull(UUID organizationId, UserRole role);
+
     /** Las personas con ese rol y estado en el centro; p. ej. para avisar a quien administra. */
     List<User> findByOrganizationIdAndRoleAndStatus(UUID organizationId, UserRole role, UserStatus status);
 
