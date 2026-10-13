@@ -33,7 +33,7 @@ const PASOS = ['Conectando con el servidor', 'Despertando el servidor', 'Arranca
         <h1>Despertando el servidor…</h1>
         <p class="explicacion">
           EduVibe está alojado en un servidor gratuito que se duerme cuando no recibe visitas.
-          Está arrancando y tarda <strong>menos de un minuto</strong>. No hace falta que recargues la página.
+          Está arrancando y puede tardar <strong>un par de minutos</strong>. No hace falta que recargues la página.
         </p>
 
         <ol class="pasos">
@@ -153,9 +153,9 @@ export class DespertarServidorComponent {
   protected readonly pasos = PASOS;
   protected readonly novedades = NOVEDADES;
 
-  /** Índice del paso en curso: cambia con el tiempo, a las 5 y a las 25 segundos. */
+  /** Índice del paso en curso: cambia con el tiempo, a los 8 y a los 45 segundos. */
   protected readonly pasoActual = () => {
     const segundos = this.servidor.segundos();
-    return segundos < 5 ? 0 : segundos < 25 ? 1 : 2;
+    return segundos < 8 ? 0 : segundos < 45 ? 1 : 2;
   };
 }
