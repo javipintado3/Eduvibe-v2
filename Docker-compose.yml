@@ -36,7 +36,6 @@ services:
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
       FLYWAY_LOCATIONS: ${FLYWAY_LOCATIONS:-classpath:db/migration,classpath:db/demo}
-      DEMO_READ_ONLY_EMAIL_DOMAIN: ${DEMO_READ_ONLY_EMAIL_DOMAIN:-}
       MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_FROM: ${MAIL_FROM:-${MAIL_USERNAME:-}}

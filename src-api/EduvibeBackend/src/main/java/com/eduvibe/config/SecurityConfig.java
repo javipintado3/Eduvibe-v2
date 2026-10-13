@@ -17,7 +17,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import com.eduvibe.security.DemoReadOnlyFilter;
 import com.eduvibe.security.JwtAuthenticationFilter;
 import com.eduvibe.security.RestAccessDeniedHandler;
 import com.eduvibe.security.RestAuthenticationEntryPoint;
@@ -44,7 +43,6 @@ public class SecurityConfig {
 
     private final AppProperties propiedades;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final DemoReadOnlyFilter demoReadOnlyFilter;
     private final RestAuthenticationEntryPoint authenticationEntryPoint;
     private final RestAccessDeniedHandler accessDeniedHandler;
 
@@ -122,9 +120,7 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.POST, "/api/classes").hasRole("ADMIN")
 
                     .anyRequest().authenticated())
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-            // Después del JWT: necesita saber ya quién hace la petición
-            .addFilterAfter(demoReadOnlyFilter, JwtAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

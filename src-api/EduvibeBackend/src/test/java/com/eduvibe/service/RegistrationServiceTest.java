@@ -82,7 +82,7 @@ class RegistrationServiceTest {
     @BeforeEach
     void crearServicio() {
         AppProperties propiedades = new AppProperties(null, null, "http://localhost:4200", null, null, null,
-                new AppProperties.Registration(24, 5, 100, false), null);
+                new AppProperties.Registration(24, 5, 100, false));
         servicio = new RegistrationService(requestRepository, organizationRepository, userRepository,
                 userService, invitationService, notificationService, mailService, authService, propiedades);
 

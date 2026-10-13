@@ -18,7 +18,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param login      límite de intentos de inicio de sesión
  * @param passwordReset plazo de los enlaces de "olvidé mi contraseña"
  * @param registration solicitudes de registro públicas: plazos y límites anti-abuso
- * @param demo       cuentas de demostración públicas que solo pueden leer
  */
 @ConfigurationProperties(prefix = "app")
 public record AppProperties(
@@ -28,8 +27,7 @@ public record AppProperties(
         Invitation invitation,
         Login login,
         PasswordReset passwordReset,
-        Registration registration,
-        Demo demo) {
+        Registration registration) {
 
     public record Cors(List<String> allowedOrigins) {
     }
@@ -68,25 +66,5 @@ public record AppProperties(
      */
     public record Registration(long verificationExpirationHours, int maxPerIpPerHour, int maxPerHour,
                                boolean trustProxy) {
-    }
-
-    /**
-     * Las credenciales de la demo pública están en el README, así que cualquiera puede
-     * entrar con ellas. Para que nadie pueda escribir (ni dejar mensajes ofensivos que
-     * vea el siguiente visitante), las cuentas de este dominio solo pueden consultar.
-     *
-     * @param readOnlyEmailDomain dominio de los correos de demostración (por ejemplo
-     *                            "eduvibe.demo"). Vacío o ausente: la función está apagada
-     *                            y todas las cuentas pueden escribir, como en desarrollo
-     */
-    public record Demo(String readOnlyEmailDomain) {
-
-        /** Si el correo es de una cuenta de demostración de solo lectura. */
-        public boolean esSoloLectura(String email) {
-            if (readOnlyEmailDomain == null || readOnlyEmailDomain.isBlank() || email == null) {
-                return false;
-            }
-            return email.toLowerCase().endsWith("@" + readOnlyEmailDomain.trim().toLowerCase());
-        }
     }
 }
