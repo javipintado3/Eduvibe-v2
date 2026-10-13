@@ -24,8 +24,8 @@ public interface SchoolClassRepository extends JpaRepository<SchoolClass, UUID> 
               AND (lower(c.name) LIKE :patron OR lower(coalesce(c.subject, '')) LIKE :patron)
             ORDER BY c.name ASC, c.subject ASC
             """)
-    Page<SchoolClass> buscarDeCentro(@Param("organizationId") UUID organizationId,
-                                     @Param("patron") String patron, Pageable pageable);
+    Page<SchoolClass> findForOrganization(@Param("organizationId") UUID organizationId,
+                                     @Param("patron") String pattern, Pageable pageable);
 
     /** Para el resumen de perfil de administración. */
     long countByOrganizationId(UUID organizationId);
@@ -42,8 +42,8 @@ public interface SchoolClassRepository extends JpaRepository<SchoolClass, UUID> 
             WHERE e.user.id = :userId
               AND (lower(e.schoolClass.name) LIKE :patron OR lower(coalesce(e.schoolClass.subject, '')) LIKE :patron)
             """)
-    Page<SchoolClass> buscarDeUsuario(@Param("userId") UUID userId,
-                                      @Param("patron") String patron, Pageable pageable);
+    Page<SchoolClass> findForUser(@Param("userId") UUID userId,
+                                      @Param("patron") String pattern, Pageable pageable);
 
     /**
      * Próxima fecha de entrega de cada clase, para la línea de estado de las
@@ -53,19 +53,19 @@ public interface SchoolClassRepository extends JpaRepository<SchoolClass, UUID> 
      * clase, que sería el problema de las N+1 consultas en su forma más clásica.
      */
     @Query("""
-            SELECT a.schoolClass.id AS classId, MIN(a.dueDate) AS proximaEntrega
+            SELECT a.schoolClass.id AS classId, MIN(a.dueDate) AS nextDueDate
             FROM Assignment a
             WHERE a.schoolClass.id IN :classIds
               AND a.dueDate IS NOT NULL
               AND a.dueDate > CURRENT_TIMESTAMP
             GROUP BY a.schoolClass.id
             """)
-    List<ProximaEntrega> findProximasEntregas(@Param("classIds") List<UUID> classIds);
+    List<NextSubmission> findNextSubmissions(@Param("classIds") List<UUID> classIds);
 
     /** Proyección del resultado de la consulta anterior. */
-    interface ProximaEntrega {
+    interface NextSubmission {
         UUID getClassId();
 
-        Instant getProximaEntrega();
+        Instant getNextDueDate();
     }
 }

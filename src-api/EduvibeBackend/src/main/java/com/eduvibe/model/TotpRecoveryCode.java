@@ -45,7 +45,7 @@ public class TotpRecoveryCode {
         this.codeHash = codeHash;
     }
 
-    public void marcarComoUsado() {
+    public void markAsUsed() {
         this.usedAt = Instant.now();
     }
 }

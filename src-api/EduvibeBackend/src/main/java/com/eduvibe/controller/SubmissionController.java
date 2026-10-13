@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.eduvibe.dto.submission.EntregaPorCorregirResponse;
+import com.eduvibe.dto.submission.SubmissionToGradeResponse;
 import com.eduvibe.dto.submission.GradeRequest;
 import com.eduvibe.dto.submission.SubmissionResponse;
 import com.eduvibe.dto.submission.TeacherNoteRequest;
@@ -33,8 +33,8 @@ public class SubmissionController {
 
     /** Entregas sin corregir de todas las clases del profesorado, para su acceso directo "Calificar". */
     @GetMapping("/pending-review")
-    public ResponseEntity<PageResponse<EntregaPorCorregirResponse>> porCorregir(Pageable pageable) {
-        return ResponseEntity.ok(submissionService.porCorregir(pageable));
+    public ResponseEntity<PageResponse<SubmissionToGradeResponse>> toGrade(Pageable pageable) {
+        return ResponseEntity.ok(submissionService.toGrade(pageable));
     }
 
     /**
@@ -42,15 +42,15 @@ public class SubmissionController {
      * calificación: volver a llamarlo la sustituye, no añade otra.
      */
     @PutMapping("/{submissionId}/grade")
-    public ResponseEntity<SubmissionResponse> calificar(@PathVariable UUID submissionId,
-                                                        @Valid @RequestBody GradeRequest peticion) {
-        return ResponseEntity.ok(submissionService.calificar(submissionId, peticion));
+    public ResponseEntity<SubmissionResponse> grade(@PathVariable UUID submissionId,
+                                                        @Valid @RequestBody GradeRequest request) {
+        return ResponseEntity.ok(submissionService.grade(submissionId, request));
     }
 
     /** Nota rápida sobre la entrega, sin calificarla. Igual que la nota, sustituye a la anterior si ya había una. */
     @PutMapping("/{submissionId}/comment")
-    public ResponseEntity<SubmissionResponse> comentar(@PathVariable UUID submissionId,
-                                                       @Valid @RequestBody TeacherNoteRequest peticion) {
-        return ResponseEntity.ok(submissionService.comentar(submissionId, peticion));
+    public ResponseEntity<SubmissionResponse> comment(@PathVariable UUID submissionId,
+                                                       @Valid @RequestBody TeacherNoteRequest request) {
+        return ResponseEntity.ok(submissionService.comment(submissionId, request));
     }
 }

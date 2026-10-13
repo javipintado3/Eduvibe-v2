@@ -54,155 +54,155 @@ class TwoFactorServiceTest {
     @Mock
     private LoginAttemptService loginAttemptService;
 
-    private TwoFactorService servicio;
+    private TwoFactorService service;
 
-    private final UUID idUsuario = UUID.randomUUID();
-    private User usuario;
+    private final UUID userId = UUID.randomUUID();
+    private User user;
 
     @BeforeEach
     void preparar() {
-        servicio = new TwoFactorService(userRepository, recoveryCodeRepository, passwordEncoder, new DemoCuentasProtegidas(""), loginAttemptService);
-        usuario = new User(new Organization("Centro", null), "ana@centro.es", "Ana", UserRole.TEACHER);
-        usuario.activarCon("$2a$10$hash");
+        service = new TwoFactorService(userRepository, recoveryCodeRepository, passwordEncoder, new ProtectedDemoAccounts(""), loginAttemptService);
+        user = new User(new Organization("Centro", null), "ana@centro.es", "Ana", UserRole.TEACHER);
+        user.enableWith("$2a$10$hash");
     }
 
-    private void usuarioExiste() {
-        when(userRepository.findById(idUsuario)).thenReturn(Optional.of(usuario));
+    private void userExists() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
     }
 
     @Nested
     @DisplayName("Configurar")
-    class Configurar {
+    class Configure {
 
         @Test
         @DisplayName("genera un secreto y lo guarda sin activar todavía el 2FA")
         void iniciaSinActivar() {
-            usuarioExiste();
+            userExists();
 
-            TwoFactorSetupResponse respuesta = servicio.iniciarConfiguracion(idUsuario);
+            TwoFactorSetupResponse answer = service.startConfiguration(userId);
 
-            assertThat(usuario.getTotpSecret()).isEqualTo(respuesta.secret());
-            assertThat(usuario.isTotpEnabled()).isFalse();
-            assertThat(respuesta.otpauthUri()).contains(respuesta.secret()).startsWith("otpauth://totp/EduVibe:");
+            assertThat(user.getTotpSecret()).isEqualTo(answer.secret());
+            assertThat(user.isTotpEnabled()).isFalse();
+            assertThat(answer.otpauthUri()).contains(answer.secret()).startsWith("otpauth://totp/EduVibe:");
         }
 
         @Test
         @DisplayName("si ya está activado no deja volver a empezar")
         void yaActivado() {
-            usuarioExiste();
-            usuario.setTotpEnabled(true);
+            userExists();
+            user.setTotpEnabled(true);
 
-            assertThatThrownBy(() -> servicio.iniciarConfiguracion(idUsuario))
+            assertThatThrownBy(() -> service.startConfiguration(userId))
                     .isInstanceOf(ConflictException.class);
         }
 
         @Test
         @DisplayName("con un código correcto activa el 2FA y entrega 8 códigos de recuperación, guardando solo su hash")
         void activaConCodigoCorrecto() {
-            usuarioExiste();
-            String secreto = Totp.generarSecreto();
-            usuario.setTotpSecret(secreto);
+            userExists();
+            String secret = Totp.generateSecret();
+            user.setTotpSecret(secret);
 
-            List<String> codigos = servicio.activar(idUsuario, Totp.codigoEn(secreto, Instant.now()));
+            List<String> codes = service.enable(userId, Totp.codeIn(secret, Instant.now()));
 
-            assertThat(usuario.isTotpEnabled()).isTrue();
-            assertThat(codigos).hasSize(8).doesNotHaveDuplicates().allMatch(c -> c.matches("[a-z2-9]{5}-[a-z2-9]{5}"));
+            assertThat(user.isTotpEnabled()).isTrue();
+            assertThat(codes).hasSize(8).doesNotHaveDuplicates().allMatch(c -> c.matches("[a-z2-9]{5}-[a-z2-9]{5}"));
 
-            ArgumentCaptor<TotpRecoveryCode> guardados = ArgumentCaptor.forClass(TotpRecoveryCode.class);
-            verify(recoveryCodeRepository, times(8)).save(guardados.capture());
-            assertThat(guardados.getAllValues())
+            ArgumentCaptor<TotpRecoveryCode> saved = ArgumentCaptor.forClass(TotpRecoveryCode.class);
+            verify(recoveryCodeRepository, times(8)).save(saved.capture());
+            assertThat(saved.getAllValues())
                     .extracting(TotpRecoveryCode::getCodeHash)
-                    .doesNotContainAnyElementsOf(codigos)
-                    .contains(Tokens.hashear(codigos.get(0).replace("-", "")));
+                    .doesNotContainAnyElementsOf(codes)
+                    .contains(Tokens.hash(codes.get(0).replace("-", "")));
         }
 
         @Test
         @DisplayName("con un código incorrecto no activa nada")
         void noActivaConCodigoIncorrecto() {
-            usuarioExiste();
-            String secreto = Totp.generarSecreto();
-            usuario.setTotpSecret(secreto);
-            String correcto = Totp.codigoEn(secreto, Instant.now());
-            String incorrecto = correcto.equals("000000") ? "000001" : "000000";
+            userExists();
+            String secret = Totp.generateSecret();
+            user.setTotpSecret(secret);
+            String correct = Totp.codeIn(secret, Instant.now());
+            String incorrect = correct.equals("000000") ? "000001" : "000000";
 
-            assertThatThrownBy(() -> servicio.activar(idUsuario, incorrecto))
+            assertThatThrownBy(() -> service.enable(userId, incorrect))
                     .isInstanceOf(BadRequestException.class);
 
-            assertThat(usuario.isTotpEnabled()).isFalse();
+            assertThat(user.isTotpEnabled()).isFalse();
             verify(recoveryCodeRepository, never()).save(any());
         }
 
         @Test
         @DisplayName("sin haber empezado la configuración no se puede activar")
         void sinEmpezar() {
-            usuarioExiste();
+            userExists();
 
-            assertThatThrownBy(() -> servicio.activar(idUsuario, "123456"))
+            assertThatThrownBy(() -> service.enable(userId, "123456"))
                     .isInstanceOf(BadRequestException.class);
         }
     }
 
     @Nested
     @DisplayName("Desactivar")
-    class Desactivar {
+    class Disable {
 
-        private String secreto;
+        private String secret;
 
         @BeforeEach
         void conDosPasosActivado() {
-            secreto = Totp.generarSecreto();
-            usuario.setTotpSecret(secreto);
-            usuario.setTotpEnabled(true);
+            secret = Totp.generateSecret();
+            user.setTotpSecret(secret);
+            user.setTotpEnabled(true);
         }
 
         @Test
         @DisplayName("con contraseña y código correctos lo desactiva y borra el secreto y los códigos de recuperación")
         void desactiva() {
-            usuarioExiste();
+            userExists();
             when(passwordEncoder.matches("clave", "$2a$10$hash")).thenReturn(true);
 
-            servicio.desactivar(idUsuario, "clave", Totp.codigoEn(secreto, Instant.now()), IP);
+            service.disable(userId, "clave", Totp.codeIn(secret, Instant.now()), IP);
 
-            assertThat(usuario.isTotpEnabled()).isFalse();
-            assertThat(usuario.getTotpSecret()).isNull();
-            verify(recoveryCodeRepository).borrarDe(usuario.getId());
+            assertThat(user.isTotpEnabled()).isFalse();
+            assertThat(user.getTotpSecret()).isNull();
+            verify(recoveryCodeRepository).deleteByUser(user.getId());
         }
 
         @Test
         @DisplayName("con la contraseña incorrecta no desactiva y apunta el fallo")
         void contrasenaIncorrecta() {
-            usuarioExiste();
+            userExists();
             when(passwordEncoder.matches("mala", "$2a$10$hash")).thenReturn(false);
 
-            assertThatThrownBy(() -> servicio.desactivar(idUsuario, "mala", "123456", IP))
+            assertThatThrownBy(() -> service.disable(userId, "mala", "123456", IP))
                     .isInstanceOf(BadRequestException.class);
 
-            assertThat(usuario.isTotpEnabled()).isTrue();
-            verify(loginAttemptService).registrarFallo("ana@centro.es", IP);
+            assertThat(user.isTotpEnabled()).isTrue();
+            verify(loginAttemptService).recordFailure("ana@centro.es", IP);
         }
 
         @Test
         @DisplayName("con el código incorrecto no desactiva y apunta el fallo")
         void codigoIncorrecto() {
-            usuarioExiste();
+            userExists();
             when(passwordEncoder.matches("clave", "$2a$10$hash")).thenReturn(true);
-            String incorrecto = Totp.codigoEn(secreto, Instant.now()).equals("000000") ? "000001" : "000000";
+            String incorrect = Totp.codeIn(secret, Instant.now()).equals("000000") ? "000001" : "000000";
 
-            assertThatThrownBy(() -> servicio.desactivar(idUsuario, "clave", incorrecto, IP))
+            assertThatThrownBy(() -> service.disable(userId, "clave", incorrect, IP))
                     .isInstanceOf(BadRequestException.class);
 
-            assertThat(usuario.isTotpEnabled()).isTrue();
-            verify(loginAttemptService).registrarFallo("ana@centro.es", IP);
+            assertThat(user.isTotpEnabled()).isTrue();
+            verify(loginAttemptService).recordFailure("ana@centro.es", IP);
         }
 
         @Test
         @DisplayName("con la cuenta bloqueada por intentos fallidos ni mira la contraseña")
         void bloqueada() {
-            usuarioExiste();
-            when(loginAttemptService.estaBloqueado("ana@centro.es")).thenReturn(true);
-            when(loginAttemptService.minutosDeBloqueo()).thenReturn(15L);
+            userExists();
+            when(loginAttemptService.isLocked("ana@centro.es")).thenReturn(true);
+            when(loginAttemptService.minutesOfLockout()).thenReturn(15L);
 
-            assertThatThrownBy(() -> servicio.desactivar(idUsuario, "clave", "123456", IP))
+            assertThatThrownBy(() -> service.disable(userId, "clave", "123456", IP))
                     .isInstanceOf(TooManyRequestsException.class);
 
             verify(passwordEncoder, never()).matches(anyString(), anyString());
@@ -211,45 +211,45 @@ class TwoFactorServiceTest {
         @Test
         @DisplayName("si no estaba activado lo dice")
         void noActivado() {
-            usuarioExiste();
-            usuario.setTotpEnabled(false);
+            userExists();
+            user.setTotpEnabled(false);
 
-            assertThatThrownBy(() -> servicio.desactivar(idUsuario, "clave", "123456", IP))
+            assertThatThrownBy(() -> service.disable(userId, "clave", "123456", IP))
                     .isInstanceOf(BadRequestException.class);
         }
     }
 
     @Nested
     @DisplayName("Comprobar un código al entrar")
-    class ComprobarCodigo {
+    class CheckCode {
 
-        private String secreto;
+        private String secret;
 
         @BeforeEach
         void conDosPasosActivado() {
-            secreto = Totp.generarSecreto();
-            usuario.setTotpSecret(secreto);
-            usuario.setTotpEnabled(true);
+            secret = Totp.generateSecret();
+            user.setTotpSecret(secret);
+            user.setTotpEnabled(true);
         }
 
         @Test
         @DisplayName("acepta el código de la app")
         void codigoDeLaApp() {
-            assertThat(servicio.codigoValido(usuario, Totp.codigoEn(secreto, Instant.now()))).isTrue();
+            assertThat(service.validCode(user, Totp.codeIn(secret, Instant.now()))).isTrue();
         }
 
         @Test
         @DisplayName("acepta un código de recuperación sin gastar y lo marca como usado")
         void codigoDeRecuperacion() {
-            TotpRecoveryCode guardado = new TotpRecoveryCode(usuario, Tokens.hashear("abcdefghjk"));
+            TotpRecoveryCode saved = new TotpRecoveryCode(user, Tokens.hash("abcdefghjk"));
             when(recoveryCodeRepository.findByUserIdAndCodeHashAndUsedAtIsNull(
-                    usuario.getId(), Tokens.hashear("abcdefghjk"))).thenReturn(Optional.of(guardado));
+                    user.getId(), Tokens.hash("abcdefghjk"))).thenReturn(Optional.of(saved));
 
             // Con guion y en mayúsculas: se perdona cómo se teclee
-            assertThat(servicio.codigoValido(usuario, "ABCDE-FGHJK")).isTrue();
+            assertThat(service.validCode(user, "ABCDE-FGHJK")).isTrue();
 
-            assertThat(guardado.getUsedAt()).isNotNull();
-            verify(recoveryCodeRepository).save(guardado);
+            assertThat(saved.getUsedAt()).isNotNull();
+            verify(recoveryCodeRepository).save(saved);
         }
 
         @Test
@@ -258,14 +258,14 @@ class TwoFactorServiceTest {
             when(recoveryCodeRepository.findByUserIdAndCodeHashAndUsedAtIsNull(any(), anyString()))
                     .thenReturn(Optional.empty());
 
-            assertThat(servicio.codigoValido(usuario, "zzzzz-zzzzz")).isFalse();
+            assertThat(service.validCode(user, "zzzzz-zzzzz")).isFalse();
         }
 
         @Test
         @DisplayName("rechaza un código vacío sin consultar nada")
         void codigoVacio() {
-            assertThat(servicio.codigoValido(usuario, " ")).isFalse();
-            assertThat(servicio.codigoValido(usuario, null)).isFalse();
+            assertThat(service.validCode(user, " ")).isFalse();
+            assertThat(service.validCode(user, null)).isFalse();
 
             verify(recoveryCodeRepository, never()).findByUserIdAndCodeHashAndUsedAtIsNull(any(), anyString());
         }

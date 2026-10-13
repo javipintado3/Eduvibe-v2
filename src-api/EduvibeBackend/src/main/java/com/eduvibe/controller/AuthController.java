@@ -29,7 +29,7 @@ import com.eduvibe.service.AuthService;
 import com.eduvibe.service.InvitationService;
 import com.eduvibe.service.PasswordResetService;
 import com.eduvibe.service.RegistrationService;
-import com.eduvibe.service.SesionService;
+import com.eduvibe.service.SessionService;
 import com.eduvibe.service.TwoFactorService;
 
 import jakarta.validation.Valid;
@@ -56,21 +56,21 @@ public class AuthController {
     private final InvitationService invitationService;
     private final PasswordResetService passwordResetService;
     private final TwoFactorService twoFactorService;
-    private final SesionService sesionService;
+    private final SessionService sessionService;
     private final RegistrationService registrationService;
-    private final AppProperties propiedades;
+    private final AppProperties properties;
 
     /** Inicio de sesión con email y contraseña. */
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest peticion,
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request,
                                               HttpServletRequest http) {
-        return ResponseEntity.ok(authService.login(peticion, http.getRemoteAddr()));
+        return ResponseEntity.ok(authService.login(request, http.getRemoteAddr()));
     }
 
     /** Datos de la sesión en curso. */
     @GetMapping("/me")
-    public ResponseEntity<UserResponse> usuarioActual() {
-        return ResponseEntity.ok(authService.usuarioActual());
+    public ResponseEntity<UserResponse> currentUser() {
+        return ResponseEntity.ok(authService.currentUser());
     }
 
     /**
@@ -78,8 +78,8 @@ public class AuthController {
      * poder mostrarlo antes de pedir la contraseña.
      */
     @GetMapping("/invitations/{token}")
-    public ResponseEntity<InvitationInfoResponse> consultarInvitacion(@PathVariable String token) {
-        return ResponseEntity.ok(invitationService.consultar(token));
+    public ResponseEntity<InvitationInfoResponse> lookupInvitation(@PathVariable String token) {
+        return ResponseEntity.ok(invitationService.lookup(token));
     }
 
     /**
@@ -87,11 +87,11 @@ public class AuthController {
      * iniciada, para no pedir dos veces lo mismo.
      */
     @PostMapping("/invitations/{token}/accept")
-    public ResponseEntity<AuthResponse> aceptarInvitacion(
+    public ResponseEntity<AuthResponse> acceptInvitation(
             @PathVariable String token,
-            @Valid @RequestBody AcceptInvitationRequest peticion) {
+            @Valid @RequestBody AcceptInvitationRequest request) {
 
-        return ResponseEntity.ok(authService.aceptarInvitacion(token, peticion));
+        return ResponseEntity.ok(authService.acceptInvitation(token, request));
     }
 
     /**
@@ -101,10 +101,10 @@ public class AuthController {
      * administración hasta que la persona confirma su correo.
      */
     @PostMapping("/register")
-    public ResponseEntity<Void> solicitarRegistro(@Valid @RequestBody RegisterRequest peticion,
+    public ResponseEntity<Void> requestRegistration(@Valid @RequestBody RegisterRequest request,
                                                   HttpServletRequest http) {
-        registrationService.solicitar(peticion,
-                ClientIp.de(http, propiedades.registration().trustProxy()));
+        registrationService.request(request,
+                ClientIp.of(http, properties.registration().trustProxy()));
         return ResponseEntity.accepted().build();
     }
 
@@ -114,8 +114,8 @@ public class AuthController {
      * que abren los enlaces por su cuenta, no puedan consumirlo.
      */
     @PostMapping("/register/verify/{token}")
-    public ResponseEntity<Void> verificarRegistro(@PathVariable String token) {
-        registrationService.verificar(token);
+    public ResponseEntity<Void> verifyRegistration(@PathVariable String token) {
+        registrationService.verify(token);
         return ResponseEntity.noContent().build();
     }
 
@@ -125,18 +125,18 @@ public class AuthController {
      * dadas de alta.
      */
     @PostMapping("/forgot-password")
-    public ResponseEntity<Void> olvideMiContrasena(@Valid @RequestBody ForgotPasswordRequest peticion) {
-        passwordResetService.solicitar(peticion.email());
+    public ResponseEntity<Void> forgotMyPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        passwordResetService.request(request.email());
         return ResponseEntity.accepted().build();
     }
 
     /** Establece la contraseña nueva con el enlace recibido. */
     @PostMapping("/reset-password/{token}")
-    public ResponseEntity<Void> restablecerContrasena(
+    public ResponseEntity<Void> resetPassword(
             @PathVariable String token,
-            @Valid @RequestBody ResetPasswordRequest peticion) {
+            @Valid @RequestBody ResetPasswordRequest request) {
 
-        passwordResetService.restablecer(token, peticion.password());
+        passwordResetService.reset(token, request.password());
         return ResponseEntity.noContent().build();
     }
 
@@ -145,40 +145,40 @@ public class AuthController {
      * demás sesiones y devuelve una nueva para que esta siga abierta.
      */
     @PutMapping("/password")
-    public ResponseEntity<AuthResponse> cambiarContrasena(@Valid @RequestBody ChangePasswordRequest peticion,
+    public ResponseEntity<AuthResponse> changePassword(@Valid @RequestBody ChangePasswordRequest request,
                                                           HttpServletRequest http) {
-        return ResponseEntity.ok(authService.cambiarPassword(peticion, http.getRemoteAddr()));
+        return ResponseEntity.ok(authService.changePassword(request, http.getRemoteAddr()));
     }
 
     /** Cierra la sesión: el token con el que se llama deja de valer desde este momento. */
     @PostMapping("/logout")
-    public ResponseEntity<Void> cerrarSesion() {
-        sesionService.cerrar(authService.identidadActual());
+    public ResponseEntity<Void> closeSession() {
+        sessionService.close(authService.currentIdentity());
         return ResponseEntity.noContent().build();
     }
 
     /** Primer paso del 2FA: genera el secreto y devuelve lo necesario para el QR. */
     @PostMapping("/2fa/setup")
-    public ResponseEntity<TwoFactorSetupResponse> iniciarDosPasos() {
-        return ResponseEntity.ok(twoFactorService.iniciarConfiguracion(authService.identidadActual().id()));
+    public ResponseEntity<TwoFactorSetupResponse> startTwoFactor() {
+        return ResponseEntity.ok(twoFactorService.startConfiguration(authService.currentIdentity().id()));
     }
 
     /** Segundo paso: confirma con un código, activa y devuelve los códigos de recuperación. */
     @PostMapping("/2fa/enable")
-    public ResponseEntity<TwoFactorEnabledResponse> activarDosPasos(
-            @Valid @RequestBody TwoFactorCodeRequest peticion) {
+    public ResponseEntity<TwoFactorEnabledResponse> enableTwoFactor(
+            @Valid @RequestBody TwoFactorCodeRequest request) {
 
         return ResponseEntity.ok(new TwoFactorEnabledResponse(
-                twoFactorService.activar(authService.identidadActual().id(), peticion.code())));
+                twoFactorService.enable(authService.currentIdentity().id(), request.code())));
     }
 
     /** Desactiva el 2FA, pidiendo la contraseña y un código. */
     @PostMapping("/2fa/disable")
-    public ResponseEntity<Void> desactivarDosPasos(@Valid @RequestBody TwoFactorDisableRequest peticion,
+    public ResponseEntity<Void> disableTwoFactor(@Valid @RequestBody TwoFactorDisableRequest request,
                                                    HttpServletRequest http) {
 
-        twoFactorService.desactivar(authService.identidadActual().id(),
-                peticion.password(), peticion.code(), http.getRemoteAddr());
+        twoFactorService.disable(authService.currentIdentity().id(),
+                request.password(), request.code(), http.getRemoteAddr());
         return ResponseEntity.noContent().build();
     }
 }

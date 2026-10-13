@@ -41,97 +41,97 @@ public class CalendarService {
     private final CalendarEventRepository calendarEventRepository;
     private final AssignmentRepository assignmentRepository;
     private final OrganizationRepository organizationRepository;
-    private final ClassAccessService acceso;
+    private final ClassAccessService access;
     private final AuthService authService;
 
     @Transactional(readOnly = true)
-    public List<CalendarEntryResponse> agenda(Instant desde, Instant hasta) {
-        AuthenticatedUser usuario = authService.identidadActual();
-        UUID orgId = usuario.organizationId();
+    public List<CalendarEntryResponse> agenda(Instant from, Instant until) {
+        AuthenticatedUser user = authService.currentIdentity();
+        UUID orgId = user.organizationId();
 
-        List<CalendarEvent> eventos;
-        List<Assignment> tareas;
+        List<CalendarEvent> events;
+        List<Assignment> assignments;
 
-        if (usuario.esAdmin()) {
-            eventos = calendarEventRepository.findByOrganizationIdAndEventDateBetweenOrderByEventDateAsc(
-                    orgId, desde, hasta);
-            tareas = assignmentRepository.findConEntregaDeOrganizacion(orgId, desde, hasta);
+        if (user.isAdmin()) {
+            events = calendarEventRepository.findByOrganizationIdAndEventDateBetweenOrderByEventDateAsc(
+                    orgId, from, until);
+            assignments = assignmentRepository.findWithSubmissionForOrganization(orgId, from, until);
         } else {
-            eventos = calendarEventRepository.findParaUsuario(orgId, usuario.id(), desde, hasta);
-            tareas = assignmentRepository.findConEntregaParaUsuario(orgId, usuario.id(), desde, hasta);
+            events = calendarEventRepository.findForUser(orgId, user.id(), from, until);
+            assignments = assignmentRepository.findWithSubmissionForUser(orgId, user.id(), from, until);
         }
 
         return Stream.concat(
-                        eventos.stream().map(CalendarEntryResponse::deEvento),
-                        tareas.stream().map(CalendarEntryResponse::deTarea))
+                        events.stream().map(CalendarEntryResponse::ofEvent),
+                        assignments.stream().map(CalendarEntryResponse::ofAssignment))
                 .sorted(Comparator.comparing(CalendarEntryResponse::fecha))
                 .toList();
     }
 
     @Transactional
-    public CalendarEntryResponse crear(SaveCalendarEventRequest peticion) {
-        AuthenticatedUser usuario = authService.identidadActual();
-        SchoolClass clase = claseDelEvento(peticion.classId(), usuario);
+    public CalendarEntryResponse create(SaveCalendarEventRequest request) {
+        AuthenticatedUser user = authService.currentIdentity();
+        SchoolClass schoolClass = schoolClassOfEvent(request.classId(), user);
 
-        Organization organizacion = organizationRepository.findById(usuario.organizationId())
-                .orElseThrow(() -> NotFoundException.de("Organización", usuario.organizationId()));
+        Organization organization = organizationRepository.findById(user.organizationId())
+                .orElseThrow(() -> NotFoundException.of("Organización", user.organizationId()));
 
-        CalendarEvent evento = new CalendarEvent(organizacion, clase, peticion.title().trim(),
-                peticion.eventDate(), tipoOSinTipo(peticion.type()));
-        calendarEventRepository.saveAndFlush(evento);
+        CalendarEvent event = new CalendarEvent(organization, schoolClass, request.title().trim(),
+                request.eventDate(), typeOrNone(request.type()));
+        calendarEventRepository.saveAndFlush(event);
 
-        return CalendarEntryResponse.deEvento(evento);
+        return CalendarEntryResponse.ofEvent(event);
     }
 
     @Transactional
-    public CalendarEntryResponse actualizar(UUID eventId, SaveCalendarEventRequest peticion) {
-        CalendarEvent evento = calendarEventRepository.findById(eventId)
-                .orElseThrow(() -> NotFoundException.de("Evento", eventId));
-        exigirPuedeGestionar(evento);
+    public CalendarEntryResponse update(UUID eventId, SaveCalendarEventRequest request) {
+        CalendarEvent event = calendarEventRepository.findById(eventId)
+                .orElseThrow(() -> NotFoundException.of("Evento", eventId));
+        requireCanManage(event);
 
         // La clase del evento no se toca aquí: cambiarlo de clase, o de clase a
         // todo el centro, cambia quién puede gestionarlo, así que para eso se
         // borra y se crea de nuevo en lugar de reinterpretar la petición.
-        evento.setTitle(peticion.title().trim());
-        evento.setEventDate(peticion.eventDate());
-        evento.setType(tipoOSinTipo(peticion.type()));
-        calendarEventRepository.save(evento);
+        event.setTitle(request.title().trim());
+        event.setEventDate(request.eventDate());
+        event.setType(typeOrNone(request.type()));
+        calendarEventRepository.save(event);
 
-        return CalendarEntryResponse.deEvento(evento);
+        return CalendarEntryResponse.ofEvent(event);
     }
 
     @Transactional
-    public void eliminar(UUID eventId) {
-        CalendarEvent evento = calendarEventRepository.findById(eventId)
-                .orElseThrow(() -> NotFoundException.de("Evento", eventId));
-        exigirPuedeGestionar(evento);
+    public void delete(UUID eventId) {
+        CalendarEvent event = calendarEventRepository.findById(eventId)
+                .orElseThrow(() -> NotFoundException.of("Evento", eventId));
+        requireCanManage(event);
 
-        calendarEventRepository.delete(evento);
+        calendarEventRepository.delete(event);
     }
 
     /** Un evento de clase lo gestiona su profesorado o administración; uno de todo el centro, solo administración. */
-    private SchoolClass claseDelEvento(UUID classId, AuthenticatedUser usuario) {
+    private SchoolClass schoolClassOfEvent(UUID classId, AuthenticatedUser user) {
         if (classId == null) {
-            if (!usuario.esAdmin()) {
+            if (!user.isAdmin()) {
                 throw new AccessDeniedException("Solo la administración crea eventos de todo el centro");
             }
             return null;
         }
-        return acceso.exigirEditable(classId);
+        return access.requireEditable(classId);
     }
 
-    private void exigirPuedeGestionar(CalendarEvent evento) {
-        SchoolClass clase = evento.getSchoolClass();
-        if (clase == null) {
-            if (!authService.identidadActual().esAdmin()) {
+    private void requireCanManage(CalendarEvent event) {
+        SchoolClass schoolClass = event.getSchoolClass();
+        if (schoolClass == null) {
+            if (!authService.currentIdentity().isAdmin()) {
                 throw new AccessDeniedException("Solo la administración gestiona los eventos de todo el centro");
             }
         } else {
-            acceso.exigirEditable(clase.getId());
+            access.requireEditable(schoolClass.getId());
         }
     }
 
-    private CalendarEventType tipoOSinTipo(String type) {
-        return (type == null || type.isBlank()) ? null : CalendarEventType.desdeValor(type);
+    private CalendarEventType typeOrNone(String type) {
+        return (type == null || type.isBlank()) ? null : CalendarEventType.fromValue(type);
     }
 }

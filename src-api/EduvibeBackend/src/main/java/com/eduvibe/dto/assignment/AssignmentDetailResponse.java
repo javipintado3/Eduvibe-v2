@@ -39,27 +39,27 @@ public record AssignmentDetailResponse(
         ClassGroupResponse myGroup,
         Instant createdAt) {
 
-    public static AssignmentDetailResponse de(Assignment tarea, boolean puedoEditar,
+    public static AssignmentDetailResponse of(Assignment assignment, boolean puedoEditar,
                                               SubmissionResponse miEntrega, RubricResponse rubric,
                                               ClassGroupResponse myGroup) {
         return new AssignmentDetailResponse(
-                tarea.getId(),
-                tarea.getSchoolClass().getId(),
-                tarea.getSchoolClass().getName(),
-                tarea.getSchoolClass().getSubject(),
-                tarea.getTopic() == null ? null : tarea.getTopic().getId(),
-                tarea.getTitle(),
-                tarea.getDescription(),
-                tarea.getDueDate(),
-                tarea.getPoints(),
-                tarea.getLatePenaltyPercent(),
-                tarea.getWeight(),
-                tarea.isGroupAssignment(),
-                tarea.haVencido(),
+                assignment.getId(),
+                assignment.getSchoolClass().getId(),
+                assignment.getSchoolClass().getName(),
+                assignment.getSchoolClass().getSubject(),
+                assignment.getTopic() == null ? null : assignment.getTopic().getId(),
+                assignment.getTitle(),
+                assignment.getDescription(),
+                assignment.getDueDate(),
+                assignment.getPoints(),
+                assignment.getLatePenaltyPercent(),
+                assignment.getWeight(),
+                assignment.isGroupAssignment(),
+                assignment.haVencido(),
                 puedoEditar,
                 miEntrega,
                 rubric,
                 myGroup,
-                tarea.getCreatedAt());
+                assignment.getCreatedAt());
     }
 }

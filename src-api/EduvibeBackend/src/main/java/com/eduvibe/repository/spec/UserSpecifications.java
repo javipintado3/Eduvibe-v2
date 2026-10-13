@@ -35,27 +35,27 @@ public final class UserSpecifications {
     }
 
     /** Acota a una organización. Es el único filtro que nunca es opcional. */
-    public static Specification<User> deOrganizacion(UUID organizationId) {
-        return (raiz, consulta, cb) -> cb.equal(raiz.get("organization").get("id"), organizationId);
+    public static Specification<User> ofOrganization(UUID organizationId) {
+        return (root, query, cb) -> cb.equal(root.get("organization").get("id"), organizationId);
     }
 
     /** Deja fuera a quien la administración ha eliminado: ya no es nadie del centro. */
-    public static Specification<User> noEliminados() {
-        return (raiz, consulta, cb) -> cb.isNull(raiz.get("deletedAt"));
+    public static Specification<User> notDeleted() {
+        return (root, query, cb) -> cb.isNull(root.get("deletedAt"));
     }
 
-    public static Specification<User> conRol(UserRole rol) {
-        if (rol == null) {
+    public static Specification<User> withRole(UserRole role) {
+        if (role == null) {
             return null;
         }
-        return (raiz, consulta, cb) -> cb.equal(raiz.get("role"), rol);
+        return (root, query, cb) -> cb.equal(root.get("role"), role);
     }
 
-    public static Specification<User> conEstado(UserStatus estado) {
-        if (estado == null) {
+    public static Specification<User> withStatus(UserStatus status) {
+        if (status == null) {
             return null;
         }
-        return (raiz, consulta, cb) -> cb.equal(raiz.get("status"), estado);
+        return (root, query, cb) -> cb.equal(root.get("status"), status);
     }
 
     /**
@@ -67,29 +67,29 @@ public final class UserSpecifications {
      * menos filas de las que pide `size`, o el conteo total no cuadraría con
      * lo que de verdad se puede añadir.
      */
-    public static Specification<User> noMatriculadoEn(UUID classId) {
+    public static Specification<User> notEnrolledIn(UUID classId) {
         if (classId == null) {
             return null;
         }
-        return (raiz, consulta, cb) -> {
-            Subquery<UUID> matriculados = consulta.subquery(UUID.class);
-            var enrollment = matriculados.from(Enrollment.class);
-            matriculados.select(enrollment.get("user").get("id"))
+        return (root, query, cb) -> {
+            Subquery<UUID> enrolled = query.subquery(UUID.class);
+            var enrollment = enrolled.from(Enrollment.class);
+            enrolled.select(enrollment.get("user").get("id"))
                     .where(cb.equal(enrollment.get("schoolClass").get("id"), classId));
 
-            return cb.not(raiz.get("id").in(matriculados));
+            return cb.not(root.get("id").in(enrolled));
         };
     }
 
     /** Busca el texto en el nombre o en el email, sin distinguir mayúsculas. */
-    public static Specification<User> queContenga(String texto) {
+    public static Specification<User> thatContains(String texto) {
         if (texto == null || texto.isBlank()) {
             return null;
         }
-        String patron = "%" + texto.trim().toLowerCase() + "%";
+        String pattern = "%" + texto.trim().toLowerCase() + "%";
 
-        return (raiz, consulta, cb) -> cb.or(
-                cb.like(cb.lower(raiz.get("name")), patron),
-                cb.like(cb.lower(raiz.get("email")), patron));
+        return (root, query, cb) -> cb.or(
+                cb.like(cb.lower(root.get("name")), pattern),
+                cb.like(cb.lower(root.get("email")), pattern));
     }
 }

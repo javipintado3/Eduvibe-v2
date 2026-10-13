@@ -1,4 +1,4 @@
-package com.eduvibe.dto.perfil;
+package com.eduvibe.dto.profile;
 
 import java.util.Map;
 
@@ -9,7 +9,7 @@ import java.util.Map;
  * solo endpoint y pinta una tarjeta u otra según qué campos le llegan
  * rellenos; cada fábrica solo rellena los suyos, el resto queda a null.
  */
-public record ResumenPerfilResponse(
+public record ProfileSummaryResponse(
         String role,
         Integer numeroClases,
         Integer numeroAlumnos,
@@ -20,20 +20,20 @@ public record ResumenPerfilResponse(
         Map<String, Long> usuariosPorRol,
         Long invitacionesPendientes) {
 
-    public static ResumenPerfilResponse paraAlumno(int numeroClases, Double notaMedia,
+    public static ProfileSummaryResponse forStudent(int numeroClases, Double notaMedia,
                                                     int tareasPendientes, long notificacionesNoLeidas) {
-        return new ResumenPerfilResponse("student", numeroClases, null, null,
+        return new ProfileSummaryResponse("student", numeroClases, null, null,
                 notaMedia, tareasPendientes, notificacionesNoLeidas, null, null);
     }
 
-    public static ResumenPerfilResponse paraProfesor(int numeroClases, int numeroAlumnos, int entregasPorCorregir) {
-        return new ResumenPerfilResponse("teacher", numeroClases, numeroAlumnos, entregasPorCorregir,
+    public static ProfileSummaryResponse forTeacher(int numeroClases, int numeroAlumnos, int entregasPorCorregir) {
+        return new ProfileSummaryResponse("teacher", numeroClases, numeroAlumnos, entregasPorCorregir,
                 null, null, null, null, null);
     }
 
-    public static ResumenPerfilResponse paraAdmin(Map<String, Long> usuariosPorRol, int numeroClases,
+    public static ProfileSummaryResponse forAdmin(Map<String, Long> usuariosPorRol, int numeroClases,
                                                    long invitacionesPendientes) {
-        return new ResumenPerfilResponse("admin", numeroClases, null, null,
+        return new ProfileSummaryResponse("admin", numeroClases, null, null,
                 null, null, null, usuariosPorRol, invitacionesPendientes);
     }
 }

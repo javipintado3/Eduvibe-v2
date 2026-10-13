@@ -6,11 +6,11 @@ import jakarta.persistence.Converter;
 
 /**
  * Conversión del estado de una solicitud de registro. La lógica está en
- * {@link EnumConValorConverter}; aquí solo se fija el tipo concreto, que es lo
+ * {@link EnumWithValueConverter}; aquí solo se fija el tipo concreto, que es lo
  * que JPA necesita para poder aplicarlo automáticamente.
  */
 @Converter(autoApply = true)
-public class RegistrationStatusConverter extends EnumConValorConverter<RegistrationStatus> {
+public class RegistrationStatusConverter extends EnumWithValueConverter<RegistrationStatus> {
 
     public RegistrationStatusConverter() {
         super(RegistrationStatus.class);

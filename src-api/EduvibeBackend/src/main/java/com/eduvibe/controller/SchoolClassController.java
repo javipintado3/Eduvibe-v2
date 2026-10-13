@@ -84,52 +84,52 @@ public class SchoolClassController {
 
     /** Panel principal: las clases de quien consulta. */
     @GetMapping
-    public ResponseEntity<PageResponse<ClassResponse>> misClases(
-            @RequestParam(required = false, name = "q") String busqueda, Pageable pageable) {
-        return ResponseEntity.ok(schoolClassService.misClases(busqueda, pageable));
+    public ResponseEntity<PageResponse<ClassResponse>> mySchoolClasses(
+            @RequestParam(required = false, name = "q") String search, Pageable pageable) {
+        return ResponseEntity.ok(schoolClassService.mySchoolClasses(search, pageable));
     }
 
     @PostMapping
-    public ResponseEntity<ClassDetailResponse> crear(@Valid @RequestBody CreateClassRequest peticion) {
-        ClassDetailResponse creada = schoolClassService.crear(peticion);
-        return ResponseEntity.created(URI.create("/api/classes/" + creada.id())).body(creada);
+    public ResponseEntity<ClassDetailResponse> create(@Valid @RequestBody CreateClassRequest request) {
+        ClassDetailResponse created = schoolClassService.create(request);
+        return ResponseEntity.created(URI.create("/api/classes/" + created.id())).body(created);
     }
 
     @GetMapping("/{classId}")
-    public ResponseEntity<ClassDetailResponse> detalle(@PathVariable UUID classId) {
-        return ResponseEntity.ok(schoolClassService.detalle(classId));
+    public ResponseEntity<ClassDetailResponse> detail(@PathVariable UUID classId) {
+        return ResponseEntity.ok(schoolClassService.detail(classId));
     }
 
     @PutMapping("/{classId}")
-    public ResponseEntity<ClassDetailResponse> actualizar(@PathVariable UUID classId,
-                                                          @Valid @RequestBody CreateClassRequest peticion) {
-        return ResponseEntity.ok(schoolClassService.actualizar(classId, peticion));
+    public ResponseEntity<ClassDetailResponse> update(@PathVariable UUID classId,
+                                                          @Valid @RequestBody CreateClassRequest request) {
+        return ResponseEntity.ok(schoolClassService.update(classId, request));
     }
 
     /** Borra la clase entera. Solo administración, y solo si nadie ha entregado nada todavía. */
     @DeleteMapping("/{classId}")
-    public ResponseEntity<Void> eliminar(@PathVariable UUID classId) {
-        schoolClassService.eliminar(classId);
+    public ResponseEntity<Void> delete(@PathVariable UUID classId) {
+        schoolClassService.delete(classId);
         return ResponseEntity.noContent().build();
     }
 
     // ----------------------------------------------------------- matrículas
 
     @GetMapping("/{classId}/members")
-    public ResponseEntity<List<MemberResponse>> miembros(@PathVariable UUID classId) {
-        return ResponseEntity.ok(schoolClassService.miembros(classId));
+    public ResponseEntity<List<MemberResponse>> members(@PathVariable UUID classId) {
+        return ResponseEntity.ok(schoolClassService.members(classId));
     }
 
     @PostMapping("/{classId}/members")
-    public ResponseEntity<MemberResponse> matricular(@PathVariable UUID classId,
-                                                     @Valid @RequestBody EnrollRequest peticion) {
+    public ResponseEntity<MemberResponse> enroll(@PathVariable UUID classId,
+                                                     @Valid @RequestBody EnrollRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(schoolClassService.matricular(classId, peticion));
+                .body(schoolClassService.enroll(classId, request));
     }
 
     @DeleteMapping("/{classId}/members/{userId}")
-    public ResponseEntity<Void> desmatricular(@PathVariable UUID classId, @PathVariable UUID userId) {
-        schoolClassService.desmatricular(classId, userId);
+    public ResponseEntity<Void> unenroll(@PathVariable UUID classId, @PathVariable UUID userId) {
+        schoolClassService.unenroll(classId, userId);
         return ResponseEntity.noContent().build();
     }
 
@@ -141,124 +141,124 @@ public class SchoolClassController {
     }
 
     @PostMapping("/{classId}/topics")
-    public ResponseEntity<TopicResponse> crearTema(@PathVariable UUID classId,
-                                                   @Valid @RequestBody CreateTopicRequest peticion) {
+    public ResponseEntity<TopicResponse> createTopic(@PathVariable UUID classId,
+                                                   @Valid @RequestBody CreateTopicRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(schoolClassService.crearTema(classId, peticion));
+                .body(schoolClassService.createTopic(classId, request));
     }
 
     @PutMapping("/{classId}/topics/{topicId}")
-    public ResponseEntity<TopicResponse> actualizarTema(@PathVariable UUID classId, @PathVariable UUID topicId,
-                                                        @Valid @RequestBody CreateTopicRequest peticion) {
-        return ResponseEntity.ok(schoolClassService.actualizarTema(classId, topicId, peticion));
+    public ResponseEntity<TopicResponse> updateTopic(@PathVariable UUID classId, @PathVariable UUID topicId,
+                                                        @Valid @RequestBody CreateTopicRequest request) {
+        return ResponseEntity.ok(schoolClassService.updateTopic(classId, topicId, request));
     }
 
     // ---------------------------------------------------------------- tareas
 
     /** Trabajo de clase. Lo que se devuelve depende de quién pregunte. */
     @GetMapping("/{classId}/assignments")
-    public ResponseEntity<List<AssignmentResponse>> tareas(@PathVariable UUID classId) {
-        return ResponseEntity.ok(assignmentService.listar(classId));
+    public ResponseEntity<List<AssignmentResponse>> assignments(@PathVariable UUID classId) {
+        return ResponseEntity.ok(assignmentService.list(classId));
     }
 
     @PostMapping("/{classId}/assignments")
-    public ResponseEntity<AssignmentDetailResponse> crearTarea(@PathVariable UUID classId,
-                                                               @Valid @RequestBody SaveAssignmentRequest peticion) {
-        AssignmentDetailResponse creada = assignmentService.crear(classId, peticion);
-        return ResponseEntity.created(URI.create("/api/assignments/" + creada.id())).body(creada);
+    public ResponseEntity<AssignmentDetailResponse> createAssignment(@PathVariable UUID classId,
+                                                               @Valid @RequestBody SaveAssignmentRequest request) {
+        AssignmentDetailResponse created = assignmentService.create(classId, request);
+        return ResponseEntity.created(URI.create("/api/assignments/" + created.id())).body(created);
     }
 
     // -------------------------------------------------------- calificaciones
 
     /** Pestaña de calificaciones: las entregas propias en esta clase. */
     @GetMapping("/{classId}/my-submissions")
-    public ResponseEntity<List<SubmissionResponse>> misEntregas(@PathVariable UUID classId) {
-        return ResponseEntity.ok(submissionService.misEntregasDeClase(classId));
+    public ResponseEntity<List<SubmissionResponse>> mySubmissions(@PathVariable UUID classId) {
+        return ResponseEntity.ok(submissionService.mySubmissionsOfSchoolClass(classId));
     }
 
     // ---------------------------------------------------------------- avisos
 
     /** Muro de la clase: fijados primero, luego lo más reciente. */
     @GetMapping("/{classId}/announcements")
-    public ResponseEntity<PageResponse<AnnouncementResponse>> avisos(@PathVariable UUID classId, Pageable pageable) {
-        return ResponseEntity.ok(announcementService.listar(classId, pageable));
+    public ResponseEntity<PageResponse<AnnouncementResponse>> announcements(@PathVariable UUID classId, Pageable pageable) {
+        return ResponseEntity.ok(announcementService.list(classId, pageable));
     }
 
     @PostMapping("/{classId}/announcements")
-    public ResponseEntity<AnnouncementResponse> publicarAviso(@PathVariable UUID classId,
-                                                               @Valid @RequestBody SaveAnnouncementRequest peticion) {
+    public ResponseEntity<AnnouncementResponse> publishAnnouncement(@PathVariable UUID classId,
+                                                               @Valid @RequestBody SaveAnnouncementRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(announcementService.crear(classId, peticion));
+                .body(announcementService.create(classId, request));
     }
 
     // ------------------------------------------------------------ materiales
 
     @GetMapping("/{classId}/resources")
-    public ResponseEntity<List<ResourceResponse>> materiales(@PathVariable UUID classId) {
-        return ResponseEntity.ok(resourceService.listar(classId));
+    public ResponseEntity<List<ResourceResponse>> resources(@PathVariable UUID classId) {
+        return ResponseEntity.ok(resourceService.list(classId));
     }
 
     @PostMapping("/{classId}/resources")
-    public ResponseEntity<ResourceResponse> anadirMaterial(@PathVariable UUID classId,
-                                                            @Valid @RequestBody SaveResourceRequest peticion) {
+    public ResponseEntity<ResourceResponse> addMaterial(@PathVariable UUID classId,
+                                                            @Valid @RequestBody SaveResourceRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(resourceService.crear(classId, peticion));
+                .body(resourceService.create(classId, request));
     }
 
     // -------------------------------------------------------------- exámenes
 
     /** Exámenes de la clase. Lo que se devuelve depende de quién pregunte. */
     @GetMapping("/{classId}/exams")
-    public ResponseEntity<List<ExamResponse>> examenes(@PathVariable UUID classId) {
-        return ResponseEntity.ok(examService.listar(classId));
+    public ResponseEntity<List<ExamResponse>> exams(@PathVariable UUID classId) {
+        return ResponseEntity.ok(examService.list(classId));
     }
 
     @PostMapping("/{classId}/exams")
-    public ResponseEntity<ExamDetailResponse> crearExamen(@PathVariable UUID classId,
-                                                          @Valid @RequestBody SaveExamRequest peticion) {
-        ExamDetailResponse creado = examService.crear(classId, peticion);
+    public ResponseEntity<ExamDetailResponse> createExam(@PathVariable UUID classId,
+                                                          @Valid @RequestBody SaveExamRequest request) {
+        ExamDetailResponse creado = examService.create(classId, request);
         return ResponseEntity.created(URI.create("/api/exams/" + creado.id())).body(creado);
     }
 
     /** Preguntas ya usadas en algún examen de la clase, para reutilizarlas en uno nuevo. Solo profesorado. */
     @GetMapping("/{classId}/exams/question-bank")
-    public ResponseEntity<List<BankQuestionResponse>> bancoDePreguntas(@PathVariable UUID classId) {
-        return ResponseEntity.ok(examService.listarBanco(classId));
+    public ResponseEntity<List<BankQuestionResponse>> questionBank(@PathVariable UUID classId) {
+        return ResponseEntity.ok(examService.listBankQuestions(classId));
     }
 
     // ----------------------------------------------------------------- foro
 
     /** Hilos del foro, con más actividad reciente primero. */
     @GetMapping("/{classId}/forum-threads")
-    public ResponseEntity<List<ForumThreadResponse>> hilosDeForo(@PathVariable UUID classId) {
-        return ResponseEntity.ok(forumService.listar(classId));
+    public ResponseEntity<List<ForumThreadResponse>> threadsOfForum(@PathVariable UUID classId) {
+        return ResponseEntity.ok(forumService.list(classId));
     }
 
     @PostMapping("/{classId}/forum-threads")
-    public ResponseEntity<ForumThreadDetailResponse> abrirHilo(@PathVariable UUID classId,
-                                                               @Valid @RequestBody SaveForumThreadRequest peticion) {
-        ForumThreadDetailResponse creado = forumService.crear(classId, peticion);
+    public ResponseEntity<ForumThreadDetailResponse> openThread(@PathVariable UUID classId,
+                                                               @Valid @RequestBody SaveForumThreadRequest request) {
+        ForumThreadDetailResponse creado = forumService.create(classId, request);
         return ResponseEntity.created(URI.create("/api/forum-threads/" + creado.id())).body(creado);
     }
 
     // ------------------------------------------------------------ subgrupos
 
     @GetMapping("/{classId}/groups")
-    public ResponseEntity<List<ClassGroupResponse>> subgrupos(@PathVariable UUID classId) {
-        return ResponseEntity.ok(classGroupService.listar(classId));
+    public ResponseEntity<List<ClassGroupResponse>> subgroups(@PathVariable UUID classId) {
+        return ResponseEntity.ok(classGroupService.list(classId));
     }
 
     // ---------------------------------------------------------------- analítica
 
     /** Panel del profesorado: quién ha entregado, quién no, y quién está en riesgo. */
     @GetMapping("/{classId}/analytics")
-    public ResponseEntity<ClassAnalyticsResponse> analitica(@PathVariable UUID classId) {
-        return ResponseEntity.ok(analyticsService.analiticaDe(classId));
+    public ResponseEntity<ClassAnalyticsResponse> analytics(@PathVariable UUID classId) {
+        return ResponseEntity.ok(analyticsService.analyticsOf(classId));
     }
 
     @PostMapping("/{classId}/groups")
-    public ResponseEntity<ClassGroupResponse> crearSubgrupo(@PathVariable UUID classId,
-                                                            @Valid @RequestBody SaveClassGroupRequest peticion) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(classGroupService.crear(classId, peticion));
+    public ResponseEntity<ClassGroupResponse> createSubgroup(@PathVariable UUID classId,
+                                                            @Valid @RequestBody SaveClassGroupRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(classGroupService.create(classId, request));
     }
 }

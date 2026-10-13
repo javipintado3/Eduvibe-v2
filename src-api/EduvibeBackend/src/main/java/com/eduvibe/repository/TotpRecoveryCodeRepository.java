@@ -18,5 +18,5 @@ public interface TotpRecoveryCodeRepository extends JpaRepository<TotpRecoveryCo
     /** Al generar un juego nuevo, o al desactivar el 2FA, los anteriores dejan de valer. */
     @Modifying
     @Query("DELETE FROM TotpRecoveryCode c WHERE c.user.id = :userId")
-    int borrarDe(@Param("userId") UUID userId);
+    int deleteByUser(@Param("userId") UUID userId);
 }

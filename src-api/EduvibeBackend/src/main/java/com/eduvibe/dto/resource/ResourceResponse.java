@@ -23,11 +23,11 @@ public record ResourceResponse(
         Instant createdAt) {
 
     /**
-     * @param esProfesor si quien consulta puede editar la clase: ve el material
+     * @param isTeacher si quien consulta puede editar la clase: ve el material
      *                   siempre, aunque todavía esté programado para el futuro.
      */
-    public static ResourceResponse de(Resource material, boolean esProfesor) {
-        boolean bloqueado = !esProfesor && material.bloqueadoParaAlumnado();
+    public static ResourceResponse of(Resource material, boolean isTeacher) {
+        boolean bloqueado = !isTeacher && material.lockedForStudents();
 
         return new ResourceResponse(
                 material.getId(),
@@ -36,7 +36,7 @@ public record ResourceResponse(
                 // Mientras esté bloqueado no se manda el archivo: ocultar el
                 // enlace en el HTML no impediría descargarlo llamando a la API
                 bloqueado ? null : material.getFileUrl(),
-                material.getType() == null ? null : material.getType().getValor(),
+                material.getType() == null ? null : material.getType().getValue(),
                 material.getSortOrder(),
                 material.getAvailableFrom(),
                 bloqueado,

@@ -28,25 +28,25 @@ public class NotificationController {
     private final NotificationService notificationService;
 
     @GetMapping
-    public ResponseEntity<PageResponse<NotificationResponse>> misNotificaciones(
-            @RequestParam(defaultValue = "false") boolean soloNoLeidas, Pageable pageable) {
-        return ResponseEntity.ok(notificationService.misNotificaciones(soloNoLeidas, pageable));
+    public ResponseEntity<PageResponse<NotificationResponse>> myNotifications(
+            @RequestParam(name = "soloNoLeidas", defaultValue = "false") boolean onlyUnread, Pageable pageable) {
+        return ResponseEntity.ok(notificationService.myNotifications(onlyUnread, pageable));
     }
 
     @GetMapping("/unread-count")
-    public ResponseEntity<Map<String, Long>> noLeidas() {
-        return ResponseEntity.ok(Map.of("count", notificationService.noLeidas()));
+    public ResponseEntity<Map<String, Long>> unread() {
+        return ResponseEntity.ok(Map.of("count", notificationService.unread()));
     }
 
     @PutMapping("/{notificationId}/read")
-    public ResponseEntity<Void> marcarLeida(@PathVariable UUID notificationId) {
-        notificationService.marcarLeida(notificationId);
+    public ResponseEntity<Void> markRead(@PathVariable UUID notificationId) {
+        notificationService.markRead(notificationId);
         return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/read-all")
-    public ResponseEntity<Void> marcarTodasLeidas() {
-        notificationService.marcarTodasLeidas();
+    public ResponseEntity<Void> markAllRead() {
+        notificationService.markAllRead();
         return ResponseEntity.noContent().build();
     }
 }

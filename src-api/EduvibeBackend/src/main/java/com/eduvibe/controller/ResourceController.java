@@ -30,14 +30,14 @@ public class ResourceController {
     private final ResourceService resourceService;
 
     @PutMapping("/{resourceId}")
-    public ResponseEntity<ResourceResponse> actualizar(@PathVariable UUID resourceId,
-                                                        @Valid @RequestBody SaveResourceRequest peticion) {
-        return ResponseEntity.ok(resourceService.actualizar(resourceId, peticion));
+    public ResponseEntity<ResourceResponse> update(@PathVariable UUID resourceId,
+                                                        @Valid @RequestBody SaveResourceRequest request) {
+        return ResponseEntity.ok(resourceService.update(resourceId, request));
     }
 
     @DeleteMapping("/{resourceId}")
-    public ResponseEntity<Void> eliminar(@PathVariable UUID resourceId) {
-        resourceService.eliminar(resourceId);
+    public ResponseEntity<Void> delete(@PathVariable UUID resourceId) {
+        resourceService.delete(resourceId);
         return ResponseEntity.noContent().build();
     }
 }

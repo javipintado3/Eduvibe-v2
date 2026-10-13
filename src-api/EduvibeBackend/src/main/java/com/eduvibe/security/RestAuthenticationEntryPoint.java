@@ -33,7 +33,7 @@ public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
 
-        objectMapper.writeValue(response.getOutputStream(), ErrorResponse.de(
+        objectMapper.writeValue(response.getOutputStream(), ErrorResponse.of(
                 HttpStatus.UNAUTHORIZED.value(),
                 "Unauthorized",
                 "Necesitas iniciar sesión para acceder a este recurso",

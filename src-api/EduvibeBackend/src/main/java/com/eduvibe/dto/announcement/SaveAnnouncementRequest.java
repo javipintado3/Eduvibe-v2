@@ -12,7 +12,7 @@ public record SaveAnnouncementRequest(
         /** Los avisos fijados aparecen arriba del muro. */
         Boolean pinned) {
 
-    public boolean estaFijado() {
+    public boolean isPinned() {
         return Boolean.TRUE.equals(pinned);
     }
 }

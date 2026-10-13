@@ -31,7 +31,7 @@ import lombok.RequiredArgsConstructor;
  * Foro de debate de una clase: hilos y sus mensajes.
  *
  * Cualquier persona matriculada (alumnado o profesorado) puede abrir un hilo
- * y responder; lo decide {@link ClassAccessService#exigirVisible}, no
+ * y responder; lo decide {@link ClassAccessService#requireVisible}, no
  * {@code exigirEditable} como en avisos o materiales, porque el foro es un
  * espacio de la clase entera, no algo que solo publique el profesorado.
  *
@@ -46,31 +46,31 @@ public class ForumService {
     private final ForumThreadRepository forumThreadRepository;
     private final ForumPostRepository forumPostRepository;
     private final UserRepository userRepository;
-    private final ClassAccessService acceso;
+    private final ClassAccessService access;
     private final AuthService authService;
     private final TopicService topicService;
 
     @Transactional(readOnly = true)
-    public List<ForumThreadResponse> listar(UUID classId) {
-        acceso.exigirVisible(classId);
+    public List<ForumThreadResponse> list(UUID classId) {
+        access.requireVisible(classId);
 
-        List<ForumThread> hilos = forumThreadRepository.findBySchoolClassId(classId);
-        if (hilos.isEmpty()) {
+        List<ForumThread> threads = forumThreadRepository.findBySchoolClassId(classId);
+        if (threads.isEmpty()) {
             return List.of();
         }
 
-        List<UUID> ids = hilos.stream().map(ForumThread::getId).toList();
-        Map<UUID, ForumPostRepository.EstadisticasDeHilo> estadisticas = new HashMap<>();
-        for (var fila : forumPostRepository.estadisticasDe(ids)) {
-            estadisticas.put(fila.getThreadId(), fila);
+        List<UUID> ids = threads.stream().map(ForumThread::getId).toList();
+        Map<UUID, ForumPostRepository.StatisticsOfThread> statistics = new HashMap<>();
+        for (var fila : forumPostRepository.statisticsOf(ids)) {
+            statistics.put(fila.getThreadId(), fila);
         }
 
-        return hilos.stream()
-                .map(hilo -> {
-                    var stats = estadisticas.get(hilo.getId());
+        return threads.stream()
+                .map(thread -> {
+                    var stats = statistics.get(thread.getId());
                     long total = stats != null ? stats.getTotal() : 0;
-                    Instant ultima = stats != null ? stats.getUltima() : null;
-                    return ForumThreadResponse.de(hilo, total, ultima);
+                    Instant lastPostAt = stats != null ? stats.getLastPostAt() : null;
+                    return ForumThreadResponse.of(thread, total, lastPostAt);
                 })
                 // Los hilos con actividad más reciente van primero, como en cualquier foro
                 .sorted((a, b) -> b.lastActivityAt().compareTo(a.lastActivityAt()))
@@ -78,89 +78,89 @@ public class ForumService {
     }
 
     @Transactional
-    public ForumThreadDetailResponse crear(UUID classId, SaveForumThreadRequest peticion) {
-        SchoolClass clase = acceso.exigirVisible(classId);
-        User autor = usuarioActual();
+    public ForumThreadDetailResponse create(UUID classId, SaveForumThreadRequest request) {
+        SchoolClass schoolClass = access.requireVisible(classId);
+        User author = currentUser();
 
-        ForumThread hilo = new ForumThread(clase, autor, peticion.title().trim());
-        hilo.setTopic(topicService.resolverDeClase(peticion.topicId(), classId));
-        forumThreadRepository.saveAndFlush(hilo);
+        ForumThread thread = new ForumThread(schoolClass, author, request.title().trim());
+        thread.setTopic(topicService.resolveOfSchoolClass(request.topicId(), classId));
+        forumThreadRepository.saveAndFlush(thread);
 
-        ForumPost primerMensaje = new ForumPost(hilo, autor, peticion.content().trim());
-        forumPostRepository.save(primerMensaje);
+        ForumPost firstMessage = new ForumPost(thread, author, request.content().trim());
+        forumPostRepository.save(firstMessage);
 
-        return detalle(hilo.getId());
+        return detail(thread.getId());
     }
 
     @Transactional(readOnly = true)
-    public ForumThreadDetailResponse detalle(UUID threadId) {
-        ForumThread hilo = forumThreadRepository.findById(threadId)
-                .orElseThrow(() -> NotFoundException.de("Hilo", threadId));
+    public ForumThreadDetailResponse detail(UUID threadId) {
+        ForumThread thread = forumThreadRepository.findById(threadId)
+                .orElseThrow(() -> NotFoundException.of("Hilo", threadId));
 
-        UUID classId = hilo.getSchoolClass().getId();
-        acceso.exigirVisible(classId);
+        UUID classId = thread.getSchoolClass().getId();
+        access.requireVisible(classId);
 
-        AuthenticatedUser autenticado = authService.identidadActual();
-        boolean puedoModerar = acceso.puedeCalificarEn(classId);
-        boolean puedoBorrarHilo = puedoModerar || hilo.getAuthor().getId().equals(autenticado.id());
+        AuthenticatedUser autenticado = authService.currentIdentity();
+        boolean puedoModerar = access.canGradeIn(classId);
+        boolean puedoBorrarHilo = puedoModerar || thread.getAuthor().getId().equals(autenticado.id());
 
         List<ForumPostResponse> posts = forumPostRepository.findByThreadIdOrderByCreatedAtAsc(threadId).stream()
-                .map(mensaje -> ForumPostResponse.de(mensaje,
-                        puedoModerar || mensaje.getAuthor().getId().equals(autenticado.id())))
+                .map(message -> ForumPostResponse.of(message,
+                        puedoModerar || message.getAuthor().getId().equals(autenticado.id())))
                 .toList();
 
-        return ForumThreadDetailResponse.de(hilo, puedoModerar, puedoBorrarHilo, posts);
+        return ForumThreadDetailResponse.of(thread, puedoModerar, puedoBorrarHilo, posts);
     }
 
     @Transactional
-    public ForumPostResponse responder(UUID threadId, SaveForumPostRequest peticion) {
-        ForumThread hilo = forumThreadRepository.findById(threadId)
-                .orElseThrow(() -> NotFoundException.de("Hilo", threadId));
+    public ForumPostResponse reply(UUID threadId, SaveForumPostRequest request) {
+        ForumThread thread = forumThreadRepository.findById(threadId)
+                .orElseThrow(() -> NotFoundException.of("Hilo", threadId));
 
-        acceso.exigirVisible(hilo.getSchoolClass().getId());
-        User autor = usuarioActual();
+        access.requireVisible(thread.getSchoolClass().getId());
+        User author = currentUser();
 
-        ForumPost mensaje = new ForumPost(hilo, autor, peticion.content().trim());
+        ForumPost message = new ForumPost(thread, author, request.content().trim());
         // saveAndFlush, no save: createdAt lo rellena la base de datos al
         // insertar (@Generated), y se lee aquí mismo para la respuesta sin
         // ninguna consulta después que fuerce el flush.
-        forumPostRepository.saveAndFlush(mensaje);
+        forumPostRepository.saveAndFlush(message);
 
-        return ForumPostResponse.de(mensaje, true);
+        return ForumPostResponse.of(message, true);
     }
 
     @Transactional
-    public void eliminarHilo(UUID threadId) {
-        ForumThread hilo = forumThreadRepository.findById(threadId)
-                .orElseThrow(() -> NotFoundException.de("Hilo", threadId));
+    public void deleteThread(UUID threadId) {
+        ForumThread thread = forumThreadRepository.findById(threadId)
+                .orElseThrow(() -> NotFoundException.of("Hilo", threadId));
 
-        exigirAutorOModerador(hilo.getSchoolClass().getId(), hilo.getAuthor().getId());
-        forumThreadRepository.delete(hilo);
+        requireAuthorOrModerator(thread.getSchoolClass().getId(), thread.getAuthor().getId());
+        forumThreadRepository.delete(thread);
     }
 
     @Transactional
-    public void eliminarMensaje(UUID postId) {
-        ForumPost mensaje = forumPostRepository.findById(postId)
-                .orElseThrow(() -> NotFoundException.de("Mensaje", postId));
+    public void deleteMessage(UUID postId) {
+        ForumPost message = forumPostRepository.findById(postId)
+                .orElseThrow(() -> NotFoundException.of("Mensaje", postId));
 
-        exigirAutorOModerador(mensaje.getThread().getSchoolClass().getId(), mensaje.getAuthor().getId());
-        forumPostRepository.delete(mensaje);
+        requireAuthorOrModerator(message.getThread().getSchoolClass().getId(), message.getAuthor().getId());
+        forumPostRepository.delete(message);
     }
 
     /** Solo el autor del mensaje/hilo, o el profesorado de la clase como moderación. */
-    private void exigirAutorOModerador(UUID classId, UUID autorId) {
-        AuthenticatedUser autenticado = authService.identidadActual();
-        acceso.exigirVisible(classId);
+    private void requireAuthorOrModerator(UUID classId, UUID authorId) {
+        AuthenticatedUser autenticado = authService.currentIdentity();
+        access.requireVisible(classId);
 
-        boolean esAutor = autorId.equals(autenticado.id());
-        if (!esAutor && !acceso.puedeCalificarEn(classId)) {
+        boolean isAuthor = authorId.equals(autenticado.id());
+        if (!isAuthor && !access.canGradeIn(classId)) {
             throw new AccessDeniedException("Solo quien lo escribió o el profesorado puede borrarlo");
         }
     }
 
-    private User usuarioActual() {
-        AuthenticatedUser autenticado = authService.identidadActual();
+    private User currentUser() {
+        AuthenticatedUser autenticado = authService.currentIdentity();
         return userRepository.findById(autenticado.id())
-                .orElseThrow(() -> NotFoundException.de("Usuario", autenticado.id()));
+                .orElseThrow(() -> NotFoundException.of("Usuario", autenticado.id()));
     }
 }

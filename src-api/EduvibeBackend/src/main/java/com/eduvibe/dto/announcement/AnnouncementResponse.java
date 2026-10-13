@@ -20,13 +20,13 @@ public record AnnouncementResponse(
         Instant createdAt,
         boolean puedoBorrar) {
 
-    public static AnnouncementResponse de(Announcement aviso, boolean puedoBorrar) {
+    public static AnnouncementResponse of(Announcement announcement, boolean puedoBorrar) {
         return new AnnouncementResponse(
-                aviso.getId(),
-                aviso.getContent(),
-                aviso.isPinned(),
-                aviso.getAuthor().getName(),
-                aviso.getCreatedAt(),
+                announcement.getId(),
+                announcement.getContent(),
+                announcement.isPinned(),
+                announcement.getAuthor().getName(),
+                announcement.getCreatedAt(),
                 puedoBorrar);
     }
 }

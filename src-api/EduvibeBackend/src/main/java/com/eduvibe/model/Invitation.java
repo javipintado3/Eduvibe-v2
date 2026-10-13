@@ -62,20 +62,20 @@ public class Invitation {
         this.expiresAt = expiresAt;
     }
 
-    public boolean estaUsada() {
+    public boolean isUsed() {
         return usedAt != null;
     }
 
-    public boolean haExpirado() {
+    public boolean hasExpired() {
         return Instant.now().isAfter(expiresAt);
     }
 
     /** Una invitación sirve una sola vez y solo dentro de su plazo. */
-    public boolean esUtilizable() {
-        return !estaUsada() && !haExpirado();
+    public boolean isUsable() {
+        return !isUsed() && !hasExpired();
     }
 
-    public void marcarComoUsada() {
+    public void markAsUsed() {
         this.usedAt = Instant.now();
     }
 }

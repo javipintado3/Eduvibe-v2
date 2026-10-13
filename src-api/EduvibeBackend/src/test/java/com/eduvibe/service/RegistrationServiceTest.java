@@ -75,81 +75,81 @@ class RegistrationServiceTest {
     @Mock
     private AuthService authService;
 
-    private RegistrationService servicio;
+    private RegistrationService service;
 
-    private Organization centro;
+    private Organization organization;
 
     @BeforeEach
     void crearServicio() {
-        AppProperties propiedades = new AppProperties(null, null, "http://localhost:4200", null, null, null,
+        AppProperties properties = new AppProperties(null, null, "http://localhost:4200", null, null, null,
                 new AppProperties.Registration(24, 5, 100, false));
-        servicio = new RegistrationService(requestRepository, organizationRepository, userRepository,
-                userService, invitationService, notificationService, mailService, authService, propiedades);
+        service = new RegistrationService(requestRepository, organizationRepository, userRepository,
+                userService, invitationService, notificationService, mailService, authService, properties);
 
-        centro = new Organization("Centro", "centro.es");
-        centro.setId(UUID.randomUUID());
+        organization = new Organization("Centro", "centro.es");
+        organization.setId(UUID.randomUUID());
     }
 
-    private RegisterRequest peticion(String email) {
+    private RegisterRequest request(String email) {
         return new RegisterRequest("Ana", email, null, "");
     }
 
-    private RegistrationRequest solicitudSinVerificar() {
-        RegistrationRequest solicitud = new RegistrationRequest(centro, EMAIL, "Ana", null, IP);
-        solicitud.emitirVerificacion(Tokens.hashear("token"), Instant.now().plusSeconds(3600));
-        return solicitud;
+    private RegistrationRequest unverifiedRequest() {
+        RegistrationRequest request = new RegistrationRequest(organization, EMAIL, "Ana", null, IP);
+        request.issueVerification(Tokens.hash("token"), Instant.now().plusSeconds(3600));
+        return request;
     }
 
-    private RegistrationRequest solicitudPendiente() {
-        RegistrationRequest solicitud = solicitudSinVerificar();
-        solicitud.setId(UUID.randomUUID());
-        solicitud.marcarComoVerificada();
-        return solicitud;
+    private RegistrationRequest pendingRequest() {
+        RegistrationRequest request = unverifiedRequest();
+        request.setId(UUID.randomUUID());
+        request.markAsVerified();
+        return request;
     }
 
-    private AuthenticatedUser administrador() {
-        return new AuthenticatedUser(UUID.randomUUID(), "admin@centro.es", "Admin", UserRole.ADMIN, centro.getId());
+    private AuthenticatedUser administrator() {
+        return new AuthenticatedUser(UUID.randomUUID(), "admin@centro.es", "Admin", UserRole.ADMIN, organization.getId());
     }
 
     @Nested
     @DisplayName("Solicitar")
-    class Solicitar {
+    class Request {
 
         @Test
         @DisplayName("con un email nuevo de un dominio conocido guarda solo el hash del token y envía el enlace con el token en claro")
         void emailNuevo() {
-            when(organizationRepository.findByAllowedDomain("centro.es")).thenReturn(Optional.of(centro));
+            when(organizationRepository.findByAllowedDomain("centro.es")).thenReturn(Optional.of(organization));
             when(requestRepository.findFirstByEmailAndStatusIn(eq(EMAIL), anyCollection())).thenReturn(Optional.empty());
 
-            servicio.solicitar(peticion("  Ana@Centro.ES "), IP);
+            service.request(request("  Ana@Centro.ES "), IP);
 
-            ArgumentCaptor<RegistrationRequest> guardada = ArgumentCaptor.forClass(RegistrationRequest.class);
-            verify(requestRepository).save(guardada.capture());
-            ArgumentCaptor<String> enlace = ArgumentCaptor.forClass(String.class);
-            verify(mailService).enviarVerificacionDeRegistro(eq("Ana"), eq(EMAIL), enlace.capture());
+            ArgumentCaptor<RegistrationRequest> saved = ArgumentCaptor.forClass(RegistrationRequest.class);
+            verify(requestRepository).save(saved.capture());
+            ArgumentCaptor<String> link = ArgumentCaptor.forClass(String.class);
+            verify(mailService).sendVerificationOfRegistration(eq("Ana"), eq(EMAIL), link.capture());
 
-            String token = enlace.getValue().substring(enlace.getValue().lastIndexOf('/') + 1);
-            assertThat(enlace.getValue()).startsWith("http://localhost:4200/verificar-registro/");
-            assertThat(guardada.getValue().getTokenHash()).isEqualTo(Tokens.hashear(token));
-            assertThat(guardada.getValue().getTokenHash()).isNotEqualTo(token);
-            assertThat(guardada.getValue().getStatus()).isEqualTo(RegistrationStatus.UNVERIFIED);
-            assertThat(guardada.getValue().getIpAddress()).isEqualTo(IP);
+            String token = link.getValue().substring(link.getValue().lastIndexOf('/') + 1);
+            assertThat(link.getValue()).startsWith("http://localhost:4200/verificar-registro/");
+            assertThat(saved.getValue().getTokenHash()).isEqualTo(Tokens.hash(token));
+            assertThat(saved.getValue().getTokenHash()).isNotEqualTo(token);
+            assertThat(saved.getValue().getStatus()).isEqualTo(RegistrationStatus.UNVERIFIED);
+            assertThat(saved.getValue().getIpAddress()).isEqualTo(IP);
         }
 
         @Test
         @DisplayName("guarda el mensaje sin espacios sobrantes, y uno en blanco se guarda como ausente")
         void mensaje() {
-            when(organizationRepository.findByAllowedDomain("centro.es")).thenReturn(Optional.of(centro));
+            when(organizationRepository.findByAllowedDomain("centro.es")).thenReturn(Optional.of(organization));
             when(requestRepository.findFirstByEmailAndStatusIn(anyString(), anyCollection()))
                     .thenReturn(Optional.empty());
 
-            servicio.solicitar(new RegisterRequest("Ana", EMAIL, "  Soy de 2.º B  ", ""), IP);
-            servicio.solicitar(new RegisterRequest("Bea", "bea@centro.es", "   ", ""), IP);
+            service.request(new RegisterRequest("Ana", EMAIL, "  Soy de 2.º B  ", ""), IP);
+            service.request(new RegisterRequest("Bea", "bea@centro.es", "   ", ""), IP);
 
-            ArgumentCaptor<RegistrationRequest> guardadas = ArgumentCaptor.forClass(RegistrationRequest.class);
-            verify(requestRepository, org.mockito.Mockito.times(2)).save(guardadas.capture());
-            assertThat(guardadas.getAllValues().get(0).getMessage()).isEqualTo("Soy de 2.º B");
-            assertThat(guardadas.getAllValues().get(1).getMessage()).isNull();
+            ArgumentCaptor<RegistrationRequest> saved = ArgumentCaptor.forClass(RegistrationRequest.class);
+            verify(requestRepository, org.mockito.Mockito.times(2)).save(saved.capture());
+            assertThat(saved.getAllValues().get(0).getMessage()).isEqualTo("Soy de 2.º B");
+            assertThat(saved.getAllValues().get(1).getMessage()).isNull();
         }
 
         @Test
@@ -157,7 +157,7 @@ class RegistrationServiceTest {
         void dominioDesconocido() {
             when(organizationRepository.findByAllowedDomain("otro.com")).thenReturn(Optional.empty());
 
-            servicio.solicitar(peticion("ana@otro.com"), IP);
+            service.request(request("ana@otro.com"), IP);
 
             verify(requestRepository, never()).save(any());
             verifyNoInteractions(mailService);
@@ -166,10 +166,10 @@ class RegistrationServiceTest {
         @Test
         @DisplayName("si ya existe una cuenta con ese email no guarda ni envía nada, y no da error")
         void cuentaExistente() {
-            when(organizationRepository.findByAllowedDomain("centro.es")).thenReturn(Optional.of(centro));
+            when(organizationRepository.findByAllowedDomain("centro.es")).thenReturn(Optional.of(organization));
             when(userRepository.existsByEmail(EMAIL)).thenReturn(true);
 
-            servicio.solicitar(peticion(EMAIL), IP);
+            service.request(request(EMAIL), IP);
 
             verify(requestRepository, never()).save(any());
             verifyNoInteractions(mailService);
@@ -178,11 +178,11 @@ class RegistrationServiceTest {
         @Test
         @DisplayName("si se rechazó a ese email hace poco, lo ignora sin avisar")
         void rechazadaHacePoco() {
-            when(organizationRepository.findByAllowedDomain("centro.es")).thenReturn(Optional.of(centro));
+            when(organizationRepository.findByAllowedDomain("centro.es")).thenReturn(Optional.of(organization));
             when(requestRepository.existsByEmailAndStatusAndReviewedAtAfter(
                     eq(EMAIL), eq(RegistrationStatus.REJECTED), any())).thenReturn(true);
 
-            servicio.solicitar(peticion(EMAIL), IP);
+            service.request(request(EMAIL), IP);
 
             verify(requestRepository, never()).save(any());
             verifyNoInteractions(mailService);
@@ -191,7 +191,7 @@ class RegistrationServiceTest {
         @Test
         @DisplayName("si el campo cebo viene relleno lo descarta sin tocar nada")
         void bot() {
-            servicio.solicitar(new RegisterRequest("Bot", EMAIL, null, "http://spam.example"), IP);
+            service.request(new RegisterRequest("Bot", EMAIL, null, "http://spam.example"), IP);
 
             verifyNoInteractions(requestRepository, organizationRepository, userRepository, mailService);
         }
@@ -201,7 +201,7 @@ class RegistrationServiceTest {
         void limitePorIp() {
             when(requestRepository.countByIpAddressAndCreatedAtAfter(eq(IP), any())).thenReturn(5L);
 
-            assertThatThrownBy(() -> servicio.solicitar(peticion(EMAIL), IP))
+            assertThatThrownBy(() -> service.request(request(EMAIL), IP))
                     .isInstanceOf(TooManyRequestsException.class);
             verify(requestRepository, never()).save(any());
         }
@@ -211,20 +211,20 @@ class RegistrationServiceTest {
         void limiteGlobal() {
             when(requestRepository.countByCreatedAtAfter(any())).thenReturn(100L);
 
-            assertThatThrownBy(() -> servicio.solicitar(peticion(EMAIL), IP))
+            assertThatThrownBy(() -> service.request(request(EMAIL), IP))
                     .isInstanceOf(TooManyRequestsException.class);
         }
 
         @Test
         @DisplayName("si ya hay una solicitud sin verificar y se pidió el enlace hace poco, no envía otro")
         void reenvioDemasiadoPronto() {
-            RegistrationRequest abierta = solicitudSinVerificar();
-            abierta.setUpdatedAt(Instant.now().minusSeconds(30));
-            when(organizationRepository.findByAllowedDomain("centro.es")).thenReturn(Optional.of(centro));
+            RegistrationRequest open = unverifiedRequest();
+            open.setUpdatedAt(Instant.now().minusSeconds(30));
+            when(organizationRepository.findByAllowedDomain("centro.es")).thenReturn(Optional.of(organization));
             when(requestRepository.findFirstByEmailAndStatusIn(eq(EMAIL), anyCollection()))
-                    .thenReturn(Optional.of(abierta));
+                    .thenReturn(Optional.of(open));
 
-            servicio.solicitar(peticion(EMAIL), IP);
+            service.request(request(EMAIL), IP);
 
             verifyNoInteractions(mailService);
         }
@@ -232,28 +232,28 @@ class RegistrationServiceTest {
         @Test
         @DisplayName("si ya hay una solicitud sin verificar y pasó la espera, emite un token nuevo que sustituye al anterior")
         void reenvioPasadaLaEspera() {
-            RegistrationRequest abierta = solicitudSinVerificar();
-            String hashAnterior = abierta.getTokenHash();
-            abierta.setUpdatedAt(Instant.now().minusSeconds(3600));
-            when(organizationRepository.findByAllowedDomain("centro.es")).thenReturn(Optional.of(centro));
+            RegistrationRequest open = unverifiedRequest();
+            String previousHash = open.getTokenHash();
+            open.setUpdatedAt(Instant.now().minusSeconds(3600));
+            when(organizationRepository.findByAllowedDomain("centro.es")).thenReturn(Optional.of(organization));
             when(requestRepository.findFirstByEmailAndStatusIn(eq(EMAIL), anyCollection()))
-                    .thenReturn(Optional.of(abierta));
+                    .thenReturn(Optional.of(open));
 
-            servicio.solicitar(peticion(EMAIL), IP);
+            service.request(request(EMAIL), IP);
 
-            verify(mailService).enviarVerificacionDeRegistro(anyString(), eq(EMAIL), anyString());
-            assertThat(abierta.getTokenHash()).isNotEqualTo(hashAnterior);
+            verify(mailService).sendVerificationOfRegistration(anyString(), eq(EMAIL), anyString());
+            assertThat(open.getTokenHash()).isNotEqualTo(previousHash);
         }
 
         @Test
         @DisplayName("si la solicitud ya está pendiente de aprobar, no envía nada")
         void yaPendiente() {
-            RegistrationRequest abierta = solicitudPendiente();
-            when(organizationRepository.findByAllowedDomain("centro.es")).thenReturn(Optional.of(centro));
+            RegistrationRequest open = pendingRequest();
+            when(organizationRepository.findByAllowedDomain("centro.es")).thenReturn(Optional.of(organization));
             when(requestRepository.findFirstByEmailAndStatusIn(eq(EMAIL), anyCollection()))
-                    .thenReturn(Optional.of(abierta));
+                    .thenReturn(Optional.of(open));
 
-            servicio.solicitar(peticion(EMAIL), IP);
+            service.request(request(EMAIL), IP);
 
             verifyNoInteractions(mailService);
         }
@@ -261,53 +261,53 @@ class RegistrationServiceTest {
 
     @Nested
     @DisplayName("Verificar")
-    class Verificar {
+    class Verify {
 
         @Test
         @DisplayName("con un token válido pasa a pendiente, invalida el token y avisa a los administradores")
         void tokenValido() {
-            RegistrationRequest solicitud = solicitudSinVerificar();
-            User admin = new User(centro, "admin@centro.es", "Admin", UserRole.ADMIN);
-            when(requestRepository.findByTokenHash(Tokens.hashear("token"))).thenReturn(Optional.of(solicitud));
+            RegistrationRequest request = unverifiedRequest();
+            User admin = new User(organization, "admin@centro.es", "Admin", UserRole.ADMIN);
+            when(requestRepository.findByTokenHash(Tokens.hash("token"))).thenReturn(Optional.of(request));
             when(userRepository.findByOrganizationIdAndRoleAndStatus(any(), eq(UserRole.ADMIN), any()))
                     .thenReturn(List.of(admin));
 
-            servicio.verificar("token");
+            service.verify("token");
 
-            assertThat(solicitud.getStatus()).isEqualTo(RegistrationStatus.PENDING);
-            assertThat(solicitud.getTokenHash()).isNull();
-            verify(notificationService).emitirParaVarios(eq(List.of(admin)),
-                    eq(Notification.REGISTRO_SOLICITADO), any());
+            assertThat(request.getStatus()).isEqualTo(RegistrationStatus.PENDING);
+            assertThat(request.getTokenHash()).isNull();
+            verify(notificationService).issueForSeveral(eq(List.of(admin)),
+                    eq(Notification.REGISTRATION_REQUESTED), any());
         }
 
         @Test
         @DisplayName("con un token caducado da el mismo error que uno inexistente")
         void tokenCaducado() {
-            RegistrationRequest solicitud = solicitudSinVerificar();
-            solicitud.emitirVerificacion(Tokens.hashear("token"), Instant.now().minusSeconds(1));
-            when(requestRepository.findByTokenHash(Tokens.hashear("token"))).thenReturn(Optional.of(solicitud));
-            when(requestRepository.findByTokenHash(Tokens.hashear("inventado"))).thenReturn(Optional.empty());
+            RegistrationRequest request = unverifiedRequest();
+            request.issueVerification(Tokens.hash("token"), Instant.now().minusSeconds(1));
+            when(requestRepository.findByTokenHash(Tokens.hash("token"))).thenReturn(Optional.of(request));
+            when(requestRepository.findByTokenHash(Tokens.hash("inventado"))).thenReturn(Optional.empty());
 
-            String mensajeCaducado = catchMessage(() -> servicio.verificar("token"));
-            String mensajeInexistente = catchMessage(() -> servicio.verificar("inventado"));
+            String expiredMessage = catchMessage(() -> service.verify("token"));
+            String nonexistentMessage = catchMessage(() -> service.verify("inventado"));
 
-            assertThat(mensajeCaducado).isEqualTo(mensajeInexistente);
+            assertThat(expiredMessage).isEqualTo(nonexistentMessage);
             verifyNoInteractions(notificationService);
         }
 
         @Test
         @DisplayName("no se puede usar dos veces: tras verificar, el token ya no existe")
         void unSoloUso() {
-            RegistrationRequest solicitud = solicitudPendiente();
+            RegistrationRequest request = pendingRequest();
             // Ya verificada: el token se borró y el estado no es UNVERIFIED
-            when(requestRepository.findByTokenHash(Tokens.hashear("token"))).thenReturn(Optional.of(solicitud));
+            when(requestRepository.findByTokenHash(Tokens.hash("token"))).thenReturn(Optional.of(request));
 
-            assertThatThrownBy(() -> servicio.verificar("token")).isInstanceOf(BadRequestException.class);
+            assertThatThrownBy(() -> service.verify("token")).isInstanceOf(BadRequestException.class);
         }
 
-        private String catchMessage(Runnable accion) {
+        private String catchMessage(Runnable action) {
             try {
-                accion.run();
+                action.run();
             } catch (BadRequestException e) {
                 return e.getMessage();
             }
@@ -317,48 +317,48 @@ class RegistrationServiceTest {
 
     @Nested
     @DisplayName("Resolver (administración)")
-    class Resolver {
+    class Resolve {
 
         @Test
         @DisplayName("aprobar crea la cuenta con el rol que elige el administrador y emite la invitación")
         void aprobar() {
-            RegistrationRequest solicitud = solicitudPendiente();
-            User creado = new User(centro, EMAIL, "Ana", UserRole.TEACHER);
-            InvitationResponse invitacion = new InvitationResponse("http://x/invitacion/t", Instant.now(), false);
-            when(authService.identidadActual()).thenReturn(administrador());
-            when(requestRepository.findById(solicitud.getId())).thenReturn(Optional.of(solicitud));
-            when(userService.crearCuenta(centro, "Ana", EMAIL, "teacher")).thenReturn(creado);
-            when(invitationService.emitirPara(creado)).thenReturn(invitacion);
+            RegistrationRequest request = pendingRequest();
+            User creado = new User(organization, EMAIL, "Ana", UserRole.TEACHER);
+            InvitationResponse invitation = new InvitationResponse("http://x/invitacion/t", Instant.now(), false);
+            when(authService.currentIdentity()).thenReturn(administrator());
+            when(requestRepository.findById(request.getId())).thenReturn(Optional.of(request));
+            when(userService.createAccount(organization, "Ana", EMAIL, "teacher")).thenReturn(creado);
+            when(invitationService.issueFor(creado)).thenReturn(invitation);
 
-            CreateUserResponse respuesta = servicio.aprobar(solicitud.getId(), "teacher");
+            CreateUserResponse answer = service.approve(request.getId(), "teacher");
 
-            assertThat(respuesta.invitation()).isSameAs(invitacion);
-            assertThat(solicitud.getStatus()).isEqualTo(RegistrationStatus.APPROVED);
-            assertThat(solicitud.getReviewedAt()).isNotNull();
+            assertThat(answer.invitation()).isSameAs(invitation);
+            assertThat(request.getStatus()).isEqualTo(RegistrationStatus.APPROVED);
+            assertThat(request.getReviewedAt()).isNotNull();
         }
 
         @Test
         @DisplayName("rechazar la marca como rechazada y avisa por correo")
         void rechazar() {
-            RegistrationRequest solicitud = solicitudPendiente();
-            when(authService.identidadActual()).thenReturn(administrador());
-            when(requestRepository.findById(solicitud.getId())).thenReturn(Optional.of(solicitud));
+            RegistrationRequest request = pendingRequest();
+            when(authService.currentIdentity()).thenReturn(administrator());
+            when(requestRepository.findById(request.getId())).thenReturn(Optional.of(request));
 
-            servicio.rechazar(solicitud.getId());
+            service.reject(request.getId());
 
-            assertThat(solicitud.getStatus()).isEqualTo(RegistrationStatus.REJECTED);
-            verify(mailService).enviarSolicitudRechazada("Ana", EMAIL);
+            assertThat(request.getStatus()).isEqualTo(RegistrationStatus.REJECTED);
+            verify(mailService).sendRejectedRequest("Ana", EMAIL);
         }
 
         @Test
         @DisplayName("una solicitud sin verificar no se puede aprobar: el correo aún no es de fiar")
         void sinVerificar() {
-            RegistrationRequest solicitud = solicitudSinVerificar();
-            solicitud.setId(UUID.randomUUID());
-            when(authService.identidadActual()).thenReturn(administrador());
-            when(requestRepository.findById(solicitud.getId())).thenReturn(Optional.of(solicitud));
+            RegistrationRequest request = unverifiedRequest();
+            request.setId(UUID.randomUUID());
+            when(authService.currentIdentity()).thenReturn(administrator());
+            when(requestRepository.findById(request.getId())).thenReturn(Optional.of(request));
 
-            assertThatThrownBy(() -> servicio.aprobar(solicitud.getId(), "student"))
+            assertThatThrownBy(() -> service.approve(request.getId(), "student"))
                     .isInstanceOf(ConflictException.class);
             verifyNoInteractions(userService);
         }
@@ -366,25 +366,25 @@ class RegistrationServiceTest {
         @Test
         @DisplayName("una solicitud ya resuelta no se puede resolver otra vez")
         void yaResuelta() {
-            RegistrationRequest solicitud = solicitudPendiente();
-            solicitud.rechazar(null);
-            when(authService.identidadActual()).thenReturn(administrador());
-            when(requestRepository.findById(solicitud.getId())).thenReturn(Optional.of(solicitud));
+            RegistrationRequest request = pendingRequest();
+            request.reject(null);
+            when(authService.currentIdentity()).thenReturn(administrator());
+            when(requestRepository.findById(request.getId())).thenReturn(Optional.of(request));
 
-            assertThatThrownBy(() -> servicio.rechazar(solicitud.getId())).isInstanceOf(ConflictException.class);
+            assertThatThrownBy(() -> service.reject(request.getId())).isInstanceOf(ConflictException.class);
         }
 
         @Test
         @DisplayName("la solicitud de otro centro se trata como inexistente")
         void deOtroCentro() {
-            Organization otro = new Organization("Otro", "otro.es");
-            otro.setId(UUID.randomUUID());
-            RegistrationRequest ajena = new RegistrationRequest(otro, "bea@otro.es", "Bea", null, IP);
-            ajena.setId(UUID.randomUUID());
-            when(authService.identidadActual()).thenReturn(administrador());
-            when(requestRepository.findById(ajena.getId())).thenReturn(Optional.of(ajena));
+            Organization otherOrganization = new Organization("Otro", "otro.es");
+            otherOrganization.setId(UUID.randomUUID());
+            RegistrationRequest foreignRequest = new RegistrationRequest(otherOrganization, "bea@otro.es", "Bea", null, IP);
+            foreignRequest.setId(UUID.randomUUID());
+            when(authService.currentIdentity()).thenReturn(administrator());
+            when(requestRepository.findById(foreignRequest.getId())).thenReturn(Optional.of(foreignRequest));
 
-            assertThatThrownBy(() -> servicio.aprobar(ajena.getId(), "student"))
+            assertThatThrownBy(() -> service.approve(foreignRequest.getId(), "student"))
                     .isInstanceOf(NotFoundException.class);
             verifyNoInteractions(userService);
         }

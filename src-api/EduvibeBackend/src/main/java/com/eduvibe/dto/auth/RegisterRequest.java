@@ -34,7 +34,7 @@ public record RegisterRequest(
         @Size(max = 200)
         String website) {
 
-    public boolean pareceUnBot() {
+    public boolean looksLikeBot() {
         return website != null && !website.isBlank();
     }
 }

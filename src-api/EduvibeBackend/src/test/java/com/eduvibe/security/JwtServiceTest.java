@@ -17,66 +17,66 @@ import com.eduvibe.model.enums.UserRole;
 
 class JwtServiceTest {
 
-    private JwtService servicio;
-    private User usuario;
+    private JwtService service;
+    private User user;
 
     @BeforeEach
     void preparar() {
-        AppProperties propiedades = new AppProperties(null,
+        AppProperties properties = new AppProperties(null,
                 new AppProperties.Jwt("un-secreto-de-pruebas-de-al-menos-32-bytes!!", 8, 0),
                 null, null, null, null, null);
-        servicio = new JwtService(propiedades, new MockEnvironment());
+        service = new JwtService(properties, new MockEnvironment());
 
-        Organization centro = new Organization("Centro", null);
-        centro.setId(UUID.randomUUID());
-        usuario = new User(centro, "ana@centro.es", "Ana", UserRole.STUDENT);
-        usuario.setId(UUID.randomUUID());
+        Organization organization = new Organization("Centro", null);
+        organization.setId(UUID.randomUUID());
+        user = new User(organization, "ana@centro.es", "Ana", UserRole.STUDENT);
+        user.setId(UUID.randomUUID());
     }
 
     @Test
     @DisplayName("el token lleva un id propio y la versión de sesiones del usuario")
     void lleva_id_y_version() {
-        usuario.invalidarSesiones();
-        usuario.invalidarSesiones();
+        user.invalidateSessions();
+        user.invalidateSessions();
 
-        AuthenticatedUser identidad = servicio.leer(servicio.emitirPara(usuario));
+        AuthenticatedUser identity = service.read(service.issueFor(user));
 
-        assertThat(identidad.id()).isEqualTo(usuario.getId());
-        assertThat(identidad.sesion().id()).isNotNull();
-        assertThat(identidad.sesion().version()).isEqualTo(2);
-        assertThat(identidad.sesion().expiresAt()).isAfter(java.time.Instant.now());
+        assertThat(identity.id()).isEqualTo(user.getId());
+        assertThat(identity.session().id()).isNotNull();
+        assertThat(identity.session().version()).isEqualTo(2);
+        assertThat(identity.session().expiresAt()).isAfter(java.time.Instant.now());
     }
 
     @Test
     @DisplayName("si se configuran minutos, mandan sobre las horas")
     void validezEnMinutos() {
-        JwtService conMinutos = new JwtService(new AppProperties(null,
+        JwtService withMinutes = new JwtService(new AppProperties(null,
                 new AppProperties.Jwt("un-secreto-de-pruebas-de-al-menos-32-bytes!!", 8, 30),
                 null, null, null, null, null), new MockEnvironment());
 
-        java.time.Instant caducidad = conMinutos.leer(conMinutos.emitirPara(usuario)).sesion().expiresAt();
+        java.time.Instant expiry = withMinutes.read(withMinutes.issueFor(user)).session().expiresAt();
 
-        assertThat(caducidad).isBefore(java.time.Instant.now().plus(java.time.Duration.ofMinutes(31)));
-        assertThat(caducidad).isAfter(java.time.Instant.now().plus(java.time.Duration.ofMinutes(29)));
+        assertThat(expiry).isBefore(java.time.Instant.now().plus(java.time.Duration.ofMinutes(31)));
+        assertThat(expiry).isAfter(java.time.Instant.now().plus(java.time.Duration.ofMinutes(29)));
     }
 
     @Test
     @DisplayName("dos tokens del mismo usuario tienen ids distintos, para poder revocar uno sin el otro")
     void idsDistintos() {
-        AuthenticatedUser primero = servicio.leer(servicio.emitirPara(usuario));
-        AuthenticatedUser segundo = servicio.leer(servicio.emitirPara(usuario));
+        AuthenticatedUser first = service.read(service.issueFor(user));
+        AuthenticatedUser second = service.read(service.issueFor(user));
 
-        assertThat(primero.sesion().id()).isNotEqualTo(segundo.sesion().id());
+        assertThat(first.session().id()).isNotEqualTo(second.session().id());
     }
 
     @Test
     @DisplayName("con el perfil prod no arranca si falta JWT_SECRET")
     void prodExigeSecreto() {
-        AppProperties sinSecreto = new AppProperties(null, new AppProperties.Jwt("", 8, 0), null, null, null, null, null);
+        AppProperties withoutSecret = new AppProperties(null, new AppProperties.Jwt("", 8, 0), null, null, null, null, null);
         MockEnvironment prod = new MockEnvironment();
         prod.setActiveProfiles("prod");
 
-        assertThatThrownBy(() -> new JwtService(sinSecreto, prod))
+        assertThatThrownBy(() -> new JwtService(withoutSecret, prod))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("JWT_SECRET");
     }
@@ -84,19 +84,19 @@ class JwtServiceTest {
     @Test
     @DisplayName("sin perfil prod, un secreto vacío genera una clave aleatoria y arranca")
     void desarrolloAceptaSinSecreto() {
-        AppProperties sinSecreto = new AppProperties(null, new AppProperties.Jwt("", 8, 0), null, null, null, null, null);
+        AppProperties withoutSecret = new AppProperties(null, new AppProperties.Jwt("", 8, 0), null, null, null, null, null);
 
-        JwtService local = new JwtService(sinSecreto, new MockEnvironment());
+        JwtService local = new JwtService(withoutSecret, new MockEnvironment());
 
-        assertThat(local.leer(local.emitirPara(usuario))).isNotNull();
+        assertThat(local.read(local.issueFor(user))).isNotNull();
     }
 
     @Test
     @DisplayName("un token manipulado se rechaza")
     void tokenManipulado() {
-        String token = servicio.emitirPara(usuario);
+        String token = service.issueFor(user);
 
-        assertThat(servicio.leer(token + "x")).isNull();
-        assertThat(servicio.leer("no-es-un-token")).isNull();
+        assertThat(service.read(token + "x")).isNull();
+        assertThat(service.read("no-es-un-token")).isNull();
     }
 }

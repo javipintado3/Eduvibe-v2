@@ -21,21 +21,21 @@ public interface RegistrationRequestRepository extends JpaRepository<Registratio
     Optional<RegistrationRequest> findByTokenHash(String tokenHash);
 
     /** La solicitud abierta (sin verificar o pendiente) de un email, si la hay. */
-    Optional<RegistrationRequest> findFirstByEmailAndStatusIn(String email, Collection<RegistrationStatus> estados);
+    Optional<RegistrationRequest> findFirstByEmailAndStatusIn(String email, Collection<RegistrationStatus> statuses);
 
     /** ¿Se rechazó a este email hace poco? Para no dejar que reintente en bucle. */
-    boolean existsByEmailAndStatusAndReviewedAtAfter(String email, RegistrationStatus estado, Instant desde);
+    boolean existsByEmailAndStatusAndReviewedAtAfter(String email, RegistrationStatus status, Instant from);
 
     /** Peticiones hechas desde una IP desde el instante indicado; para el límite por IP. */
-    long countByIpAddressAndCreatedAtAfter(String ipAddress, Instant desde);
+    long countByIpAddressAndCreatedAtAfter(String ipAddress, Instant from);
 
     /** Peticiones de toda la plataforma desde el instante indicado; tope global anti-inundación. */
-    long countByCreatedAtAfter(Instant desde);
+    long countByCreatedAtAfter(Instant from);
 
-    Page<RegistrationRequest> findByOrganizationIdAndStatusOrderByCreatedAtAsc(UUID organizationId, RegistrationStatus estado,
+    Page<RegistrationRequest> findByOrganizationIdAndStatusOrderByCreatedAtAsc(UUID organizationId, RegistrationStatus status,
                                                             Pageable pageable);
 
-    long countByOrganizationIdAndStatus(UUID organizationId, RegistrationStatus estado);
+    long countByOrganizationIdAndStatus(UUID organizationId, RegistrationStatus status);
 
     /**
      * Borra las solicitudes que nunca se verificaron y ya pasaron de fecha: son
@@ -43,5 +43,5 @@ public interface RegistrationRequestRepository extends JpaRepository<Registratio
      */
     @Modifying
     @Query("DELETE FROM RegistrationRequest r WHERE r.status = :estado AND r.createdAt < :antes")
-    int borrarSinVerificarAnterioresA(@Param("estado") RegistrationStatus estado, @Param("antes") Instant antes);
+    int deleteUnverifiedOlderThan(@Param("estado") RegistrationStatus status, @Param("antes") Instant before);
 }

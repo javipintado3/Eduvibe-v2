@@ -12,12 +12,12 @@ public record UserClassResponse(
         String color,
         String roleInClass) {
 
-    public static UserClassResponse de(Enrollment matricula) {
+    public static UserClassResponse of(Enrollment enrollment) {
         return new UserClassResponse(
-                matricula.getSchoolClass().getId(),
-                matricula.getSchoolClass().getName(),
-                matricula.getSchoolClass().getSubject(),
-                matricula.getSchoolClass().getColor(),
-                matricula.getRoleInClass().getValor());
+                enrollment.getSchoolClass().getId(),
+                enrollment.getSchoolClass().getName(),
+                enrollment.getSchoolClass().getSubject(),
+                enrollment.getSchoolClass().getColor(),
+                enrollment.getRoleInClass().getValue());
     }
 }

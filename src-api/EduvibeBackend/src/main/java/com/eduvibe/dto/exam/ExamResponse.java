@@ -28,36 +28,36 @@ public record ExamResponse(
         Instant createdAt) {
 
     /** Vista de alumno: el estado de su propio intento ("no_empezado", "en_curso", "entregado"). */
-    public static ExamResponse paraAlumno(Exam examen, int numeroPreguntas, String miEstado, BigDecimal miNota) {
+    public static ExamResponse forStudent(Exam exam, int numeroPreguntas, String miEstado, BigDecimal miNota) {
         return new ExamResponse(
-                examen.getId(),
-                examen.getSchoolClass().getId(),
-                examen.getTopic() == null ? null : examen.getTopic().getId(),
-                examen.getTitle(),
-                examen.getDurationMinutes(),
-                examen.getDueDate(),
-                examen.haVencido(),
+                exam.getId(),
+                exam.getSchoolClass().getId(),
+                exam.getTopic() == null ? null : exam.getTopic().getId(),
+                exam.getTitle(),
+                exam.getDurationMinutes(),
+                exam.getDueDate(),
+                exam.haVencido(),
                 numeroPreguntas,
                 miEstado,
                 miNota,
                 null,
-                examen.getCreatedAt());
+                exam.getCreatedAt());
     }
 
     /** Vista de profesor: cuántos intentos lleva recibidos. */
-    public static ExamResponse paraProfesor(Exam examen, int numeroPreguntas, long intentosRecibidos) {
+    public static ExamResponse forTeacher(Exam exam, int numeroPreguntas, long intentosRecibidos) {
         return new ExamResponse(
-                examen.getId(),
-                examen.getSchoolClass().getId(),
-                examen.getTopic() == null ? null : examen.getTopic().getId(),
-                examen.getTitle(),
-                examen.getDurationMinutes(),
-                examen.getDueDate(),
-                examen.haVencido(),
+                exam.getId(),
+                exam.getSchoolClass().getId(),
+                exam.getTopic() == null ? null : exam.getTopic().getId(),
+                exam.getTitle(),
+                exam.getDurationMinutes(),
+                exam.getDueDate(),
+                exam.haVencido(),
                 numeroPreguntas,
                 null,
                 null,
                 intentosRecibidos,
-                examen.getCreatedAt());
+                exam.getCreatedAt());
     }
 }

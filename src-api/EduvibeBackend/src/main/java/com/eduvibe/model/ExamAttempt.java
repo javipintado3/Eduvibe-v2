@@ -61,16 +61,16 @@ public class ExamAttempt {
         this.startedAt = Instant.now();
     }
 
-    public boolean estaEntregado() {
+    public boolean isSubmitted() {
         return submittedAt != null;
     }
 
     /** Momento en el que se acaba el tiempo, a partir de cuándo se empezó y la duración del examen. */
-    public Instant limiteDeTiempo() {
+    public Instant timeLimit() {
         return startedAt.plusSeconds(exam.getDurationMinutes() * 60L);
     }
 
-    public void entregar(BigDecimal score) {
+    public void submit(BigDecimal score) {
         this.submittedAt = Instant.now();
         this.score = score;
     }

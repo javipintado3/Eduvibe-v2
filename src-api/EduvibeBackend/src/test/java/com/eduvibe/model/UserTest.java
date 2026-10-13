@@ -11,100 +11,100 @@ import com.eduvibe.model.enums.UserStatus;
 
 class UserTest {
 
-    private User nuevoUsuario() {
+    private User newUser() {
         return new User(new Organization("Centro", null), "Ana@Centro.es", "Ana", UserRole.STUDENT);
     }
 
     @Nested
     @DisplayName("Normalización del email")
-    class Normalizacion {
+    class Normalization {
 
         @Test
         @DisplayName("pasa a minúsculas y quita los espacios sobrantes")
         void normaliza() {
-            assertThat(User.normalizarEmail("  Ana@Centro.ES  ")).isEqualTo("ana@centro.es");
+            assertThat(User.normalizeEmail("  Ana@Centro.ES  ")).isEqualTo("ana@centro.es");
         }
 
         @Test
         @DisplayName("deja pasar el null sin romperse")
         void toleraNull() {
-            assertThat(User.normalizarEmail(null)).isNull();
+            assertThat(User.normalizeEmail(null)).isNull();
         }
 
         @Test
         @DisplayName("se aplica también al construir y al asignar")
         void seAplicaAlAsignar() {
-            User usuario = nuevoUsuario();
-            assertThat(usuario.getEmail()).isEqualTo("ana@centro.es");
+            User user = newUser();
+            assertThat(user.getEmail()).isEqualTo("ana@centro.es");
 
-            usuario.setEmail("OTRA@Centro.es");
-            assertThat(usuario.getEmail()).isEqualTo("otra@centro.es");
+            user.setEmail("OTRA@Centro.es");
+            assertThat(user.getEmail()).isEqualTo("otra@centro.es");
         }
     }
 
     @Nested
     @DisplayName("Ciclo de vida de la cuenta")
-    class CicloDeVida {
+    class Lifecycle {
 
         @Test
         @DisplayName("nace pendiente y sin contraseña")
         void naceP() {
-            User usuario = nuevoUsuario();
+            User user = newUser();
 
-            assertThat(usuario.getStatus()).isEqualTo(UserStatus.PENDING);
-            assertThat(usuario.getPasswordHash()).isNull();
+            assertThat(user.getStatus()).isEqualTo(UserStatus.PENDING);
+            assertThat(user.getPasswordHash()).isNull();
         }
 
         @Test
         @DisplayName("una cuenta pendiente no puede iniciar sesión")
         void pendienteNoEntra() {
-            assertThat(nuevoUsuario().puedeIniciarSesion()).isFalse();
+            assertThat(newUser().canStartSession()).isFalse();
         }
 
         @Test
         @DisplayName("al activarse queda con contraseña y en estado activo")
         void seActiva() {
-            User usuario = nuevoUsuario();
-            usuario.activarCon("$2a$10$hash");
+            User user = newUser();
+            user.enableWith("$2a$10$hash");
 
-            assertThat(usuario.getStatus()).isEqualTo(UserStatus.ACTIVE);
-            assertThat(usuario.puedeIniciarSesion()).isTrue();
+            assertThat(user.getStatus()).isEqualTo(UserStatus.ACTIVE);
+            assertThat(user.canStartSession()).isTrue();
         }
 
         @Test
         @DisplayName("una cuenta desactivada no puede iniciar sesión aunque tenga contraseña")
         void desactivadaNoEntra() {
-            User usuario = nuevoUsuario();
-            usuario.activarCon("$2a$10$hash");
-            usuario.setStatus(UserStatus.DISABLED);
+            User user = newUser();
+            user.enableWith("$2a$10$hash");
+            user.setStatus(UserStatus.DISABLED);
 
-            assertThat(usuario.puedeIniciarSesion()).isFalse();
+            assertThat(user.canStartSession()).isFalse();
         }
     }
 
     @Nested
     @DisplayName("Eliminación por la administración")
-    class Eliminacion {
+    class Deletion {
 
         @Test
         @DisplayName("anonimiza el nombre, inutiliza el acceso y deja constancia de cuándo")
         void anonimiza() {
-            User usuario = nuevoUsuario();
-            usuario.activarCon("$2a$10$hash");
+            User user = newUser();
+            user.enableWith("$2a$10$hash");
 
-            usuario.eliminar();
+            user.delete();
 
-            assertThat(usuario.getName()).isEqualTo(User.NOMBRE_ELIMINADO);
-            assertThat(usuario.getEmail()).endsWith("@eduvibe.invalid");
-            assertThat(usuario.puedeIniciarSesion()).isFalse();
-            assertThat(usuario.getStatus()).isEqualTo(UserStatus.DISABLED);
-            assertThat(usuario.getDeletedAt()).isNotNull();
+            assertThat(user.getName()).isEqualTo(User.DELETED_NAME);
+            assertThat(user.getEmail()).endsWith("@eduvibe.invalid");
+            assertThat(user.canStartSession()).isFalse();
+            assertThat(user.getStatus()).isEqualTo(UserStatus.DISABLED);
+            assertThat(user.getDeletedAt()).isNotNull();
         }
 
         @Test
         @DisplayName("una cuenta normal no figura como eliminada")
         void porDefectoNoEstaEliminada() {
-            assertThat(nuevoUsuario().estaEliminado()).isFalse();
+            assertThat(newUser().isDeleted()).isFalse();
         }
     }
 }

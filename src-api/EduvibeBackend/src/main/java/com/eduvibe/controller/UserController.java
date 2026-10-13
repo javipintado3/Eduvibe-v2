@@ -57,42 +57,42 @@ public class UserController {
      * selector de matriculación, exclusión de quien ya está en una clase.
      */
     @GetMapping
-    public ResponseEntity<PageResponse<UserResponse>> listar(
+    public ResponseEntity<PageResponse<UserResponse>> list(
             @RequestParam(required = false) String role,
             @RequestParam(required = false) String status,
-            @RequestParam(required = false, name = "q") String busqueda,
+            @RequestParam(required = false, name = "q") String search,
             @RequestParam(required = false) UUID excludeClassId,
             @PageableDefault(size = 10, sort = "name", direction = Sort.Direction.ASC) Pageable pageable) {
 
-        return ResponseEntity.ok(userService.listar(role, status, busqueda, excludeClassId, pageable));
+        return ResponseEntity.ok(userService.list(role, status, search, excludeClassId, pageable));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<UserResponse> obtener(@PathVariable UUID id) {
-        return ResponseEntity.ok(userService.obtener(id));
+    public ResponseEntity<UserResponse> get(@PathVariable UUID id) {
+        return ResponseEntity.ok(userService.get(id));
     }
 
     /** Edita nombre, email y rol. La contraseña y el estado tienen sus propios flujos. */
     @PutMapping("/{id}")
-    public ResponseEntity<UserResponse> actualizar(@PathVariable UUID id,
-                                                    @Valid @RequestBody UpdateUserRequest peticion) {
-        return ResponseEntity.ok(userService.actualizar(id, peticion));
+    public ResponseEntity<UserResponse> update(@PathVariable UUID id,
+                                                    @Valid @RequestBody UpdateUserRequest request) {
+        return ResponseEntity.ok(userService.update(id, request));
     }
 
     /** Las clases en las que participa, para su ficha de administración. */
     @GetMapping("/{id}/classes")
-    public ResponseEntity<List<UserClassResponse>> clases(@PathVariable UUID id) {
-        return ResponseEntity.ok(userService.clasesDe(id));
+    public ResponseEntity<List<UserClassResponse>> schoolClasses(@PathVariable UUID id) {
+        return ResponseEntity.ok(userService.schoolClassesOf(id));
     }
 
     /** Exporta el listado filtrado en CSV, sin paginar. */
     @GetMapping("/export")
-    public ResponseEntity<String> exportar(
+    public ResponseEntity<String> export(
             @RequestParam(required = false) String role,
             @RequestParam(required = false) String status,
-            @RequestParam(required = false, name = "q") String busqueda) {
+            @RequestParam(required = false, name = "q") String search) {
 
-        String csv = userService.exportarCsv(role, status, busqueda);
+        String csv = userService.exportCsv(role, status, search);
 
         return ResponseEntity.ok()
                 .contentType(MediaType.valueOf("text/csv;charset=UTF-8"))
@@ -103,42 +103,42 @@ public class UserController {
 
     /** Alta masiva desde un CSV con columnas name, email, role. */
     @PostMapping("/import")
-    public ResponseEntity<ImportUsersResponse> importar(@RequestParam("file") MultipartFile file) {
-        return ResponseEntity.ok(userService.importar(file));
+    public ResponseEntity<ImportUsersResponse> importUsers(@RequestParam("file") MultipartFile file) {
+        return ResponseEntity.ok(userService.importUsers(file));
     }
 
     /** Alta de una cuenta. Devuelve además la invitación emitida. */
     @PostMapping
-    public ResponseEntity<CreateUserResponse> crear(@Valid @RequestBody CreateUserRequest peticion) {
-        CreateUserResponse creado = userService.crear(peticion);
+    public ResponseEntity<CreateUserResponse> create(@Valid @RequestBody CreateUserRequest request) {
+        CreateUserResponse creado = userService.create(request);
 
         return ResponseEntity
                 .created(URI.create("/api/users/" + creado.user().id()))
                 .body(creado);
     }
 
-    /** Activación o desactivación. Para quitar a alguien del centro, ver {@link #eliminar}. */
+    /** Activación o desactivación. Para quitar a alguien del centro, ver {@link #delete}. */
     @PatchMapping("/{id}/status")
-    public ResponseEntity<UserResponse> cambiarEstado(
+    public ResponseEntity<UserResponse> changeStatus(
             @PathVariable UUID id,
-            @Valid @RequestBody UpdateUserStatusRequest peticion) {
+            @Valid @RequestBody UpdateUserStatusRequest request) {
 
-        return ResponseEntity.ok(userService.cambiarEstado(id, peticion.status()));
+        return ResponseEntity.ok(userService.changeStatus(id, request.status()));
     }
 
     /**
      * Elimina a una persona del centro. Se anonimiza en lugar de borrarse, para
-     * no dejar huérfano lo que escribió; ver {@link UserService#eliminar}.
+     * no dejar huérfano lo que escribió; ver {@link UserService#delete}.
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminar(@PathVariable UUID id) {
-        userService.eliminar(id);
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        userService.delete(id);
         return ResponseEntity.noContent().build();
     }
 
     /** Vuelve a emitir la invitación de una cuenta pendiente. */
     @PostMapping("/{id}/invitation")
-    public ResponseEntity<InvitationResponse> reenviarInvitacion(@PathVariable UUID id) {
-        return ResponseEntity.ok(userService.reenviarInvitacion(id));
+    public ResponseEntity<InvitationResponse> resendInvitation(@PathVariable UUID id) {
+        return ResponseEntity.ok(userService.resendInvitation(id));
     }
 }

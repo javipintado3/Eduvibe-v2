@@ -28,10 +28,10 @@ public interface ClassGroupMemberRepository extends JpaRepository<ClassGroupMemb
             SELECT m FROM ClassGroupMember m
             WHERE m.user.id = :userId AND m.classGroup.schoolClass.id = :classId
             """)
-    Optional<ClassGroupMember> findDeAlumnoEnClase(@Param("userId") UUID userId, @Param("classId") UUID classId);
+    Optional<ClassGroupMember> findForStudentInSchoolClass(@Param("userId") UUID userId, @Param("classId") UUID classId);
 
     /** Eliminar a la persona la saca de todas las clases y grupos. */
     @Modifying
     @Query("DELETE FROM ClassGroupMember m WHERE m.user.id = :userId")
-    int borrarDe(@Param("userId") UUID userId);
+    int deleteByUser(@Param("userId") UUID userId);
 }

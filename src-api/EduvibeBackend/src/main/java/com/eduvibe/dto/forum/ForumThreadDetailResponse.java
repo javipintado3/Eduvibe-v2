@@ -23,18 +23,18 @@ public record ForumThreadDetailResponse(
         List<ForumPostResponse> posts,
         Instant createdAt) {
 
-    public static ForumThreadDetailResponse de(ForumThread hilo, boolean puedoModerar, boolean puedoBorrarHilo,
+    public static ForumThreadDetailResponse of(ForumThread thread, boolean puedoModerar, boolean puedoBorrarHilo,
                                                List<ForumPostResponse> posts) {
         return new ForumThreadDetailResponse(
-                hilo.getId(),
-                hilo.getSchoolClass().getId(),
-                hilo.getSchoolClass().getName(),
-                hilo.getTopic() == null ? null : hilo.getTopic().getId(),
-                hilo.getTitle(),
-                hilo.getAuthor().getName(),
+                thread.getId(),
+                thread.getSchoolClass().getId(),
+                thread.getSchoolClass().getName(),
+                thread.getTopic() == null ? null : thread.getTopic().getId(),
+                thread.getTitle(),
+                thread.getAuthor().getName(),
                 puedoModerar,
                 puedoBorrarHilo,
                 posts,
-                hilo.getCreatedAt());
+                thread.getCreatedAt());
     }
 }

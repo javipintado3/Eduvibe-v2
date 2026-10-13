@@ -20,14 +20,14 @@ public record ForumThreadResponse(
         Instant lastActivityAt,
         Instant createdAt) {
 
-    public static ForumThreadResponse de(ForumThread hilo, long postCount, Instant lastActivityAt) {
+    public static ForumThreadResponse of(ForumThread thread, long postCount, Instant lastActivityAt) {
         return new ForumThreadResponse(
-                hilo.getId(),
-                hilo.getTopic() == null ? null : hilo.getTopic().getId(),
-                hilo.getTitle(),
-                hilo.getAuthor().getName(),
+                thread.getId(),
+                thread.getTopic() == null ? null : thread.getTopic().getId(),
+                thread.getTitle(),
+                thread.getAuthor().getName(),
                 postCount,
-                lastActivityAt != null ? lastActivityAt : hilo.getCreatedAt(),
-                hilo.getCreatedAt());
+                lastActivityAt != null ? lastActivityAt : thread.getCreatedAt(),
+                thread.getCreatedAt());
     }
 }

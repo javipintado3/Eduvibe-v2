@@ -35,7 +35,7 @@ public class AdminBootstrap implements ApplicationRunner {
     private static final Logger LOG = LoggerFactory.getLogger(AdminBootstrap.class);
 
     /** Mínimo para una contraseña de administración: es la cuenta con más poder. */
-    static final int LONGITUD_MINIMA_PASSWORD = 12;
+    static final int MIN_PASSWORD_LENGTH = 12;
 
     private final UserRepository userRepository;
     private final OrganizationRepository organizationRepository;
@@ -48,10 +48,10 @@ public class AdminBootstrap implements ApplicationRunner {
     private String password;
 
     @Value("${app.bootstrap.admin-name:Administrador}")
-    private String nombre;
+    private String name;
 
     @Value("${app.bootstrap.organization-name:EduVibe}")
-    private String organizacion;
+    private String organizationName;
 
     @Override
     @Transactional
@@ -64,14 +64,14 @@ public class AdminBootstrap implements ApplicationRunner {
                     + "nadie podrá entrar. Configúralos para crear el primer administrador.");
             return;
         }
-        if (password.length() < LONGITUD_MINIMA_PASSWORD) {
+        if (password.length() < MIN_PASSWORD_LENGTH) {
             throw new IllegalStateException(
-                    "ADMIN_PASSWORD debe tener al menos %d caracteres".formatted(LONGITUD_MINIMA_PASSWORD));
+                    "ADMIN_PASSWORD debe tener al menos %d caracteres".formatted(MIN_PASSWORD_LENGTH));
         }
 
-        Organization centro = organizationRepository.save(new Organization(organizacion, null));
-        User admin = new User(centro, email, nombre, UserRole.ADMIN);
-        admin.activarCon(passwordEncoder.encode(password));
+        Organization organization = organizationRepository.save(new Organization(organizationName, null));
+        User admin = new User(organization, email, name, UserRole.ADMIN);
+        admin.enableWith(passwordEncoder.encode(password));
         userRepository.save(admin);
 
         LOG.info("Primer administrador creado ({}). Cambia la contraseña desde el perfil y "

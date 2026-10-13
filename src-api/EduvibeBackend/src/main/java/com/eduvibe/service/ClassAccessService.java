@@ -47,24 +47,24 @@ public class ClassAccessService {
      * prohibida: responder 403 confirmaría que ese identificador existe.
      */
     @Transactional(readOnly = true)
-    public SchoolClass exigirVisible(UUID classId) {
-        AuthenticatedUser usuario = authService.identidadActual();
-        SchoolClass clase = buscarEnMiOrganizacion(classId, usuario);
+    public SchoolClass requireVisible(UUID classId) {
+        AuthenticatedUser user = authService.currentIdentity();
+        SchoolClass schoolClass = findInMyOrganization(classId, user);
 
-        if (usuario.esAdmin() || esMiembroDe(classId, usuario.id())) {
-            return clase;
+        if (user.isAdmin() || isMemberOf(classId, user.id())) {
+            return schoolClass;
         }
         throw new AccessDeniedException("No participas en esta clase");
     }
 
     /** Devuelve la clase si quien pregunta puede modificarla o añadirle contenido. */
     @Transactional(readOnly = true)
-    public SchoolClass exigirEditable(UUID classId) {
-        AuthenticatedUser usuario = authService.identidadActual();
-        SchoolClass clase = buscarEnMiOrganizacion(classId, usuario);
+    public SchoolClass requireEditable(UUID classId) {
+        AuthenticatedUser user = authService.currentIdentity();
+        SchoolClass schoolClass = findInMyOrganization(classId, user);
 
-        if (usuario.esAdmin() || esProfesorDe(classId, usuario.id())) {
-            return clase;
+        if (user.isAdmin() || isTeacherOf(classId, user.id())) {
+            return schoolClass;
         }
         throw new AccessDeniedException("Solo el profesorado de esta clase puede hacer esto");
     }
@@ -77,36 +77,36 @@ public class ClassAccessService {
      * administración, igual que el alta.
      */
     @Transactional(readOnly = true)
-    public SchoolClass exigirSerAdmin(UUID classId) {
-        AuthenticatedUser usuario = authService.identidadActual();
-        SchoolClass clase = buscarEnMiOrganizacion(classId, usuario);
+    public SchoolClass requireAdmin(UUID classId) {
+        AuthenticatedUser user = authService.currentIdentity();
+        SchoolClass schoolClass = findInMyOrganization(classId, user);
 
-        if (usuario.esAdmin()) {
-            return clase;
+        if (user.isAdmin()) {
+            return schoolClass;
         }
         throw new AccessDeniedException("Solo administración puede borrar una clase");
     }
 
     /** Comprueba que quien pregunta es alumno de la clase. */
     @Transactional(readOnly = true)
-    public void exigirSerAlumnoDe(UUID classId) {
-        AuthenticatedUser usuario = authService.identidadActual();
-        buscarEnMiOrganizacion(classId, usuario);
+    public void requireStudentOf(UUID classId) {
+        AuthenticatedUser user = authService.currentIdentity();
+        findInMyOrganization(classId, user);
 
-        boolean esAlumno = enrollmentRepository.existsBySchoolClassIdAndUserIdAndRoleInClass(
-                classId, usuario.id(), EnrollmentRole.STUDENT);
+        boolean isStudent = enrollmentRepository.existsBySchoolClassIdAndUserIdAndRoleInClass(
+                classId, user.id(), EnrollmentRole.STUDENT);
 
-        if (!esAlumno) {
+        if (!isStudent) {
             throw new AccessDeniedException("Solo el alumnado matriculado puede entregar en esta clase");
         }
     }
 
-    public boolean esProfesorDe(UUID classId, UUID userId) {
+    public boolean isTeacherOf(UUID classId, UUID userId) {
         return enrollmentRepository.existsBySchoolClassIdAndUserIdAndRoleInClass(
                 classId, userId, EnrollmentRole.TEACHER);
     }
 
-    public boolean esMiembroDe(UUID classId, UUID userId) {
+    public boolean isMemberOf(UUID classId, UUID userId) {
         return enrollmentRepository.existsBySchoolClassIdAndUserId(classId, userId);
     }
 
@@ -115,14 +115,14 @@ public class ClassAccessService {
      * administración. Se expone porque los DTO de entrega lo necesitan para
      * decidir qué información incluir.
      */
-    public boolean puedeCalificarEn(UUID classId) {
-        AuthenticatedUser usuario = authService.identidadActual();
-        return usuario.esAdmin() || esProfesorDe(classId, usuario.id());
+    public boolean canGradeIn(UUID classId) {
+        AuthenticatedUser user = authService.currentIdentity();
+        return user.isAdmin() || isTeacherOf(classId, user.id());
     }
 
-    private SchoolClass buscarEnMiOrganizacion(UUID classId, AuthenticatedUser usuario) {
+    private SchoolClass findInMyOrganization(UUID classId, AuthenticatedUser user) {
         return schoolClassRepository.findById(classId)
-                .filter(c -> c.getOrganization().getId().equals(usuario.organizationId()))
-                .orElseThrow(() -> NotFoundException.de("Clase", classId));
+                .filter(c -> c.getOrganization().getId().equals(user.organizationId()))
+                .orElseThrow(() -> NotFoundException.of("Clase", classId));
     }
 }

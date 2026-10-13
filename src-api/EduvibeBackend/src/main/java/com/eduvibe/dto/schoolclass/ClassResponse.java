@@ -29,19 +29,19 @@ public record ClassResponse(
         String viewMode,
         int alumnado) {
 
-    public static ClassResponse de(SchoolClass clase, String miRol,
+    public static ClassResponse of(SchoolClass schoolClass, String miRol,
                                    Instant proximaEntrega, java.util.List<String> profesores, int alumnado) {
         return new ClassResponse(
-                clase.getId(),
-                clase.getName(),
-                clase.getSubject(),
-                clase.getColor(),
-                clase.getImageUrl(),
+                schoolClass.getId(),
+                schoolClass.getName(),
+                schoolClass.getSubject(),
+                schoolClass.getColor(),
+                schoolClass.getImageUrl(),
                 miRol,
                 proximaEntrega,
                 profesores,
-                clase.getCreatedAt(),
-                clase.getViewMode().getValor(),
+                schoolClass.getCreatedAt(),
+                schoolClass.getViewMode().getValue(),
                 alumnado);
     }
 }

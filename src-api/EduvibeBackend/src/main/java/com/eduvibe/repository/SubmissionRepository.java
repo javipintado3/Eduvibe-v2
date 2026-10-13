@@ -24,7 +24,7 @@ public interface SubmissionRepository extends JpaRepository<Submission, UUID> {
      */
     @Query("SELECT s FROM Submission s WHERE s.student.id = :studentId "
          + "AND NOT EXISTS (SELECT g.id FROM Grade g WHERE g.submission = s)")
-    List<Submission> findSinCalificarDe(@Param("studentId") UUID studentId);
+    List<Submission> findUngradedFor(@Param("studentId") UUID studentId);
 
     Optional<Submission> findByAssignmentIdAndStudentId(UUID assignmentId, UUID studentId);
 
@@ -39,18 +39,18 @@ public interface SubmissionRepository extends JpaRepository<Submission, UUID> {
               AND s.assignment.schoolClass.id = :classId
             ORDER BY s.assignment.dueDate ASC NULLS LAST
             """)
-    List<Submission> findDeAlumnoEnClase(@Param("studentId") UUID studentId,
+    List<Submission> findForStudentInSchoolClass(@Param("studentId") UUID studentId,
                                          @Param("classId") UUID classId);
 
     /** Las entregas de un alumno en varias tareas de golpe, para evitar N+1. */
     @Query("SELECT s FROM Submission s WHERE s.student.id = :studentId AND s.assignment.id IN :assignmentIds")
-    List<Submission> findDeAlumnoEnTareas(@Param("studentId") UUID studentId,
+    List<Submission> findForStudentInAssignments(@Param("studentId") UUID studentId,
                                           @Param("assignmentIds") List<UUID> assignmentIds);
 
     /** Todas las entregas de una clase de golpe, para la analítica del profesorado. */
     @EntityGraph(attributePaths = { "student", "assignment" })
     @Query("SELECT s FROM Submission s WHERE s.assignment.schoolClass.id = :classId")
-    List<Submission> findDeClase(@Param("classId") UUID classId);
+    List<Submission> findForSchoolClass(@Param("classId") UUID classId);
 
     long countByAssignmentId(UUID assignmentId);
 
@@ -74,7 +74,7 @@ public interface SubmissionRepository extends JpaRepository<Submission, UUID> {
      * que la paginación y el total salgan bien: quitar filas de una página ya
      * cortada dejaría páginas cortas y un total que no cuadra.
      */
-    String POR_CORREGIR = """
+    String TO_GRADE = """
             s.status = com.eduvibe.model.enums.SubmissionStatus.SUBMITTED
               AND s.assignment.schoolClass.id IN (
                   SELECT e.schoolClass.id FROM Enrollment e
@@ -89,11 +89,11 @@ public interface SubmissionRepository extends JpaRepository<Submission, UUID> {
             """;
 
     @EntityGraph(attributePaths = { "student", "assignment", "assignment.schoolClass", "classGroup" })
-    @Query(value = "SELECT s FROM Submission s WHERE " + POR_CORREGIR + " ORDER BY s.submittedAt ASC, s.id ASC",
-           countQuery = "SELECT COUNT(s) FROM Submission s WHERE " + POR_CORREGIR)
-    Page<Submission> findPorCorregirDeProfesor(@Param("teacherId") UUID teacherId, Pageable pageable);
+    @Query(value = "SELECT s FROM Submission s WHERE " + TO_GRADE + " ORDER BY s.submittedAt ASC, s.id ASC",
+           countQuery = "SELECT COUNT(s) FROM Submission s WHERE " + TO_GRADE)
+    Page<Submission> findToGradeForTeacher(@Param("teacherId") UUID teacherId, Pageable pageable);
 
     /** Para el resumen de perfil del profesorado: cuánto trabajo tiene por corregir (mismo criterio que la cola). */
-    @Query("SELECT COUNT(s) FROM Submission s WHERE " + POR_CORREGIR)
-    long countPorCorregirDeProfesor(@Param("teacherId") UUID teacherId);
+    @Query("SELECT COUNT(s) FROM Submission s WHERE " + TO_GRADE)
+    long countToGradeForTeacher(@Param("teacherId") UUID teacherId);
 }

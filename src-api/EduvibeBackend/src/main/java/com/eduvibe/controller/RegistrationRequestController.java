@@ -36,23 +36,23 @@ public class RegistrationRequestController {
 
     /** Solicitudes del centro; por defecto, las que esperan decisión. */
     @GetMapping
-    public ResponseEntity<PageResponse<RegistrationRequestResponse>> listar(
+    public ResponseEntity<PageResponse<RegistrationRequestResponse>> list(
             @RequestParam(required = false) String status,
             Pageable pageable) {
 
-        return ResponseEntity.ok(registrationService.listar(status, pageable));
+        return ResponseEntity.ok(registrationService.list(status, pageable));
     }
 
     /** Acepta la solicitud con el rol elegido: crea la cuenta y emite su invitación. */
     @PostMapping("/{id}/approve")
-    public ResponseEntity<CreateUserResponse> aprobar(@PathVariable UUID id,
-                                                      @Valid @RequestBody ApproveRegistrationRequest peticion) {
-        return ResponseEntity.ok(registrationService.aprobar(id, peticion.role()));
+    public ResponseEntity<CreateUserResponse> approve(@PathVariable UUID id,
+                                                      @Valid @RequestBody ApproveRegistrationRequest request) {
+        return ResponseEntity.ok(registrationService.approve(id, request.role()));
     }
 
     @PostMapping("/{id}/reject")
-    public ResponseEntity<Void> rechazar(@PathVariable UUID id) {
-        registrationService.rechazar(id);
+    public ResponseEntity<Void> reject(@PathVariable UUID id) {
+        registrationService.reject(id);
         return ResponseEntity.noContent().build();
     }
 }

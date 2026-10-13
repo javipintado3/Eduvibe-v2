@@ -16,16 +16,16 @@ import java.util.HexFormat;
 public final class Tokens {
 
     /** 32 bytes de entropía: suficiente para que el token no sea adivinable. */
-    private static final int BYTES_DEL_TOKEN = 32;
+    private static final int TOKEN_BYTES = 32;
 
-    private static final SecureRandom ALEATORIO = new SecureRandom();
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     private Tokens() {
     }
 
-    public static String generar() {
-        byte[] bytes = new byte[BYTES_DEL_TOKEN];
-        ALEATORIO.nextBytes(bytes);
+    public static String generate() {
+        byte[] bytes = new byte[TOKEN_BYTES];
+        RANDOM.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
@@ -34,7 +34,7 @@ public final class Tokens {
      * 256 bits de entropía, así que no hay diccionario que probar y no hace
      * falta un algoritmo deliberadamente lento.
      */
-    public static String hashear(String token) {
+    public static String hash(String token) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             return HexFormat.of().formatHex(digest.digest(token.getBytes(StandardCharsets.UTF_8)));

@@ -38,8 +38,8 @@ public class ExamController {
     private final ExamService examService;
 
     @GetMapping("/{examId}")
-    public ResponseEntity<ExamDetailResponse> detalle(@PathVariable UUID examId) {
-        return ResponseEntity.ok(examService.detalle(examId));
+    public ResponseEntity<ExamDetailResponse> detail(@PathVariable UUID examId) {
+        return ResponseEntity.ok(examService.detail(examId));
     }
 
     /** Preguntas con la respuesta correcta marcada. Solo para el profesorado. */
@@ -49,34 +49,34 @@ public class ExamController {
     }
 
     @DeleteMapping("/{examId}")
-    public ResponseEntity<Void> eliminar(@PathVariable UUID examId) {
-        examService.eliminar(examId);
+    public ResponseEntity<Void> delete(@PathVariable UUID examId) {
+        examService.delete(examId);
         return ResponseEntity.noContent().build();
     }
 
     /** Empieza el examen, o retoma el intento en curso si ya se había empezado. */
     @PostMapping("/{examId}/attempt")
-    public ResponseEntity<ExamAttemptResponse> comenzarOReanudar(@PathVariable UUID examId) {
-        return ResponseEntity.ok(examService.comenzarOReanudar(examId));
+    public ResponseEntity<ExamAttemptResponse> startOrResume(@PathVariable UUID examId) {
+        return ResponseEntity.ok(examService.startOrResume(examId));
     }
 
     /** Autoguardado de una respuesta mientras se hace el examen. */
     @PutMapping("/{examId}/attempt/answers/{questionId}")
-    public ResponseEntity<Void> guardarRespuesta(@PathVariable UUID examId, @PathVariable UUID questionId,
-                                                 @Valid @RequestBody AnswerRequest peticion) {
-        examService.guardarRespuesta(examId, questionId, peticion);
+    public ResponseEntity<Void> saveAnswer(@PathVariable UUID examId, @PathVariable UUID questionId,
+                                                 @Valid @RequestBody AnswerRequest request) {
+        examService.saveAnswer(examId, questionId, request);
         return ResponseEntity.noContent().build();
     }
 
     /** Entrega el intento y lo corrige al momento. */
     @PostMapping("/{examId}/attempt/submit")
-    public ResponseEntity<ExamResultResponse> entregar(@PathVariable UUID examId) {
-        return ResponseEntity.ok(examService.entregar(examId));
+    public ResponseEntity<ExamResultResponse> submit(@PathVariable UUID examId) {
+        return ResponseEntity.ok(examService.submit(examId));
     }
 
     /** Todos los intentos del examen. Solo para el profesorado de la clase. */
     @GetMapping("/{examId}/attempts")
-    public ResponseEntity<List<ExamAttemptSummaryResponse>> intentos(@PathVariable UUID examId) {
-        return ResponseEntity.ok(examService.listarIntentos(examId));
+    public ResponseEntity<List<ExamAttemptSummaryResponse>> attempts(@PathVariable UUID examId) {
+        return ResponseEntity.ok(examService.listAttempts(examId));
     }
 }

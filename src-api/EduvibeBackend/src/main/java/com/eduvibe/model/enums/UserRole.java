@@ -7,7 +7,7 @@ package com.eduvibe.model.enums;
  * restricción CHECK con esta misma lista. Si se añade un rol aquí hay que
  * añadirlo también en una migración.
  */
-public enum UserRole implements EnumConValor {
+public enum UserRole implements EnumWithValue {
 
     /** Da de alta y de baja usuarios, crea clases y gestiona la organización. */
     ADMIN("admin"),
@@ -21,18 +21,18 @@ public enum UserRole implements EnumConValor {
     /** Tutor legal: consulta el progreso de un alumno, sin poder editar nada. */
     GUARDIAN("guardian");
 
-    private final String valor;
+    private final String value;
 
-    UserRole(String valor) {
-        this.valor = valor;
+    UserRole(String value) {
+        this.value = value;
     }
 
     @Override
-    public String getValor() {
-        return valor;
+    public String getValue() {
+        return value;
     }
 
-    public static UserRole desdeValor(String valor) {
-        return EnumConValor.desde(UserRole.class, valor);
+    public static UserRole fromValue(String value) {
+        return EnumWithValue.from(UserRole.class, value);
     }
 }

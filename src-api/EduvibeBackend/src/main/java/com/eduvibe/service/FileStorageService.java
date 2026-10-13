@@ -29,84 +29,84 @@ public class FileStorageService {
 
     private static final Logger LOG = LoggerFactory.getLogger(FileStorageService.class);
 
-    private static final Set<String> EXTENSIONES_IMAGEN = Set.of("jpg", "jpeg", "png", "webp", "gif");
+    private static final Set<String> IMAGE_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp", "gif");
 
-    private static final Set<String> EXTENSIONES_DOCUMENTO = Set.of(
+    private static final Set<String> DOCUMENT_EXTENSIONS = Set.of(
             "pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "txt", "zip",
             "jpg", "jpeg", "png", "webp", "gif", "mp4");
 
-    private static final long MAX_IMAGEN = 5L * 1024 * 1024;
-    private static final long MAX_DOCUMENTO = 20L * 1024 * 1024;
+    private static final long MAX_IMAGE = 5L * 1024 * 1024;
+    private static final long MAX_DOCUMENT = 20L * 1024 * 1024;
 
-    private final Path raiz;
+    private final Path root;
 
-    public FileStorageService(@Value("${app.uploads.dir}") String directorioSubidas) {
-        this.raiz = Paths.get(directorioSubidas).toAbsolutePath().normalize();
+    public FileStorageService(@Value("${app.uploads.dir}") String uploadsDirectory) {
+        this.root = Paths.get(uploadsDirectory).toAbsolutePath().normalize();
         try {
-            Files.createDirectories(raiz);
+            Files.createDirectories(root);
         } catch (IOException e) {
-            throw new IllegalStateException("No se ha podido crear el directorio de subidas: " + raiz, e);
+            throw new IllegalStateException("No se ha podido crear el directorio de subidas: " + root, e);
         }
     }
 
     /** @return la ruta pública del archivo guardado, para usar tal cual como imageUrl o fileUrl */
-    public String guardar(MultipartFile archivo, TipoSubida tipo) {
-        if (archivo == null || archivo.isEmpty()) {
+    public String save(MultipartFile file, UploadType tipo) {
+        if (file == null || file.isEmpty()) {
             throw new BadRequestException("El archivo está vacío");
         }
 
-        String extension = extensionDe(archivo.getOriginalFilename());
-        Set<String> permitidas = tipo == TipoSubida.IMAGEN ? EXTENSIONES_IMAGEN : EXTENSIONES_DOCUMENTO;
-        if (!permitidas.contains(extension)) {
+        String extension = extensionOf(file.getOriginalFilename());
+        Set<String> allowed = tipo == UploadType.IMAGE ? IMAGE_EXTENSIONS : DOCUMENT_EXTENSIONS;
+        if (!allowed.contains(extension)) {
             throw new BadRequestException("Tipo de archivo no admitido (.%s)".formatted(extension));
         }
 
-        long maximo = tipo == TipoSubida.IMAGEN ? MAX_IMAGEN : MAX_DOCUMENTO;
-        if (archivo.getSize() > maximo) {
+        long max = tipo == UploadType.IMAGE ? MAX_IMAGE : MAX_DOCUMENT;
+        if (file.getSize() > max) {
             throw new BadRequestException("El archivo supera el tamaño máximo permitido (%d MB)"
-                    .formatted(maximo / 1024 / 1024));
+                    .formatted(max / 1024 / 1024));
         }
 
-        String nombre = UUID.randomUUID() + "." + extension;
+        String name = UUID.randomUUID() + "." + extension;
         try {
-            Files.copy(archivo.getInputStream(), raiz.resolve(nombre));
+            Files.copy(file.getInputStream(), root.resolve(name));
         } catch (IOException e) {
             throw new IllegalStateException("No se ha podido guardar el archivo", e);
         }
 
-        return "/uploads/" + nombre;
+        return "/uploads/" + name;
     }
 
     /**
      * Borra un archivo subido a partir de la ruta pública que devolvió
-     * {@link #guardar}. Si la ruta no es de este almacén, o el archivo ya no
+     * {@link #save}. Si la ruta no es de este almacén, o el archivo ya no
      * está, no hace nada; un fallo al borrar no debe tumbar la operación que lo
      * pide (por ejemplo, borrar una cuenta).
      */
-    public void borrar(String rutaPublica) {
-        if (rutaPublica == null || !rutaPublica.startsWith("/uploads/")) {
+    public void delete(String pathPublic) {
+        if (pathPublic == null || !pathPublic.startsWith("/uploads/")) {
             return;
         }
 
-        Path archivo = raiz.resolve(rutaPublica.substring("/uploads/".length())).normalize();
+        Path file = root.resolve(pathPublic.substring("/uploads/".length())).normalize();
 
         // Nunca se sale de la carpeta de subidas, aunque la ruta traiga "../"
-        if (!archivo.startsWith(raiz)) {
+        if (!file.startsWith(root)) {
             return;
         }
 
         try {
-            Files.deleteIfExists(archivo);
+            Files.deleteIfExists(file);
         } catch (IOException e) {
-            LOG.warn("No se ha podido borrar el archivo {}: {}", archivo.getFileName(), e.getMessage());
+            LOG.warn("No se ha podido borrar el archivo {}: {}", file.getFileName(), e.getMessage());
         }
     }
 
-    private String extensionDe(String nombreOriginal) {
-        if (nombreOriginal == null || !nombreOriginal.contains(".")) {
+    private String extensionOf(String originalName) {
+        if (originalName == null || !originalName.contains(".")) {
             throw new BadRequestException("El archivo no tiene extensión");
         }
-        String extension = nombreOriginal.substring(nombreOriginal.lastIndexOf('.') + 1);
+        String extension = originalName.substring(originalName.lastIndexOf('.') + 1);
         return extension.toLowerCase(Locale.ROOT);
     }
 }

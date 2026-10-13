@@ -9,18 +9,18 @@ import com.eduvibe.model.ClassGroupMember;
 public record ClassGroupResponse(
         UUID id,
         String name,
-        List<Miembro> members) {
+        List<Member> members) {
 
-    public static ClassGroupResponse de(ClassGroup grupo, List<ClassGroupMember> miembros) {
+    public static ClassGroupResponse of(ClassGroup group, List<ClassGroupMember> members) {
         return new ClassGroupResponse(
-                grupo.getId(),
-                grupo.getName(),
-                miembros.stream().map(Miembro::de).toList());
+                group.getId(),
+                group.getName(),
+                members.stream().map(Member::of).toList());
     }
 
-    public record Miembro(UUID id, String name) {
-        public static Miembro de(ClassGroupMember miembro) {
-            return new Miembro(miembro.getUser().getId(), miembro.getUser().getName());
+    public record Member(UUID id, String name) {
+        public static Member of(ClassGroupMember member) {
+            return new Member(member.getUser().getId(), member.getUser().getName());
         }
     }
 }

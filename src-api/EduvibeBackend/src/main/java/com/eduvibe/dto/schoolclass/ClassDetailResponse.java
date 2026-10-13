@@ -26,20 +26,20 @@ public record ClassDetailResponse(
         List<TopicResponse> temas,
         String viewMode) {
 
-    public static ClassDetailResponse de(SchoolClass clase, String miRol, boolean puedoEditar,
+    public static ClassDetailResponse of(SchoolClass schoolClass, String miRol, boolean puedoEditar,
                                          List<MemberResponse> profesores, long numeroAlumnos,
                                          List<TopicResponse> temas) {
         return new ClassDetailResponse(
-                clase.getId(),
-                clase.getName(),
-                clase.getSubject(),
-                clase.getColor(),
-                clase.getImageUrl(),
+                schoolClass.getId(),
+                schoolClass.getName(),
+                schoolClass.getSubject(),
+                schoolClass.getColor(),
+                schoolClass.getImageUrl(),
                 miRol,
                 puedoEditar,
                 profesores,
                 numeroAlumnos,
                 temas,
-                clase.getViewMode().getValor());
+                schoolClass.getViewMode().getValue());
     }
 }

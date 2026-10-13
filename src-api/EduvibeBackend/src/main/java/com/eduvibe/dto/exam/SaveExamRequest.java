@@ -47,12 +47,12 @@ public record SaveExamRequest(
         List<ReuseQuestionInput> reuseQuestions) {
 
     /** Sin preguntas nuevas, cuando el examen se arma solo con el banco. */
-    public List<QuestionInput> questionsOSinNinguna() {
+    public List<QuestionInput> questionsOrNone() {
         return questions == null ? List.of() : questions;
     }
 
     /** Sin reutilizar nada, cuando todas las preguntas son nuevas. */
-    public List<ReuseQuestionInput> reuseQuestionsOSinNinguna() {
+    public List<ReuseQuestionInput> reuseQuestionsOrNone() {
         return reuseQuestions == null ? List.of() : reuseQuestions;
     }
 
@@ -70,7 +70,7 @@ public record SaveExamRequest(
             @Valid
             List<OptionInput> options) {
 
-        public int puntosOPorDefecto() {
+        public int pointsOrDefault() {
             return points == null ? 1 : points;
         }
     }
@@ -93,8 +93,8 @@ public record SaveExamRequest(
             @Positive(message = "Los puntos deben ser mayores que cero")
             Integer points) {
 
-        public int puntosODelOriginal(int puntosOriginales) {
-            return points == null ? puntosOriginales : points;
+        public int pointsOrOriginal(int originalPoints) {
+            return points == null ? originalPoints : points;
         }
     }
 }

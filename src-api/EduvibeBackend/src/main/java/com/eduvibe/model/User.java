@@ -44,7 +44,7 @@ public class User {
     @JoinColumn(name = "org_id", nullable = false)
     private Organization organization;
 
-    /** Siempre en minúsculas: ver {@link #normalizarEmail(String)}. */
+    /** Siempre en minúsculas: ver {@link #normalizeEmail(String)}. */
     @Column(name = "email", nullable = false, length = 255)
     private String email;
 
@@ -92,20 +92,20 @@ public class User {
     @Column(name = "updated_at", insertable = false, updatable = false)
     private Instant updatedAt;
 
-    /** Se rellena cuando la administración elimina a la persona; ver {@link #eliminar()}. */
+    /** Se rellena cuando la administración elimina a la persona; ver {@link #delete()}. */
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
     public User(Organization organization, String email, String name, UserRole role) {
         this.organization = organization;
-        this.email = normalizarEmail(email);
+        this.email = normalizeEmail(email);
         this.name = name;
         this.role = role;
         this.status = UserStatus.PENDING;
     }
 
     public void setEmail(String email) {
-        this.email = normalizarEmail(email);
+        this.email = normalizeEmail(email);
     }
 
     /**
@@ -113,7 +113,7 @@ public class User {
      * organización, así que se guarda siempre en minúsculas y sin espacios. De
      * lo contrario "Ana@centro.es" y "ana@centro.es" serían dos cuentas.
      */
-    public static String normalizarEmail(String email) {
+    public static String normalizeEmail(String email) {
         return email == null ? null : email.trim().toLowerCase();
     }
 
@@ -121,7 +121,7 @@ public class User {
      * Marca la cuenta como activa con la contraseña que la persona acaba de
      * establecer al aceptar su invitación.
      */
-    public void activarCon(String passwordHash) {
+    public void enableWith(String passwordHash) {
         this.passwordHash = passwordHash;
         this.status = UserStatus.ACTIVE;
     }
@@ -135,50 +135,50 @@ public class User {
      * El email se sustituye por uno que no puede existir (.invalid, reservado
      * para eso), y no por null, porque es obligatorio y único.
      */
-    public void darDeBajaPorSupresion() {
+    public void deactivateForErasure() {
         this.email = "borrada-" + id + "@eduvibe.invalid";
         this.avatarUrl = null;
         this.passwordHash = null;
         this.totpSecret = null;
         this.totpEnabled = false;
         this.status = UserStatus.DISABLED;
-        invalidarSesiones();
+        invalidateSessions();
     }
 
     /** Nombre que queda en todo lo que la persona escribió o creó. */
-    public static final String NOMBRE_ELIMINADO = "Usuario eliminado";
+    public static final String DELETED_NAME = "Usuario eliminado";
 
     /**
      * Eliminación por parte de la administración. No se borra la fila: lo que
      * la persona escribió (foros, anuncios, exámenes, notas puestas) sigue
      * apuntando a ella, y pasa a mostrarse como "Usuario eliminado".
      *
-     * A diferencia de {@link #darDeBajaPorSupresion()}, que conserva el nombre
+     * A diferencia de {@link #deactivateForErasure()}, que conserva el nombre
      * para el expediente, aquí también se anonimiza el nombre: la persona
      * desaparece de los listados y de todo lo que se ve.
      */
-    public void eliminar() {
-        darDeBajaPorSupresion();
-        this.name = NOMBRE_ELIMINADO;
+    public void delete() {
+        deactivateForErasure();
+        this.name = DELETED_NAME;
         this.deletedAt = Instant.now();
     }
 
-    public boolean estaEliminado() {
+    public boolean isDeleted() {
         return deletedAt != null;
     }
 
     /** Cierra todas las sesiones abiertas: los tokens ya emitidos dejan de valer. */
-    public void invalidarSesiones() {
+    public void invalidateSessions() {
         this.tokenVersion++;
     }
 
     /** Cambia la contraseña de una cuenta que ya existe, sin tocar su estado. */
-    public void cambiarPassword(String passwordHash) {
+    public void changePassword(String passwordHash) {
         this.passwordHash = passwordHash;
     }
 
     /** Solo las cuentas activas y con contraseña pueden iniciar sesión. */
-    public boolean puedeIniciarSesion() {
+    public boolean canStartSession() {
         return status == UserStatus.ACTIVE && passwordHash != null;
     }
 }

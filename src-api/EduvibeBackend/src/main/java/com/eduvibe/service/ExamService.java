@@ -65,7 +65,7 @@ public class ExamService {
     private final ExamAnswerRepository examAnswerRepository;
     private final UserRepository userRepository;
     private final EnrollmentRepository enrollmentRepository;
-    private final ClassAccessService acceso;
+    private final ClassAccessService access;
     private final AuthService authService;
     private final TopicService topicService;
     private final NotificationService notificationService;
@@ -73,50 +73,50 @@ public class ExamService {
     // ------------------------------------------------------------ alta y consulta
 
     @Transactional
-    public ExamDetailResponse crear(UUID classId, SaveExamRequest peticion) {
-        SchoolClass clase = acceso.exigirEditable(classId);
-        AuthenticatedUser autenticado = authService.identidadActual();
+    public ExamDetailResponse create(UUID classId, SaveExamRequest request) {
+        SchoolClass schoolClass = access.requireEditable(classId);
+        AuthenticatedUser autenticado = authService.currentIdentity();
 
-        User autor = userRepository.findById(autenticado.id())
-                .orElseThrow(() -> NotFoundException.de("Usuario", autenticado.id()));
+        User author = userRepository.findById(autenticado.id())
+                .orElseThrow(() -> NotFoundException.of("Usuario", autenticado.id()));
 
-        Exam examen = new Exam(clase, peticion.title().trim(), peticion.description(),
-                peticion.durationMinutes(), peticion.dueDate(), autor);
-        examen.setTopic(topicService.resolverDeClase(peticion.topicId(), classId));
-        examRepository.saveAndFlush(examen);
+        Exam exam = new Exam(schoolClass, request.title().trim(), request.description(),
+                request.durationMinutes(), request.dueDate(), author);
+        exam.setTopic(topicService.resolveOfSchoolClass(request.topicId(), classId));
+        examRepository.saveAndFlush(exam);
 
-        List<SaveExamRequest.QuestionInput> nuevas = peticion.questionsOSinNinguna();
-        List<SaveExamRequest.ReuseQuestionInput> reutilizadas = peticion.reuseQuestionsOSinNinguna();
+        List<SaveExamRequest.QuestionInput> newQuestions = request.questionsOrNone();
+        List<SaveExamRequest.ReuseQuestionInput> reused = request.reuseQuestionsOrNone();
 
-        if (nuevas.isEmpty() && reutilizadas.isEmpty()) {
+        if (newQuestions.isEmpty() && reused.isEmpty()) {
             throw new BadRequestException("El examen necesita al menos una pregunta");
         }
 
         int totalPuntos = 0;
-        int orden = 0;
+        int order = 0;
 
-        for (SaveExamRequest.QuestionInput preguntaInput : nuevas) {
-            exigirUnaSolaCorrecta(preguntaInput);
+        for (SaveExamRequest.QuestionInput questionInput : newQuestions) {
+            requireSingleCorrect(questionInput);
 
-            ExamQuestion pregunta = new ExamQuestion(examen, preguntaInput.text().trim(),
-                    preguntaInput.puntosOPorDefecto(), orden++);
-            examQuestionRepository.save(pregunta);
-            totalPuntos += pregunta.getPoints();
+            ExamQuestion question = new ExamQuestion(exam, questionInput.text().trim(),
+                    questionInput.pointsOrDefault(), order++);
+            examQuestionRepository.save(question);
+            totalPuntos += question.getPoints();
 
-            int ordenOpcion = 0;
-            for (SaveExamRequest.OptionInput opcionInput : preguntaInput.options()) {
-                examOptionRepository.save(new ExamOption(pregunta, opcionInput.text().trim(),
-                        opcionInput.correct(), ordenOpcion++));
+            int orderOption = 0;
+            for (SaveExamRequest.OptionInput optionInput : questionInput.options()) {
+                examOptionRepository.save(new ExamOption(question, optionInput.text().trim(),
+                        optionInput.correct(), orderOption++));
             }
         }
 
-        for (SaveExamRequest.ReuseQuestionInput reusoInput : reutilizadas) {
-            totalPuntos += copiarDelBanco(examen, classId, reusoInput, orden++);
+        for (SaveExamRequest.ReuseQuestionInput reuseInput : reused) {
+            totalPuntos += copyFromBank(exam, classId, reuseInput, order++);
         }
 
-        notificarAlumnado(classId, clase, examen);
+        notifyStudents(classId, schoolClass, exam);
 
-        return ExamDetailResponse.de(examen, true, nuevas.size() + reutilizadas.size(), totalPuntos, null, null);
+        return ExamDetailResponse.of(exam, true, newQuestions.size() + reused.size(), totalPuntos, null, null);
     }
 
     /**
@@ -126,20 +126,20 @@ public class ExamService {
      * los exámenes ya hechos no deben cambiar retroactivamente lo que el
      * alumnado ya respondió.
      */
-    private int copiarDelBanco(Exam examen, UUID classId, SaveExamRequest.ReuseQuestionInput reusoInput, int orden) {
-        ExamQuestion original = examQuestionRepository.findById(reusoInput.questionId())
+    private int copyFromBank(Exam exam, UUID classId, SaveExamRequest.ReuseQuestionInput reuseInput, int order) {
+        ExamQuestion original = examQuestionRepository.findById(reuseInput.questionId())
                 .filter(q -> q.getExam().getSchoolClass().getId().equals(classId))
                 .orElseThrow(() -> new BadRequestException("La pregunta indicada no es del banco de esta clase"));
 
-        int puntos = reusoInput.puntosODelOriginal(original.getPoints());
-        ExamQuestion copia = new ExamQuestion(examen, original.getText(), puntos, orden);
-        examQuestionRepository.save(copia);
+        int points = reuseInput.pointsOrOriginal(original.getPoints());
+        ExamQuestion copy = new ExamQuestion(exam, original.getText(), points, order);
+        examQuestionRepository.save(copy);
 
-        for (ExamOption opcion : examOptionRepository.findByQuestionIdOrderBySortOrderAsc(original.getId())) {
-            examOptionRepository.save(new ExamOption(copia, opcion.getText(), opcion.isCorrect(), opcion.getSortOrder()));
+        for (ExamOption option : examOptionRepository.findByQuestionIdOrderBySortOrderAsc(original.getId())) {
+            examOptionRepository.save(new ExamOption(copy, option.getText(), option.isCorrect(), option.getSortOrder()));
         }
 
-        return puntos;
+        return points;
     }
 
     /**
@@ -147,34 +147,34 @@ public class ExamService {
      * para reutilizarlas en uno nuevo sin volver a escribirlas.
      */
     @Transactional(readOnly = true)
-    public List<BankQuestionResponse> listarBanco(UUID classId) {
-        acceso.exigirEditable(classId);
+    public List<BankQuestionResponse> listBankQuestions(UUID classId) {
+        access.requireEditable(classId);
 
-        List<ExamQuestion> banco = examQuestionRepository.findBancoDeClase(classId);
-        Map<UUID, List<ExamOption>> opcionesPorPregunta = opcionesAgrupadasPorPregunta(banco);
+        List<ExamQuestion> bank = examQuestionRepository.findBankForSchoolClass(classId);
+        Map<UUID, List<ExamOption>> optionsByQuestion = groupedOptionsByQuestion(bank);
 
-        return banco.stream()
-                .map(p -> BankQuestionResponse.de(p, opcionesPorPregunta.getOrDefault(p.getId(), List.of())))
+        return bank.stream()
+                .map(p -> BankQuestionResponse.of(p, optionsByQuestion.getOrDefault(p.getId(), List.of())))
                 .toList();
     }
 
     /** Cada pregunta necesita exactamente una opción correcta: ni cero ni dos. */
-    private void exigirUnaSolaCorrecta(SaveExamRequest.QuestionInput pregunta) {
-        long correctas = pregunta.options().stream().filter(SaveExamRequest.OptionInput::correct).count();
-        if (correctas != 1) {
+    private void requireSingleCorrect(SaveExamRequest.QuestionInput question) {
+        long correct = question.options().stream().filter(SaveExamRequest.OptionInput::correct).count();
+        if (correct != 1) {
             throw new BadRequestException(
-                    "Cada pregunta necesita exactamente una opción correcta (\"" + pregunta.text()
-                            + "\" tiene " + correctas + ")");
+                    "Cada pregunta necesita exactamente una opción correcta (\"" + question.text()
+                            + "\" tiene " + correct + ")");
         }
     }
 
-    private void notificarAlumnado(UUID classId, SchoolClass clase, Exam examen) {
+    private void notifyStudents(UUID classId, SchoolClass schoolClass, Exam exam) {
         List<User> alumnado = enrollmentRepository
                 .findBySchoolClassIdAndRoleInClassOrderByUserNameAsc(classId, EnrollmentRole.STUDENT)
                 .stream().map(Enrollment::getUser).toList();
 
-        notificationService.emitirParaVarios(alumnado, Notification.EXAMEN_NUEVO, Map.of(
-                "className", clase.getName(), "title", examen.getTitle(), "examId", examen.getId().toString()));
+        notificationService.issueForSeveral(alumnado, Notification.NEW_EXAM, Map.of(
+                "className", schoolClass.getName(), "title", exam.getTitle(), "examId", exam.getId().toString()));
     }
 
     /**
@@ -182,87 +182,87 @@ public class ExamService {
      * recibidos; al alumnado, el estado de su propio intento.
      */
     @Transactional(readOnly = true)
-    public List<ExamResponse> listar(UUID classId) {
-        acceso.exigirVisible(classId);
-        AuthenticatedUser usuario = authService.identidadActual();
+    public List<ExamResponse> list(UUID classId) {
+        access.requireVisible(classId);
+        AuthenticatedUser user = authService.currentIdentity();
 
-        List<Exam> examenes = examRepository.findDeClase(classId);
-        if (examenes.isEmpty()) {
+        List<Exam> exams = examRepository.findForSchoolClass(classId);
+        if (exams.isEmpty()) {
             return List.of();
         }
 
-        if (acceso.puedeCalificarEn(classId)) {
-            return examenes.stream()
-                    .map(examen -> ExamResponse.paraProfesor(examen,
-                            (int) examQuestionRepository.countByExamId(examen.getId()),
-                            examAttemptRepository.countByExamId(examen.getId())))
+        if (access.canGradeIn(classId)) {
+            return exams.stream()
+                    .map(exam -> ExamResponse.forTeacher(exam,
+                            (int) examQuestionRepository.countByExamId(exam.getId()),
+                            examAttemptRepository.countByExamId(exam.getId())))
                     .toList();
         }
 
-        List<UUID> examIds = examenes.stream().map(Exam::getId).toList();
-        Map<UUID, ExamAttempt> misIntentos = new HashMap<>();
-        for (ExamAttempt intento : examAttemptRepository.findByExamIdInAndStudentId(examIds, usuario.id())) {
-            misIntentos.put(intento.getExam().getId(), intento);
+        List<UUID> examIds = exams.stream().map(Exam::getId).toList();
+        Map<UUID, ExamAttempt> myAttempts = new HashMap<>();
+        for (ExamAttempt attempt : examAttemptRepository.findByExamIdInAndStudentId(examIds, user.id())) {
+            myAttempts.put(attempt.getExam().getId(), attempt);
         }
 
-        return examenes.stream().map(examen -> {
-            ExamAttempt intento = misIntentos.get(examen.getId());
-            return ExamResponse.paraAlumno(examen,
-                    (int) examQuestionRepository.countByExamId(examen.getId()),
-                    estadoDe(intento),
-                    intento != null && intento.estaEntregado() ? intento.getScore() : null);
+        return exams.stream().map(exam -> {
+            ExamAttempt attempt = myAttempts.get(exam.getId());
+            return ExamResponse.forStudent(exam,
+                    (int) examQuestionRepository.countByExamId(exam.getId()),
+                    statusOf(attempt),
+                    attempt != null && attempt.isSubmitted() ? attempt.getScore() : null);
         }).toList();
     }
 
     @Transactional(readOnly = true)
-    public ExamDetailResponse detalle(UUID examId) {
-        Exam examen = buscarVisible(examId);
-        UUID classId = examen.getSchoolClass().getId();
-        boolean puedoEditar = acceso.puedeCalificarEn(classId);
+    public ExamDetailResponse detail(UUID examId) {
+        Exam exam = findVisible(examId);
+        UUID classId = exam.getSchoolClass().getId();
+        boolean puedoEditar = access.canGradeIn(classId);
 
         int numeroPreguntas = (int) examQuestionRepository.countByExamId(examId);
-        int totalPuntos = sumaDePuntos(examId);
+        int totalPuntos = sumOfPoints(examId);
 
         if (puedoEditar) {
-            return ExamDetailResponse.de(examen, true, numeroPreguntas, totalPuntos, null, null);
+            return ExamDetailResponse.of(exam, true, numeroPreguntas, totalPuntos, null, null);
         }
 
-        AuthenticatedUser usuario = authService.identidadActual();
-        ExamAttempt miIntento = examAttemptRepository.findByExamIdAndStudentId(examId, usuario.id()).orElse(null);
+        AuthenticatedUser user = authService.currentIdentity();
+        ExamAttempt myAttempt = examAttemptRepository.findByExamIdAndStudentId(examId, user.id()).orElse(null);
 
-        return ExamDetailResponse.de(examen, false, numeroPreguntas, totalPuntos,
-                estadoDe(miIntento), miIntento != null && miIntento.estaEntregado() ? miIntento.getScore() : null);
+        return ExamDetailResponse.of(exam, false, numeroPreguntas, totalPuntos,
+                statusOf(myAttempt), myAttempt != null && myAttempt.isSubmitted() ? myAttempt.getScore() : null);
     }
 
     /** Las preguntas con sus respuestas correctas: solo para el profesorado, vista de repaso. */
     @Transactional(readOnly = true)
     public List<ExamQuestionResponse> preguntas(UUID examId) {
-        Exam examen = examRepository.findById(examId)
-                .orElseThrow(() -> NotFoundException.de("Examen", examId));
-        acceso.exigirEditable(examen.getSchoolClass().getId());
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> NotFoundException.of("Examen", examId));
+        access.requireEditable(exam.getSchoolClass().getId());
 
         List<ExamQuestion> preguntas = examQuestionRepository.findByExamIdOrderBySortOrderAsc(examId);
-        Map<UUID, List<ExamOption>> opcionesPorPregunta = opcionesAgrupadasPorPregunta(preguntas);
+        Map<UUID, List<ExamOption>> optionsByQuestion = groupedOptionsByQuestion(preguntas);
 
         return preguntas.stream()
-                .map(p -> ExamQuestionResponse.de(p, opcionesPorPregunta.getOrDefault(p.getId(), List.of())))
+                .map(p -> ExamQuestionResponse.of(p, optionsByQuestion.getOrDefault(p.getId(), List.of())))
                 .toList();
     }
 
     /** Borra un examen. Solo se permite mientras nadie lo haya empezado. */
     @Transactional
-    public void eliminar(UUID examId) {
-        Exam examen = examRepository.findById(examId)
-                .orElseThrow(() -> NotFoundException.de("Examen", examId));
-        acceso.exigirEditable(examen.getSchoolClass().getId());
+    public void delete(UUID examId) {
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> NotFoundException.of("Examen", examId));
+        access.requireEditable(exam.getSchoolClass().getId());
 
-        long intentos = examAttemptRepository.countByExamId(examId);
-        if (intentos > 0) {
+        long attempts = examAttemptRepository.countByExamId(examId);
+        if (attempts > 0) {
             throw new BadRequestException(
-                    "No se puede borrar: ya hay " + intentos + " intento(s) registrado(s).");
+                    "No se puede borrar: ya hay " + attempts + " intento(s) registrado(s).");
         }
 
-        examRepository.delete(examen);
+        examRepository.delete(exam);
     }
 
     // ---------------------------------------------------------------- intento
@@ -272,80 +272,80 @@ public class ExamService {
      * empezado: llamarlo dos veces no crea dos intentos.
      */
     @Transactional
-    public ExamAttemptResponse comenzarOReanudar(UUID examId) {
-        Exam examen = examRepository.findById(examId)
-                .orElseThrow(() -> NotFoundException.de("Examen", examId));
-        UUID classId = examen.getSchoolClass().getId();
-        acceso.exigirSerAlumnoDe(classId);
+    public ExamAttemptResponse startOrResume(UUID examId) {
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> NotFoundException.of("Examen", examId));
+        UUID classId = exam.getSchoolClass().getId();
+        access.requireStudentOf(classId);
 
-        AuthenticatedUser autenticado = authService.identidadActual();
-        User alumno = userRepository.findById(autenticado.id())
-                .orElseThrow(() -> NotFoundException.de("Usuario", autenticado.id()));
+        AuthenticatedUser autenticado = authService.currentIdentity();
+        User student = userRepository.findById(autenticado.id())
+                .orElseThrow(() -> NotFoundException.of("Usuario", autenticado.id()));
 
-        ExamAttempt intento = examAttemptRepository.findByExamIdAndStudentId(examId, alumno.getId()).orElse(null);
+        ExamAttempt attempt = examAttemptRepository.findByExamIdAndStudentId(examId, student.getId()).orElse(null);
 
-        if (intento == null) {
-            if (examen.haVencido()) {
+        if (attempt == null) {
+            if (exam.haVencido()) {
                 throw new BadRequestException("Ya no se puede empezar este examen: pasó la fecha límite");
             }
-            intento = new ExamAttempt(examen, alumno);
-            examAttemptRepository.saveAndFlush(intento);
-        } else if (intento.estaEntregado()) {
+            attempt = new ExamAttempt(exam, student);
+            examAttemptRepository.saveAndFlush(attempt);
+        } else if (attempt.isSubmitted()) {
             throw new BadRequestException("Ya entregaste este examen");
         }
 
-        return construirAttemptResponse(examen, intento);
+        return buildAttemptResponse(exam, attempt);
     }
 
-    private ExamAttemptResponse construirAttemptResponse(Exam examen, ExamAttempt intento) {
-        List<ExamQuestion> preguntas = barajarPorIntento(
-                examQuestionRepository.findByExamIdOrderBySortOrderAsc(examen.getId()), intento.getId());
-        Map<UUID, List<ExamOption>> opcionesPorPregunta = opcionesAgrupadasPorPregunta(preguntas);
+    private ExamAttemptResponse buildAttemptResponse(Exam exam, ExamAttempt attempt) {
+        List<ExamQuestion> preguntas = shuffleByAttempt(
+                examQuestionRepository.findByExamIdOrderBySortOrderAsc(exam.getId()), attempt.getId());
+        Map<UUID, List<ExamOption>> optionsByQuestion = groupedOptionsByQuestion(preguntas);
 
-        Map<UUID, UUID> misRespuestas = new HashMap<>();
-        for (ExamAnswer respuesta : examAnswerRepository.findByAttemptId(intento.getId())) {
-            if (respuesta.getSelectedOption() != null) {
-                misRespuestas.put(respuesta.getQuestion().getId(), respuesta.getSelectedOption().getId());
+        Map<UUID, UUID> myAnswers = new HashMap<>();
+        for (ExamAnswer answer : examAnswerRepository.findByAttemptId(attempt.getId())) {
+            if (answer.getSelectedOption() != null) {
+                myAnswers.put(answer.getQuestion().getId(), answer.getSelectedOption().getId());
             }
         }
 
-        List<ExamAttemptResponse.QuestionResponse> preguntasRespuesta = preguntas.stream()
+        List<ExamAttemptResponse.QuestionResponse> questionsAnswer = preguntas.stream()
                 .map(p -> new ExamAttemptResponse.QuestionResponse(
                         p.getId(), p.getText(), p.getPoints(),
-                        barajarPorIntentoYPregunta(opcionesPorPregunta.getOrDefault(p.getId(), List.of()),
-                                intento.getId(), p.getId())
+                        shuffleByAttemptAndQuestion(optionsByQuestion.getOrDefault(p.getId(), List.of()),
+                                attempt.getId(), p.getId())
                                 .stream()
                                 .map(o -> new ExamAttemptResponse.OptionResponse(o.getId(), o.getText()))
                                 .toList(),
-                        misRespuestas.get(p.getId())))
+                        myAnswers.get(p.getId())))
                 .toList();
 
-        return new ExamAttemptResponse(intento.getId(), examen.getId(), examen.getTitle(),
-                examen.getDurationMinutes(), intento.getStartedAt(), intento.limiteDeTiempo(),
-                intento.estaEntregado(), preguntasRespuesta);
+        return new ExamAttemptResponse(attempt.getId(), exam.getId(), exam.getTitle(),
+                exam.getDurationMinutes(), attempt.getStartedAt(), attempt.timeLimit(),
+                attempt.isSubmitted(), questionsAnswer);
     }
 
     /** Guarda o cambia la respuesta a una pregunta. Autoguardado: se llama en cada clic. */
     @Transactional
-    public void guardarRespuesta(UUID examId, UUID questionId, AnswerRequest peticion) {
-        ExamAttempt intento = miIntentoEnCurso(examId);
+    public void saveAnswer(UUID examId, UUID questionId, AnswerRequest request) {
+        ExamAttempt attempt = myAttemptInProgress(examId);
 
-        ExamQuestion pregunta = examQuestionRepository.findById(questionId)
+        ExamQuestion question = examQuestionRepository.findById(questionId)
                 .filter(p -> p.getExam().getId().equals(examId))
-                .orElseThrow(() -> NotFoundException.de("Pregunta", questionId));
+                .orElseThrow(() -> NotFoundException.of("Pregunta", questionId));
 
-        ExamOption opcion = null;
-        if (peticion.selectedOptionId() != null) {
-            opcion = examOptionRepository.findById(peticion.selectedOptionId())
+        ExamOption option = null;
+        if (request.selectedOptionId() != null) {
+            option = examOptionRepository.findById(request.selectedOptionId())
                     .filter(o -> o.getQuestion().getId().equals(questionId))
                     .orElseThrow(() -> new BadRequestException("La opción indicada no es de esta pregunta"));
         }
 
-        ExamAnswer respuesta = examAnswerRepository.findByAttemptIdAndQuestionId(intento.getId(), questionId)
-                .orElseGet(() -> new ExamAnswer(intento, pregunta, null));
+        ExamAnswer answer = examAnswerRepository.findByAttemptIdAndQuestionId(attempt.getId(), questionId)
+                .orElseGet(() -> new ExamAnswer(attempt, question, null));
 
-        respuesta.setSelectedOption(opcion);
-        examAnswerRepository.save(respuesta);
+        answer.setSelectedOption(option);
+        examAnswerRepository.save(answer);
     }
 
     /**
@@ -353,87 +353,87 @@ public class ExamService {
      * sus puntos, las demás no restan.
      */
     @Transactional
-    public ExamResultResponse entregar(UUID examId) {
-        ExamAttempt intento = miIntentoEnCurso(examId);
+    public ExamResultResponse submit(UUID examId) {
+        ExamAttempt attempt = myAttemptInProgress(examId);
 
-        List<ExamQuestion> preguntas = barajarPorIntento(
-                examQuestionRepository.findByExamIdOrderBySortOrderAsc(examId), intento.getId());
-        Map<UUID, ExamAnswer> respuestaPorPregunta = new HashMap<>();
-        for (ExamAnswer respuesta : examAnswerRepository.findByAttemptId(intento.getId())) {
-            respuestaPorPregunta.put(respuesta.getQuestion().getId(), respuesta);
+        List<ExamQuestion> preguntas = shuffleByAttempt(
+                examQuestionRepository.findByExamIdOrderBySortOrderAsc(examId), attempt.getId());
+        Map<UUID, ExamAnswer> answerByQuestion = new HashMap<>();
+        for (ExamAnswer answer : examAnswerRepository.findByAttemptId(attempt.getId())) {
+            answerByQuestion.put(answer.getQuestion().getId(), answer);
         }
 
-        Map<UUID, UUID> correctaPorPregunta = new HashMap<>();
-        for (ExamOption opcion : examOptionRepository
+        Map<UUID, UUID> correctByQuestion = new HashMap<>();
+        for (ExamOption option : examOptionRepository
                 .findByQuestionIdIn(preguntas.stream().map(ExamQuestion::getId).toList())) {
-            if (opcion.isCorrect()) {
-                correctaPorPregunta.put(opcion.getQuestion().getId(), opcion.getId());
+            if (option.isCorrect()) {
+                correctByQuestion.put(option.getQuestion().getId(), option.getId());
             }
         }
 
-        BigDecimal nota = BigDecimal.ZERO;
-        List<ExamResultResponse.QuestionResultResponse> desglose = new ArrayList<>();
+        BigDecimal grade = BigDecimal.ZERO;
+        List<ExamResultResponse.QuestionResultResponse> breakdown = new ArrayList<>();
 
-        for (ExamQuestion pregunta : preguntas) {
-            ExamAnswer respuesta = respuestaPorPregunta.get(pregunta.getId());
-            boolean acerto = respuesta != null && respuesta.esCorrecta();
+        for (ExamQuestion question : preguntas) {
+            ExamAnswer answer = answerByQuestion.get(question.getId());
+            boolean acerto = answer != null && answer.isCorrect();
             if (acerto) {
-                nota = nota.add(BigDecimal.valueOf(pregunta.getPoints()));
+                grade = grade.add(BigDecimal.valueOf(question.getPoints()));
             }
 
-            UUID miRespuesta = respuesta == null || respuesta.getSelectedOption() == null
-                    ? null : respuesta.getSelectedOption().getId();
+            UUID miRespuesta = answer == null || answer.getSelectedOption() == null
+                    ? null : answer.getSelectedOption().getId();
 
-            desglose.add(new ExamResultResponse.QuestionResultResponse(
-                    pregunta.getId(), pregunta.getText(), pregunta.getPoints(),
-                    miRespuesta, correctaPorPregunta.get(pregunta.getId()), acerto));
+            breakdown.add(new ExamResultResponse.QuestionResultResponse(
+                    question.getId(), question.getText(), question.getPoints(),
+                    miRespuesta, correctByQuestion.get(question.getId()), acerto));
         }
 
-        intento.entregar(nota);
-        examAttemptRepository.save(intento);
+        attempt.submit(grade);
+        examAttemptRepository.save(attempt);
 
         int totalPuntos = preguntas.stream().mapToInt(ExamQuestion::getPoints).sum();
-        return new ExamResultResponse(intento.getId(), nota, totalPuntos, intento.getSubmittedAt(), desglose);
+        return new ExamResultResponse(attempt.getId(), grade, totalPuntos, attempt.getSubmittedAt(), breakdown);
     }
 
     /** Todos los intentos de un examen, para la vista de corrección del profesorado. */
     @Transactional(readOnly = true)
-    public List<ExamAttemptSummaryResponse> listarIntentos(UUID examId) {
-        Exam examen = examRepository.findById(examId)
-                .orElseThrow(() -> NotFoundException.de("Examen", examId));
-        acceso.exigirEditable(examen.getSchoolClass().getId());
+    public List<ExamAttemptSummaryResponse> listAttempts(UUID examId) {
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> NotFoundException.of("Examen", examId));
+        access.requireEditable(exam.getSchoolClass().getId());
 
         return examAttemptRepository.findByExamIdOrderByStudentNameAsc(examId).stream()
-                .map(intento -> new ExamAttemptSummaryResponse(
-                        intento.getId(), intento.getStudent().getId(), intento.getStudent().getName(),
-                        intento.getStartedAt(), intento.getSubmittedAt(), intento.getScore(),
-                        intento.estaEntregado()))
+                .map(attempt -> new ExamAttemptSummaryResponse(
+                        attempt.getId(), attempt.getStudent().getId(), attempt.getStudent().getName(),
+                        attempt.getStartedAt(), attempt.getSubmittedAt(), attempt.getScore(),
+                        attempt.isSubmitted()))
                 .toList();
     }
 
     // ------------------------------------------------------------------- ayuda
 
     /** Busca un examen comprobando que quien pregunta pueda ver su clase. */
-    private Exam buscarVisible(UUID examId) {
-        Exam examen = examRepository.findById(examId)
-                .orElseThrow(() -> NotFoundException.de("Examen", examId));
-        acceso.exigirVisible(examen.getSchoolClass().getId());
-        return examen;
+    private Exam findVisible(UUID examId) {
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> NotFoundException.of("Examen", examId));
+        access.requireVisible(exam.getSchoolClass().getId());
+        return exam;
     }
 
     /** El intento de quien pregunta, si sigue a tiempo y sin entregar. */
-    private ExamAttempt miIntentoEnCurso(UUID examId) {
-        AuthenticatedUser autenticado = authService.identidadActual();
-        ExamAttempt intento = examAttemptRepository.findByExamIdAndStudentId(examId, autenticado.id())
+    private ExamAttempt myAttemptInProgress(UUID examId) {
+        AuthenticatedUser autenticado = authService.currentIdentity();
+        ExamAttempt attempt = examAttemptRepository.findByExamIdAndStudentId(examId, autenticado.id())
                 .orElseThrow(() -> new BadRequestException("Todavía no has empezado este examen"));
 
-        if (intento.estaEntregado()) {
+        if (attempt.isSubmitted()) {
             throw new BadRequestException("Ya entregaste este examen, no puedes cambiar tus respuestas");
         }
-        if (Instant.now().isAfter(intento.limiteDeTiempo())) {
+        if (Instant.now().isAfter(attempt.timeLimit())) {
             throw new BadRequestException("Se acabó el tiempo para este examen");
         }
-        return intento;
+        return attempt;
     }
 
     /**
@@ -442,42 +442,42 @@ public class ExamService {
      * entregar no las reordena otra vez, porque la semilla es siempre la
      * misma para ese intento. No hace falta guardar el orden en ningún sitio.
      */
-    private <T> List<T> barajarPorIntento(List<T> lista, UUID intentoId) {
-        List<T> copia = new ArrayList<>(lista);
-        Collections.shuffle(copia, new Random(intentoId.getMostSignificantBits()));
-        return copia;
+    private <T> List<T> shuffleByAttempt(List<T> list, UUID attemptId) {
+        List<T> copy = new ArrayList<>(list);
+        Collections.shuffle(copy, new Random(attemptId.getMostSignificantBits()));
+        return copy;
     }
 
-    /** Igual que {@link #barajarPorIntento}, pero con una semilla propia por pregunta: cada una baraja sus opciones distinto. */
-    private <T> List<T> barajarPorIntentoYPregunta(List<T> lista, UUID intentoId, UUID preguntaId) {
-        List<T> copia = new ArrayList<>(lista);
-        Collections.shuffle(copia, new Random(intentoId.getMostSignificantBits() ^ preguntaId.getMostSignificantBits()));
-        return copia;
+    /** Igual que {@link #shuffleByAttempt}, pero con una semilla propia por pregunta: cada una baraja sus opciones distinto. */
+    private <T> List<T> shuffleByAttemptAndQuestion(List<T> list, UUID attemptId, UUID questionId) {
+        List<T> copy = new ArrayList<>(list);
+        Collections.shuffle(copy, new Random(attemptId.getMostSignificantBits() ^ questionId.getMostSignificantBits()));
+        return copy;
     }
 
-    private Map<UUID, List<ExamOption>> opcionesAgrupadasPorPregunta(List<ExamQuestion> preguntas) {
+    private Map<UUID, List<ExamOption>> groupedOptionsByQuestion(List<ExamQuestion> preguntas) {
         if (preguntas.isEmpty()) {
             return Map.of();
         }
         List<UUID> questionIds = preguntas.stream().map(ExamQuestion::getId).toList();
 
-        Map<UUID, List<ExamOption>> opcionesPorPregunta = new HashMap<>();
-        for (ExamOption opcion : examOptionRepository.findByQuestionIdIn(questionIds)) {
-            opcionesPorPregunta.computeIfAbsent(opcion.getQuestion().getId(), k -> new ArrayList<>()).add(opcion);
+        Map<UUID, List<ExamOption>> optionsByQuestion = new HashMap<>();
+        for (ExamOption option : examOptionRepository.findByQuestionIdIn(questionIds)) {
+            optionsByQuestion.computeIfAbsent(option.getQuestion().getId(), k -> new ArrayList<>()).add(option);
         }
-        return opcionesPorPregunta;
+        return optionsByQuestion;
     }
 
-    private int sumaDePuntos(UUID examId) {
+    private int sumOfPoints(UUID examId) {
         return examQuestionRepository.findByExamIdOrderBySortOrderAsc(examId).stream()
                 .mapToInt(ExamQuestion::getPoints)
                 .sum();
     }
 
-    private String estadoDe(ExamAttempt intento) {
-        if (intento == null) {
+    private String statusOf(ExamAttempt attempt) {
+        if (attempt == null) {
             return "no_empezado";
         }
-        return intento.estaEntregado() ? "entregado" : "en_curso";
+        return attempt.isSubmitted() ? "entregado" : "en_curso";
     }
 }

@@ -37,11 +37,11 @@ import lombok.Setter;
 public class Notification {
 
     /** Tipos que la aplicación sabe emitir. */
-    public static final String TAREA_NUEVA = "assignment_created";
-    public static final String NOTA_PUBLICADA = "grade_published";
-    public static final String AVISO_NUEVO = "announcement_created";
-    public static final String EXAMEN_NUEVO = "exam_created";
-    public static final String REGISTRO_SOLICITADO = "registration_requested";
+    public static final String NEW_ASSIGNMENT = "assignment_created";
+    public static final String PUBLISHED_GRADE = "grade_published";
+    public static final String NEW_ANNOUNCEMENT = "announcement_created";
+    public static final String NEW_EXAM = "exam_created";
+    public static final String REGISTRATION_REQUESTED = "registration_requested";
 
     @Id
     @GeneratedValue
@@ -73,11 +73,11 @@ public class Notification {
         this.payload = payload;
     }
 
-    public boolean estaLeida() {
+    public boolean isRead() {
         return readAt != null;
     }
 
-    public void marcarComoLeida() {
+    public void markAsRead() {
         if (readAt == null) {
             this.readAt = Instant.now();
         }

@@ -52,22 +52,22 @@ public record SaveAssignmentRequest(
         UUID topicId) {
 
     /** Si no se indica puntuación, se toma la de un examen al uso. */
-    public int puntosOPorDefecto() {
+    public int pointsOrDefault() {
         return points == null ? 100 : points;
     }
 
     /** Sin indicar, no hay penalización: es el comportamiento de siempre. */
-    public int penalizacionOPorDefecto() {
+    public int penaltyOrDefault() {
         return latePenaltyPercent == null ? 0 : latePenaltyPercent;
     }
 
     /** Sin indicar, peso normal: cuenta igual que cualquier otra tarea. */
-    public BigDecimal pesoOPorDefecto() {
+    public BigDecimal weightOrDefault() {
         return weight == null ? BigDecimal.ONE : weight;
     }
 
     /** Sin indicar, individual: es el comportamiento de siempre. */
-    public boolean esGrupalOPorDefecto() {
+    public boolean isGroupOrDefault() {
         return groupAssignment != null && groupAssignment;
     }
 }

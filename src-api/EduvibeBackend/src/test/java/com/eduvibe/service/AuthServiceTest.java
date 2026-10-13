@@ -45,7 +45,7 @@ import com.eduvibe.security.JwtService;
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
 
-    private static final String MENSAJE_CREDENCIALES_INVALIDAS =
+    private static final String MESSAGE_INVALID_CREDENTIALS =
             "Usuario y/o contraseña incorrectos. Si aún no has activado tu cuenta, abre el enlace de invitación que recibiste por correo.";
     private static final String IP = "127.0.0.1";
 
@@ -71,13 +71,13 @@ class AuthServiceTest {
 
     @BeforeEach
     void crearServicio() {
-        authService = new AuthService(userRepository, passwordEncoder, new DemoCuentasProtegidas(""), jwtService, invitationService, loginAttemptService, twoFactorService);
+        authService = new AuthService(userRepository, passwordEncoder, new ProtectedDemoAccounts(""), jwtService, invitationService, loginAttemptService, twoFactorService);
     }
 
-    private User usuarioActivo(String email, String passwordHash) {
-        User usuario = new User(new Organization("Centro", null), email, "Ana", UserRole.STUDENT);
-        usuario.activarCon(passwordHash);
-        return usuario;
+    private User activeUser(String email, String passwordHash) {
+        User user = new User(new Organization("Centro", null), email, "Ana", UserRole.STUDENT);
+        user.enableWith(passwordHash);
+        return user;
     }
 
     @Nested
@@ -92,7 +92,7 @@ class AuthServiceTest {
 
             assertThatThrownBy(() -> authService.login(new LoginRequest("no-existe@centro.es", "cualquiera"), IP))
                     .isInstanceOf(BadCredentialsException.class)
-                    .hasMessage(MENSAJE_CREDENCIALES_INVALIDAS);
+                    .hasMessage(MESSAGE_INVALID_CREDENTIALS);
         }
 
         @Test
@@ -115,61 +115,61 @@ class AuthServiceTest {
         @Test
         @DisplayName("con contraseña incorrecta lanza el mismo error")
         void contrasenaIncorrecta() {
-            User usuario = usuarioActivo("ana@centro.es", "$2a$10$hash");
-            when(userRepository.findByEmail("ana@centro.es")).thenReturn(Optional.of(usuario));
+            User user = activeUser("ana@centro.es", "$2a$10$hash");
+            when(userRepository.findByEmail("ana@centro.es")).thenReturn(Optional.of(user));
             when(passwordEncoder.matches("mala", "$2a$10$hash")).thenReturn(false);
 
             assertThatThrownBy(() -> authService.login(new LoginRequest("ana@centro.es", "mala"), IP))
                     .isInstanceOf(BadCredentialsException.class)
-                    .hasMessage(MENSAJE_CREDENCIALES_INVALIDAS);
+                    .hasMessage(MESSAGE_INVALID_CREDENTIALS);
         }
 
         @Test
         @DisplayName("con cuenta pendiente de invitación lanza el mismo error aunque la contraseña sea correcta")
         void cuentaPendiente() {
-            User usuario = new User(new Organization("Centro", null), "pendiente@centro.es", "Pendiente", UserRole.STUDENT);
-            when(userRepository.findByEmail("pendiente@centro.es")).thenReturn(Optional.of(usuario));
+            User user = new User(new Organization("Centro", null), "pendiente@centro.es", "Pendiente", UserRole.STUDENT);
+            when(userRepository.findByEmail("pendiente@centro.es")).thenReturn(Optional.of(user));
             when(passwordEncoder.matches(anyString(), anyString())).thenReturn(true);
 
             assertThatThrownBy(() -> authService.login(new LoginRequest("pendiente@centro.es", "loQueSea"), IP))
                     .isInstanceOf(BadCredentialsException.class)
-                    .hasMessage(MENSAJE_CREDENCIALES_INVALIDAS);
+                    .hasMessage(MESSAGE_INVALID_CREDENTIALS);
         }
 
         @Test
         @DisplayName("con cuenta desactivada y la contraseña correcta avisa de que está desactivada, sin contarlo como fallo")
         void cuentaDesactivadaConContrasenaCorrecta() {
-            User usuario = usuarioActivo("ana@centro.es", "$2a$10$hash");
-            usuario.setStatus(UserStatus.DISABLED);
-            when(userRepository.findByEmail("ana@centro.es")).thenReturn(Optional.of(usuario));
+            User user = activeUser("ana@centro.es", "$2a$10$hash");
+            user.setStatus(UserStatus.DISABLED);
+            when(userRepository.findByEmail("ana@centro.es")).thenReturn(Optional.of(user));
             when(passwordEncoder.matches("correcta", "$2a$10$hash")).thenReturn(true);
 
             assertThatThrownBy(() -> authService.login(new LoginRequest("ana@centro.es", "correcta"), IP))
                     .isInstanceOf(AccountDisabledException.class)
                     .hasMessageContaining("desactivada");
 
-            verify(loginAttemptService, never()).registrarFallo(anyString(), anyString());
+            verify(loginAttemptService, never()).recordFailure(anyString(), anyString());
         }
 
         @Test
         @DisplayName("con cuenta desactivada y contraseña incorrecta da el error genérico: no delata que la cuenta existe")
         void cuentaDesactivadaConContrasenaIncorrecta() {
-            User usuario = usuarioActivo("ana@centro.es", "$2a$10$hash");
-            usuario.setStatus(UserStatus.DISABLED);
-            when(userRepository.findByEmail("ana@centro.es")).thenReturn(Optional.of(usuario));
+            User user = activeUser("ana@centro.es", "$2a$10$hash");
+            user.setStatus(UserStatus.DISABLED);
+            when(userRepository.findByEmail("ana@centro.es")).thenReturn(Optional.of(user));
             when(passwordEncoder.matches("mala", "$2a$10$hash")).thenReturn(false);
 
             assertThatThrownBy(() -> authService.login(new LoginRequest("ana@centro.es", "mala"), IP))
                     .isInstanceOf(BadCredentialsException.class)
-                    .hasMessage(MENSAJE_CREDENCIALES_INVALIDAS);
-            verify(loginAttemptService).registrarFallo("ana@centro.es", IP);
+                    .hasMessage(MESSAGE_INVALID_CREDENTIALS);
+            verify(loginAttemptService).recordFailure("ana@centro.es", IP);
         }
 
         @Test
         @DisplayName("con el email bloqueado rechaza el intento sin llegar a mirar usuario ni contraseña")
         void emailBloqueado() {
-            when(loginAttemptService.estaBloqueado("ana@centro.es")).thenReturn(true);
-            when(loginAttemptService.minutosDeBloqueo()).thenReturn(15L);
+            when(loginAttemptService.isLocked("ana@centro.es")).thenReturn(true);
+            when(loginAttemptService.minutesOfLockout()).thenReturn(15L);
 
             assertThatThrownBy(() -> authService.login(new LoginRequest("ana@centro.es", "correcta"), IP))
                     .isInstanceOf(TooManyRequestsException.class)
@@ -187,102 +187,102 @@ class AuthServiceTest {
 
             assertThatThrownBy(() -> authService.login(new LoginRequest("no-existe@centro.es", "x"), IP));
 
-            verify(loginAttemptService).registrarFallo("no-existe@centro.es", IP);
+            verify(loginAttemptService).recordFailure("no-existe@centro.es", IP);
         }
 
         @Test
         @DisplayName("apunta el acceso correcto, que deja el contador de fallos a cero")
         void apuntaElExito() {
-            User usuario = usuarioActivo("ana@centro.es", "$2a$10$hash");
-            when(userRepository.findByEmail("ana@centro.es")).thenReturn(Optional.of(usuario));
+            User user = activeUser("ana@centro.es", "$2a$10$hash");
+            when(userRepository.findByEmail("ana@centro.es")).thenReturn(Optional.of(user));
             when(passwordEncoder.matches("correcta", "$2a$10$hash")).thenReturn(true);
-            when(jwtService.emitirPara(usuario)).thenReturn("token-emitido");
-            when(jwtService.caducidadDeUnTokenNuevo()).thenReturn(Instant.MAX);
+            when(jwtService.issueFor(user)).thenReturn("token-emitido");
+            when(jwtService.expiryOfTokenNew()).thenReturn(Instant.MAX);
 
             authService.login(new LoginRequest("ana@centro.es", "correcta"), IP);
 
-            verify(loginAttemptService).registrarExito("ana@centro.es", IP);
-            verify(loginAttemptService, never()).registrarFallo(anyString(), anyString());
+            verify(loginAttemptService).recordSuccess("ana@centro.es", IP);
+            verify(loginAttemptService, never()).recordFailure(anyString(), anyString());
         }
 
-        private User usuarioConDosPasos() {
-            User usuario = usuarioActivo("ana@centro.es", "$2a$10$hash");
-            usuario.setTotpEnabled(true);
-            when(userRepository.findByEmail("ana@centro.es")).thenReturn(Optional.of(usuario));
+        private User userWithTwoFactor() {
+            User user = activeUser("ana@centro.es", "$2a$10$hash");
+            user.setTotpEnabled(true);
+            when(userRepository.findByEmail("ana@centro.es")).thenReturn(Optional.of(user));
             when(passwordEncoder.matches("correcta", "$2a$10$hash")).thenReturn(true);
-            return usuario;
+            return user;
         }
 
         @Test
         @DisplayName("con 2FA activado y sin código pide el código, sin contarlo como fallo")
         void dosPasosSinCodigo() {
-            usuarioConDosPasos();
+            userWithTwoFactor();
 
             assertThatThrownBy(() -> authService.login(new LoginRequest("ana@centro.es", "correcta"), IP))
                     .isInstanceOf(TwoFactorRequiredException.class);
 
-            verify(loginAttemptService, never()).registrarFallo(anyString(), anyString());
-            verify(loginAttemptService, never()).registrarExito(anyString(), anyString());
+            verify(loginAttemptService, never()).recordFailure(anyString(), anyString());
+            verify(loginAttemptService, never()).recordSuccess(anyString(), anyString());
         }
 
         @Test
         @DisplayName("con 2FA activado y un código incorrecto lo trata como credenciales inválidas y apunta el fallo")
         void dosPasosCodigoIncorrecto() {
-            User usuario = usuarioConDosPasos();
-            when(twoFactorService.codigoValido(usuario, "000000")).thenReturn(false);
+            User user = userWithTwoFactor();
+            when(twoFactorService.validCode(user, "000000")).thenReturn(false);
 
             assertThatThrownBy(() -> authService.login(
                     new LoginRequest("ana@centro.es", "correcta", "000000"), IP))
                     .isInstanceOf(BadCredentialsException.class);
 
-            verify(loginAttemptService).registrarFallo("ana@centro.es", IP);
+            verify(loginAttemptService).recordFailure("ana@centro.es", IP);
         }
 
         @Test
         @DisplayName("con 2FA activado y el código correcto inicia sesión")
         void dosPasosCodigoCorrecto() {
-            User usuario = usuarioConDosPasos();
-            when(twoFactorService.codigoValido(usuario, "123456")).thenReturn(true);
-            when(jwtService.emitirPara(usuario)).thenReturn("token-emitido");
-            when(jwtService.caducidadDeUnTokenNuevo()).thenReturn(Instant.MAX);
+            User user = userWithTwoFactor();
+            when(twoFactorService.validCode(user, "123456")).thenReturn(true);
+            when(jwtService.issueFor(user)).thenReturn("token-emitido");
+            when(jwtService.expiryOfTokenNew()).thenReturn(Instant.MAX);
 
-            AuthResponse respuesta = authService.login(
+            AuthResponse answer = authService.login(
                     new LoginRequest("ana@centro.es", "correcta", "123456"), IP);
 
-            assertThat(respuesta.token()).isEqualTo("token-emitido");
-            verify(loginAttemptService).registrarExito("ana@centro.es", IP);
+            assertThat(answer.token()).isEqualTo("token-emitido");
+            verify(loginAttemptService).recordSuccess("ana@centro.es", IP);
         }
 
         @Test
         @DisplayName("con credenciales correctas devuelve la sesión iniciada")
         void credencialesCorrectas() {
-            User usuario = usuarioActivo("ana@centro.es", "$2a$10$hash");
-            when(userRepository.findByEmail("ana@centro.es")).thenReturn(Optional.of(usuario));
+            User user = activeUser("ana@centro.es", "$2a$10$hash");
+            when(userRepository.findByEmail("ana@centro.es")).thenReturn(Optional.of(user));
             when(passwordEncoder.matches("correcta", "$2a$10$hash")).thenReturn(true);
-            when(jwtService.emitirPara(usuario)).thenReturn("token-emitido");
-            when(jwtService.caducidadDeUnTokenNuevo()).thenReturn(Instant.MAX);
+            when(jwtService.issueFor(user)).thenReturn("token-emitido");
+            when(jwtService.expiryOfTokenNew()).thenReturn(Instant.MAX);
 
-            AuthResponse respuesta = authService.login(new LoginRequest("ana@centro.es", "correcta"), IP);
+            AuthResponse answer = authService.login(new LoginRequest("ana@centro.es", "correcta"), IP);
 
-            assertThat(respuesta.token()).isEqualTo("token-emitido");
-            assertThat(respuesta.user().email()).isEqualTo("ana@centro.es");
+            assertThat(answer.token()).isEqualTo("token-emitido");
+            assertThat(answer.user().email()).isEqualTo("ana@centro.es");
         }
     }
 
     @Nested
     @DisplayName("Cambiar contraseña")
-    class CambiarPassword {
+    class ChangePassword {
 
-        private final UUID idUsuario = UUID.randomUUID();
-        private User usuario;
+        private final UUID userId = UUID.randomUUID();
+        private User user;
 
         @BeforeEach
         void iniciarSesion() {
-            usuario = usuarioActivo("ana@centro.es", "$2a$10$hashActual");
-            AuthenticatedUser identidad = new AuthenticatedUser(
-                    idUsuario, "ana@centro.es", "Ana", UserRole.STUDENT, UUID.randomUUID());
+            user = activeUser("ana@centro.es", "$2a$10$hashActual");
+            AuthenticatedUser identity = new AuthenticatedUser(
+                    userId, "ana@centro.es", "Ana", UserRole.STUDENT, UUID.randomUUID());
             SecurityContextHolder.getContext().setAuthentication(
-                    new UsernamePasswordAuthenticationToken(identidad, null, List.of()));
+                    new UsernamePasswordAuthenticationToken(identity, null, List.of()));
         }
 
         @AfterEach
@@ -293,47 +293,47 @@ class AuthServiceTest {
         @Test
         @DisplayName("con la contraseña actual correcta guarda el hash de la nueva")
         void cambioCorrecto() {
-            when(userRepository.findById(idUsuario)).thenReturn(Optional.of(usuario));
+            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
             when(passwordEncoder.matches("actual-ok", "$2a$10$hashActual")).thenReturn(true);
             when(passwordEncoder.matches("nueva-clave-1", "$2a$10$hashActual")).thenReturn(false);
             when(passwordEncoder.encode("nueva-clave-1")).thenReturn("$2a$10$hashNuevo");
 
-            when(jwtService.emitirPara(usuario)).thenReturn("token-nuevo");
+            when(jwtService.issueFor(user)).thenReturn("token-nuevo");
 
-            AuthResponse respuesta = authService.cambiarPassword(
+            AuthResponse answer = authService.changePassword(
                     new ChangePasswordRequest("actual-ok", "nueva-clave-1"), IP);
 
-            assertThat(usuario.getPasswordHash()).isEqualTo("$2a$10$hashNuevo");
-            verify(userRepository).save(usuario);
+            assertThat(user.getPasswordHash()).isEqualTo("$2a$10$hashNuevo");
+            verify(userRepository).save(user);
             // Las demás sesiones se cierran, y esta recibe un token nuevo para seguir abierta
-            assertThat(usuario.getTokenVersion()).isEqualTo(1);
-            assertThat(respuesta.token()).isEqualTo("token-nuevo");
+            assertThat(user.getTokenVersion()).isEqualTo(1);
+            assertThat(answer.token()).isEqualTo("token-nuevo");
         }
 
         @Test
         @DisplayName("con la actual incorrecta lanza 400 (no 401, que cerraría la sesión) y apunta el fallo")
         void actualIncorrecta() {
-            when(userRepository.findById(idUsuario)).thenReturn(Optional.of(usuario));
+            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
             when(passwordEncoder.matches("mala", "$2a$10$hashActual")).thenReturn(false);
 
-            assertThatThrownBy(() -> authService.cambiarPassword(
+            assertThatThrownBy(() -> authService.changePassword(
                     new ChangePasswordRequest("mala", "nueva-clave-1"), IP))
                     .isInstanceOf(BadRequestException.class)
                     .hasMessage("La contraseña actual no es correcta");
 
-            verify(loginAttemptService).registrarFallo("ana@centro.es", IP);
-            verify(userRepository, never()).save(usuario);
-            assertThat(usuario.getPasswordHash()).isEqualTo("$2a$10$hashActual");
+            verify(loginAttemptService).recordFailure("ana@centro.es", IP);
+            verify(userRepository, never()).save(user);
+            assertThat(user.getPasswordHash()).isEqualTo("$2a$10$hashActual");
         }
 
         @Test
         @DisplayName("con la cuenta bloqueada por intentos fallidos no llega a mirar la contraseña")
         void cuentaBloqueada() {
-            when(userRepository.findById(idUsuario)).thenReturn(Optional.of(usuario));
-            when(loginAttemptService.estaBloqueado("ana@centro.es")).thenReturn(true);
-            when(loginAttemptService.minutosDeBloqueo()).thenReturn(15L);
+            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+            when(loginAttemptService.isLocked("ana@centro.es")).thenReturn(true);
+            when(loginAttemptService.minutesOfLockout()).thenReturn(15L);
 
-            assertThatThrownBy(() -> authService.cambiarPassword(
+            assertThatThrownBy(() -> authService.changePassword(
                     new ChangePasswordRequest("actual-ok", "nueva-clave-1"), IP))
                     .isInstanceOf(TooManyRequestsException.class);
 
@@ -343,14 +343,14 @@ class AuthServiceTest {
         @Test
         @DisplayName("rechaza una contraseña nueva igual a la actual")
         void nuevaIgualQueLaActual() {
-            when(userRepository.findById(idUsuario)).thenReturn(Optional.of(usuario));
+            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
             when(passwordEncoder.matches("misma-clave-1", "$2a$10$hashActual")).thenReturn(true);
 
-            assertThatThrownBy(() -> authService.cambiarPassword(
+            assertThatThrownBy(() -> authService.changePassword(
                     new ChangePasswordRequest("misma-clave-1", "misma-clave-1"), IP))
                     .isInstanceOf(BadRequestException.class);
 
-            verify(userRepository, never()).save(usuario);
+            verify(userRepository, never()).save(user);
         }
     }
 }

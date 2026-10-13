@@ -41,8 +41,8 @@ class AdminBootstrapTest {
         bootstrap = new AdminBootstrap(userRepository, organizationRepository, passwordEncoder);
         ReflectionTestUtils.setField(bootstrap, "email", "Admin@Centro.es");
         ReflectionTestUtils.setField(bootstrap, "password", "una-contraseña-larga");
-        ReflectionTestUtils.setField(bootstrap, "nombre", "Administrador");
-        ReflectionTestUtils.setField(bootstrap, "organizacion", "Mi centro");
+        ReflectionTestUtils.setField(bootstrap, "name", "Administrador");
+        ReflectionTestUtils.setField(bootstrap, "organizationName", "Mi centro");
     }
 
     @Test
@@ -54,12 +54,12 @@ class AdminBootstrapTest {
 
         bootstrap.run(null);
 
-        ArgumentCaptor<User> guardado = ArgumentCaptor.forClass(User.class);
-        verify(userRepository).save(guardado.capture());
-        assertThat(guardado.getValue().getRole()).isEqualTo(UserRole.ADMIN);
-        assertThat(guardado.getValue().getStatus()).isEqualTo(UserStatus.ACTIVE);
-        assertThat(guardado.getValue().getEmail()).isEqualTo("admin@centro.es");
-        assertThat(guardado.getValue().getPasswordHash()).isEqualTo("hash");
+        ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(saved.capture());
+        assertThat(saved.getValue().getRole()).isEqualTo(UserRole.ADMIN);
+        assertThat(saved.getValue().getStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(saved.getValue().getEmail()).isEqualTo("admin@centro.es");
+        assertThat(saved.getValue().getPasswordHash()).isEqualTo("hash");
     }
 
     @Test

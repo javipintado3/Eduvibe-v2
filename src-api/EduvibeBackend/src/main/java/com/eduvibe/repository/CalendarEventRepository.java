@@ -28,12 +28,12 @@ public interface CalendarEventRepository extends JpaRepository<CalendarEvent, UU
                         SELECT m.schoolClass.id FROM Enrollment m WHERE m.user.id = :userId))
             ORDER BY e.eventDate ASC
             """)
-    List<CalendarEvent> findParaUsuario(@Param("orgId") UUID orgId,
+    List<CalendarEvent> findForUser(@Param("orgId") UUID orgId,
                                         @Param("userId") UUID userId,
-                                        @Param("desde") Instant desde,
-                                        @Param("hasta") Instant hasta);
+                                        @Param("desde") Instant from,
+                                        @Param("hasta") Instant until);
 
     /** Para la administración, que ve todo el centro sin estar matriculada. */
     List<CalendarEvent> findByOrganizationIdAndEventDateBetweenOrderByEventDateAsc(
-            UUID orgId, Instant desde, Instant hasta);
+            UUID orgId, Instant from, Instant until);
 }

@@ -80,7 +80,7 @@ public class Resource {
     }
 
     /** Si al alumnado todavía no le toca verlo. El profesorado lo ve siempre. */
-    public boolean bloqueadoParaAlumnado() {
+    public boolean lockedForStudents() {
         return availableFrom != null && Instant.now().isBefore(availableFrom);
     }
 }

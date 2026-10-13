@@ -28,31 +28,31 @@ public record CalendarEntryResponse(
         String classSubject,
         String classColor) {
 
-    public static CalendarEntryResponse deEvento(CalendarEvent evento) {
-        var clase = evento.getSchoolClass();
+    public static CalendarEntryResponse ofEvent(CalendarEvent event) {
+        var schoolClass = event.getSchoolClass();
         return new CalendarEntryResponse(
-                evento.getId(),
+                event.getId(),
                 "event",
-                evento.getTitle(),
-                evento.getEventDate(),
-                evento.getType() == null ? "other" : evento.getType().getValor(),
-                clase == null ? null : clase.getId(),
-                clase == null ? null : clase.getName(),
-                clase == null ? null : clase.getSubject(),
-                clase == null ? null : clase.getColor());
+                event.getTitle(),
+                event.getEventDate(),
+                event.getType() == null ? "other" : event.getType().getValue(),
+                schoolClass == null ? null : schoolClass.getId(),
+                schoolClass == null ? null : schoolClass.getName(),
+                schoolClass == null ? null : schoolClass.getSubject(),
+                schoolClass == null ? null : schoolClass.getColor());
     }
 
-    public static CalendarEntryResponse deTarea(Assignment tarea) {
-        var clase = tarea.getSchoolClass();
+    public static CalendarEntryResponse ofAssignment(Assignment assignment) {
+        var schoolClass = assignment.getSchoolClass();
         return new CalendarEntryResponse(
-                tarea.getId(),
+                assignment.getId(),
                 "assignment",
-                tarea.getTitle(),
-                tarea.getDueDate(),
+                assignment.getTitle(),
+                assignment.getDueDate(),
                 "assignment_due",
-                clase.getId(),
-                clase.getName(),
-                clase.getSubject(),
-                clase.getColor());
+                schoolClass.getId(),
+                schoolClass.getName(),
+                schoolClass.getSubject(),
+                schoolClass.getColor());
     }
 }

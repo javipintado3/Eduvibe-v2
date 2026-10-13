@@ -37,22 +37,22 @@ public record SubmissionResponse(
         BigDecimal weight,
         String groupName) {
 
-    public static SubmissionResponse de(Submission entrega, GradeResponse nota) {
+    public static SubmissionResponse of(Submission submission, GradeResponse grade) {
         return new SubmissionResponse(
-                entrega.getId(),
-                entrega.getAssignment().getId(),
-                entrega.getAssignment().getTitle(),
-                entrega.getStudent().getId(),
-                entrega.getStudent().getName(),
-                entrega.getContent(),
-                entrega.getFileUrl(),
-                entrega.getStatus().getValor(),
-                entrega.getSubmittedAt(),
-                entrega.entregadaTarde(),
-                nota,
-                entrega.getTeacherNote(),
-                entrega.getAssignment().getPoints(),
-                entrega.getAssignment().getWeight(),
-                entrega.getClassGroup() == null ? null : entrega.getClassGroup().getName());
+                submission.getId(),
+                submission.getAssignment().getId(),
+                submission.getAssignment().getTitle(),
+                submission.getStudent().getId(),
+                submission.getStudent().getName(),
+                submission.getContent(),
+                submission.getFileUrl(),
+                submission.getStatus().getValue(),
+                submission.getSubmittedAt(),
+                submission.entregadaTarde(),
+                grade,
+                submission.getTeacherNote(),
+                submission.getAssignment().getPoints(),
+                submission.getAssignment().getWeight(),
+                submission.getClassGroup() == null ? null : submission.getClassGroup().getName());
     }
 }

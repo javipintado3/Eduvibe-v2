@@ -8,7 +8,7 @@ package com.eduvibe.model.enums;
  * valor más de esta lista, una entrega calificada perdería la información de
  * que llegó fuera de plazo, porque no podría estar en los dos a la vez.
  */
-public enum SubmissionStatus implements EnumConValor {
+public enum SubmissionStatus implements EnumWithValue {
 
     /** Empezada por el alumno pero todavía no enviada. */
     DRAFT("draft"),
@@ -19,18 +19,18 @@ public enum SubmissionStatus implements EnumConValor {
     /** Ya corregida, con su calificación. */
     GRADED("graded");
 
-    private final String valor;
+    private final String value;
 
-    SubmissionStatus(String valor) {
-        this.valor = valor;
+    SubmissionStatus(String value) {
+        this.value = value;
     }
 
     @Override
-    public String getValor() {
-        return valor;
+    public String getValue() {
+        return value;
     }
 
-    public static SubmissionStatus desdeValor(String valor) {
-        return EnumConValor.desde(SubmissionStatus.class, valor);
+    public static SubmissionStatus fromValue(String value) {
+        return EnumWithValue.from(SubmissionStatus.class, value);
     }
 }

@@ -7,25 +7,25 @@ package com.eduvibe.model.enums;
  * PENDING cuando la persona confirma que el correo es suyo, y termina
  * APPROVED o REJECTED por decisión de un administrador.
  */
-public enum RegistrationStatus implements EnumConValor {
+public enum RegistrationStatus implements EnumWithValue {
 
     UNVERIFIED("unverified"),
     PENDING("pending"),
     APPROVED("approved"),
     REJECTED("rejected");
 
-    private final String valor;
+    private final String value;
 
-    RegistrationStatus(String valor) {
-        this.valor = valor;
+    RegistrationStatus(String value) {
+        this.value = value;
     }
 
     @Override
-    public String getValor() {
-        return valor;
+    public String getValue() {
+        return value;
     }
 
-    public static RegistrationStatus desdeValor(String valor) {
-        return EnumConValor.desde(RegistrationStatus.class, valor);
+    public static RegistrationStatus fromValue(String value) {
+        return EnumWithValue.from(RegistrationStatus.class, value);
     }
 }

@@ -13,19 +13,19 @@ import com.eduvibe.model.ExamQuestion;
  */
 public record BankQuestionResponse(UUID id, String text, int points, String examTitle, List<OptionResponse> options) {
 
-    public static BankQuestionResponse de(ExamQuestion pregunta, List<ExamOption> opciones) {
+    public static BankQuestionResponse of(ExamQuestion question, List<ExamOption> options) {
         return new BankQuestionResponse(
-                pregunta.getId(),
-                pregunta.getText(),
-                pregunta.getPoints(),
-                pregunta.getExam().getTitle(),
-                opciones.stream().map(OptionResponse::de).toList());
+                question.getId(),
+                question.getText(),
+                question.getPoints(),
+                question.getExam().getTitle(),
+                options.stream().map(OptionResponse::of).toList());
     }
 
     public record OptionResponse(UUID id, String text, boolean correct) {
 
-        public static OptionResponse de(ExamOption opcion) {
-            return new OptionResponse(opcion.getId(), opcion.getText(), opcion.isCorrect());
+        public static OptionResponse of(ExamOption option) {
+            return new OptionResponse(option.getId(), option.getText(), option.isCorrect());
         }
     }
 }

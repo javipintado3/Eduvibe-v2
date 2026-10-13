@@ -27,8 +27,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class GdprRequest {
 
-    public static final String EXPORTAR = "export";
-    public static final String BORRAR = "erase";
+    public static final String EXPORT = "export";
+    public static final String DELETE = "erase";
 
     @Id
     @GeneratedValue
@@ -60,7 +60,7 @@ public class GdprRequest {
     }
 
     /** Solicitud que se atiende en el mismo momento en que se hace. */
-    public static GdprRequest atendida(User user, String type) {
+    public static GdprRequest handled(User user, String type) {
         return new GdprRequest(user, type);
     }
 }
